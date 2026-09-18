@@ -24,3 +24,65 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #5b3fd6;
 }
+
+
+/* App-wide dark theme. Kept at the shell level so existing screens inherit it
+   without duplicating theme state in every view. */
+html.dark body,
+html.dark .app-shell {
+  background: #12101a;
+  color: #eeeaf8;
+}
+
+html.dark .app-shell > div {
+  background: #17141f;
+  border-color: #2b2637;
+}
+
+html.dark .app-shell main .bg-white,
+html.dark .app-shell nav {
+  background-color: #201c2b !important;
+}
+
+html.dark .app-shell main .bg-\[\#F8F9FD\],
+html.dark .app-shell main .bg-\[\#F8F9FD\] {
+  background-color: #17141f !important;
+}
+
+html.dark .app-shell .text-\[\#2C2145\] {
+  color: #f0ecf8 !important;
+}
+
+html.dark .app-shell .text-gray-700,
+html.dark .app-shell .text-gray-600,
+html.dark .app-shell .text-gray-500 {
+  color: #b9b2c8 !important;
+}
+
+html.dark .app-shell .text-gray-400 {
+  color: #928aa3 !important;
+}
+
+html.dark .app-shell .border-gray-100,
+html.dark .app-shell .border-gray-100\/80,
+html.dark .app-shell .border-gray-200 {
+  border-color: #332d40 !important;
+}
+
+html.dark .app-shell .bg-\[\#F5F3FF\],
+html.dark .app-shell .bg-\[\#F0EDFF\],
+html.dark .app-shell .bg-\[\#F8F9FD\] {
+  background-color: #292238 !important;
+}
+
+html.dark .app-shell input,
+html.dark .app-shell textarea,
+html.dark .app-shell select {
+  background-color: #24202f !important;
+  color: #f0ecf8 !important;
+  border-color: #3a3348 !important;
+}
+
+html.dark .app-shell nav {
+  border-color: #302a3c !important;
+}
