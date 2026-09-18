@@ -14,6 +14,7 @@ import { db } from '../services/db';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ActivityBarChart } from '../components/ActivityBarChart';
+import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 
 interface HomePageProps {
   onStartSession: (topic?: string) => void;
@@ -130,6 +131,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         period={period}
         onPeriodChange={setPeriod}
       />
+
+      {/* Banner directly below activity statistics */}
+      <ReferenceBannerAd slot="home-below-stats" />
 
       {/* Start Session Primary CTA */}
       <button
