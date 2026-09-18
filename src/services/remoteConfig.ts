@@ -36,6 +36,7 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
 
       const updateObj = data.update || {};
       const announcementObj = data.announcement || {};
+      const ratingObj = data.rating_prompt || {};
 
       const updateUrl = String(updateObj.url || '').trim();
       const announcementEnabled = Boolean(announcementObj.enabled);
@@ -67,6 +68,15 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
         announcementMessage,
         announcementEnabled: announcementEnabled && Boolean(announcementId) && Boolean(announcementMessage),
         notifications,
+        ratingPrompt: {
+          enabled: Boolean(ratingObj.enabled),
+          storeUrl: String(ratingObj.store_url || '').trim(),
+          title: String(ratingObj.title || 'ما رأيك في التطبيق؟').trim().slice(0, 200),
+          message: String(ratingObj.message || 'ساعدنا بتقييم التطبيق.').trim().slice(0, 1000),
+          minUsageDays: Math.max(1, Math.min(365, Number(ratingObj.min_usage_days) || 3)),
+          minLaunches: Math.max(1, Math.min(1000, Number(ratingObj.min_launches) || 5)),
+          repeatAfterDays: Math.max(1, Math.min(365, Number(ratingObj.repeat_after_days) || 14)),
+        },
         lastCheckedAt: Date.now(),
         source: targetUrl.startsWith('http') ? 'github' : 'local',
       };
