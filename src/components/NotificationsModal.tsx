@@ -10,7 +10,7 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
-import { RemoteState } from '../types';
+import { AppNotification, RemoteState } from '../types';
 import { openUpdate } from '../services/remoteConfig';
 import { db } from '../services/db';
 
