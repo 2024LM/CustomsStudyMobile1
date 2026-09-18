@@ -13,7 +13,7 @@ interface SessionPageProps {
 
 export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null }) => {
   const [count, setCount] = useState<number>(20);
-  const [topic, setTopic] = useState<string | null>(initialTopic);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopic ? [initialTopic] : []);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [index, setIndex] = useState<number>(0);
@@ -46,9 +46,9 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
   }, []);
 
   const handleStartSession = () => {
-    const qList = db.sessionQuestions(count, topic);
+    const qList = db.sessionQuestions(count, selectedTopics.length > 0 ? selectedTopics : null);
     if (qList.length > 0) {
-      const sid = db.createSession(qList.length, db.activeBankId(), topic ? 'topic' : 'mixed');
+      const sid = db.createSession(qList.length, db.activeBankId(), selectedTopics.length > 0 ? 'topics' : 'mixed');
       db.attachSessionQuestions(sid, qList);
       setQuestions(qList);
       setSessionId(sid);
@@ -321,13 +321,18 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
         </div>
       </div>
 
-      {/* Topic Filter Setting */}
+      {/* Multi-topic Filter Setting */}
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-sm text-[#2C2145]">المحور</h3>
-          {topic !== null && (
+          <div className="flex flex-col gap-0.5">
+            <h3 className="font-bold text-sm text-[#2C2145]">المحاور</h3>
+            <span className="text-[11px] text-gray-400">
+              {selectedTopics.length === 0 ? 'كل المحاور' : `${selectedTopics.length} محدد`}
+            </span>
+          </div>
+          {selectedTopics.length > 0 && (
             <button
-              onClick={() => setTopic(null)}
+              onClick={() => setSelectedTopics([])}
               className="text-xs text-[#5B3FD6] font-bold hover:underline"
             >
               إلغاء التحديد
@@ -336,32 +341,36 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
         </div>
 
         <button
-          onClick={() => setTopic(null)}
+          onClick={() => setSelectedTopics([])}
           className={`w-full p-3.5 rounded-[16px] border text-right transition-all flex items-center gap-3 ${
-            topic === null
+            selectedTopics.length === 0
               ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6] font-bold'
               : 'bg-white border-[#E7E3EF] text-gray-700 hover:border-[#5B3FD6]/40'
           }`}
         >
           <div
-            className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-              topic === null ? 'border-[#5B3FD6]' : 'border-gray-300'
+            className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center shrink-0 ${
+              selectedTopics.length === 0 ? 'border-[#5B3FD6] bg-[#5B3FD6]' : 'border-gray-300'
             }`}
           >
-            {topic === null && (
-              <div className="w-2.5 h-2.5 rounded-full bg-[#5B3FD6]" />
-            )}
+            {selectedTopics.length === 0 && <span className="text-white text-xs leading-none">✓</span>}
           </div>
           <span className="text-sm">كل المحاور (مراجعة شاملة)</span>
         </button>
 
         <div className="max-h-64 overflow-y-auto flex flex-col gap-2 pr-0.5">
           {topics.map((t) => {
-            const isSelected = topic === t;
+            const isSelected = selectedTopics.includes(t);
             return (
               <button
                 key={t}
-                onClick={() => setTopic(t)}
+                onClick={() =>
+                  setSelectedTopics((current) =>
+                    current.includes(t)
+                      ? current.filter((item) => item !== t)
+                      : [...current, t]
+                  )
+                }
                 className={`w-full p-3.5 rounded-[16px] border text-right transition-all flex items-center gap-3 ${
                   isSelected
                     ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6] font-bold'
@@ -369,15 +378,13 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
                 }`}
               >
                 <div
-                  className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    isSelected ? 'border-[#5B3FD6]' : 'border-gray-300'
+                  className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center shrink-0 ${
+                    isSelected ? 'border-[#5B3FD6] bg-[#5B3FD6]' : 'border-gray-300'
                   }`}
                 >
-                  {isSelected && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#5B3FD6]" />
-                  )}
+                  {isSelected && <span className="text-white text-xs leading-none">✓</span>}
                 </div>
-                <span className="text-sm">{t}</span>
+                <span className="text-sm flex-1">{t}</span>
               </button>
             );
           })}
