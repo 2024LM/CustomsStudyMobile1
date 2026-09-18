@@ -34,6 +34,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
   const [remoteBanks, setRemoteBanks] = useState<RemoteBankItem[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(true);
   const [remoteError, setRemoteError] = useState('');
+  const [downloadingBankId, setDownloadingBankId] = useState<string | null>(null);
 
   const loadRemoteBanks = async (force = false) => {
     setRemoteLoading(true); setRemoteError('');
@@ -44,8 +45,32 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
 
   useEffect(() => { void loadRemoteBanks(); }, []);
 
-  const downloadRemoteBank = (bank: RemoteBankItem) => {
-    window.open(bank.downloadUrl, '_blank', 'noopener,noreferrer');
+  const downloadRemoteBank = async (bank: RemoteBankItem) => {
+    if (downloadingBankId) return;
+    setDownloadingBankId(bank.id);
+    setPreview(null);
+    setStatus('جارٍ تحميل البنك وفحصه…');
+    try {
+      await showInterstitial();
+      const res = await fetch(bank.downloadUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`تعذر تنزيل الملف (HTTP ${res.status})`);
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      const blob = await res.blob();
+      if (blob.size > 5 * 1024 * 1024) throw new Error('حجم البنك يتجاوز 5 MB');
+      if (blob.size === 0) throw new Error('ملف البنك فارغ');
+      if (contentType.includes('text/html')) throw new Error('الرابط لا يشير إلى ملف XLSX مباشر');
+      const file = new File([blob], `${bank.name.slice(0, 60) || bank.id}.xlsx`, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const parsed = await parseExcelFile(file);
+      setPreview(parsed);
+      setBankName(bank.name.slice(0, 80));
+      setStatus(parsed.valid ? 'تم تنزيل البنك وفحصه. راجع البيانات ثم أكد الاستيراد.' : 'تم تنزيل الملف لكنه لم يجتز فحص صيغة البنك.');
+    } catch (e: any) {
+      setStatus(e?.message || 'تعذر تحميل البنك أو فحصه');
+    } finally {
+      setDownloadingBankId(null);
+    }
   };
 
   const banks = db.banks();
@@ -245,8 +270,15 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
               <div className="flex items-center gap-2"><span className="font-bold text-sm text-[#2C2145]">{bank.name}</span>{bank.version && <span className="text-[10px] text-gray-400">v{bank.version}</span>}</div>
               {bank.description && <p className="text-xs text-gray-500 mt-1 leading-5">{bank.description}</p>}
             </div>
-            <button onClick={() => downloadRemoteBank(bank)} className="shrink-0 flex items-center gap-1.5 bg-[#5B3FD6] text-white px-3 py-2 rounded-[11px] text-xs font-bold">
-              <Download className="w-4 h-4" /><span>تحميل</span>
+            <button
+              onClick={() => void downloadRemoteBank(bank)}
+              disabled={downloadingBankId !== null}
+              className="shrink-0 flex items-center gap-1.5 bg-[#5B3FD6] text-white px-3 py-2 rounded-[11px] text-xs font-bold disabled:opacity-50"
+            >
+              {downloadingBankId === bank.id
+                ? <RefreshCw className="w-4 h-4 animate-spin" />
+                : <Download className="w-4 h-4" />}
+              <span>{downloadingBankId === bank.id ? 'جارٍ التحميل' : 'تحميل'}</span>
             </button>
           </div>
         ))}
