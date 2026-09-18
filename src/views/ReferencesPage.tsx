@@ -134,7 +134,7 @@ export const ReferencesPage: React.FC = () => {
         <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} مرجع متاح</p></div></div>
       </div>
 
-      <div className="relative">
+      <div data-tour="references-search" className="relative">
         <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث في المراجع..." className="w-full h-12 pr-11 pl-4 rounded-[16px] bg-white border border-gray-100 outline-none focus:border-[#5B3FD6]/40 text-sm shadow-xs" />
       </div>
