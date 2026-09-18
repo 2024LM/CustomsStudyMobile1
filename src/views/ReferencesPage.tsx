@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as mammoth from 'mammoth/mammoth.browser';
 import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { fetchReferenceContent, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
+import { fetchReferenceContent, fetchReferenceDocx, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
 
@@ -71,6 +72,7 @@ export const ReferencesPage: React.FC = () => {
   const [content, setContent] = useState('');
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState('');
+  const [wordHtml, setWordHtml] = useState('');
 
   const load = async (force = false) => {
     setLoading(true); setError('');
@@ -97,8 +99,19 @@ export const ReferencesPage: React.FC = () => {
       window.open(item.url, '_blank', 'noopener,noreferrer');
       return;
     }
-    setSelected(item); setContent(''); setContentError(''); setContentLoading(true);
-    try { setContent(await fetchReferenceContent(item)); }
+    setSelected(item); setContent(''); setWordHtml(''); setContentError(''); setContentLoading(true);
+    try {
+      const word = /docx|word/i.test(item.type);
+      if (word) {
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer: await fetchReferenceDocx(item) },
+          { convertImage: mammoth.images.imgElement(async (image) => ({ src: await image.read('base64').then((b) => `data:${image.contentType};base64,${b}`) })) }
+        );
+        setWordHtml(result.value);
+      } else {
+        setContent(await fetchReferenceContent(item));
+      }
+    }
     catch { setContentError('تعذر قراءة هذا المستند داخل التطبيق. تحقق من صلاحية الرابط وإتاحة الملف للقراءة.'); }
     finally { setContentLoading(false); }
   };
@@ -116,7 +129,7 @@ export const ReferencesPage: React.FC = () => {
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
-          {!contentLoading && !contentError && <DocumentReader text={content} type={selected.type} />}
+          {!contentLoading && !contentError && wordHtml && <div className="reference-document word-document" dangerouslySetInnerHTML={{ __html: wordHtml }} />}\n          {!contentLoading && !contentError && !wordHtml && <DocumentReader text={content} type={selected.type} />}
         </div>
       </div>
     );
