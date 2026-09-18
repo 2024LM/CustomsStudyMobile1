@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { fetchReferenceContent, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
+import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 
 function renderInline(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|\`[^\`]+\`|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g);
@@ -113,6 +114,8 @@ export const ReferencesPage: React.FC = () => {
         <button onClick={() => void load(true)} disabled={loading} className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center cursor-pointer disabled:opacity-50"><RefreshCw className={`w-4.5 h-4.5 ${loading ? 'animate-spin' : ''}`} /></button>
       } />
 
+      <ReferenceBannerAd slot="top" />
+
       <div className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
         <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} مرجع متاح</p></div></div>
       </div>
@@ -131,13 +134,16 @@ export const ReferencesPage: React.FC = () => {
       {loading && <div className="py-10 text-center text-sm text-gray-400">جاري تحميل المراجع...</div>}
 
       {!loading && !error && <div className="flex flex-col gap-2.5">
-        {filtered.map((item) => (
-          <button key={item.id} onClick={() => void openItem(item)} className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div></div></div>
-              <ChevronLeft className="w-4 h-4 text-gray-400 shrink-0 mt-3" />
-            </div>
-          </button>
+        {filtered.map((item, index) => (
+          <React.Fragment key={item.id}>
+            <button onClick={() => void openItem(item)} className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div></div></div>
+                <ChevronLeft className="w-4 h-4 text-gray-400 shrink-0 mt-3" />
+              </div>
+            </button>
+            {(index + 1) % 4 === 0 && <ReferenceBannerAd slot={`list-${index + 1}`} />}
+          </React.Fragment>
         ))}
         {filtered.length === 0 && <div className="py-10 text-center text-sm text-gray-400">لا توجد مراجع مطابقة.</div>}
       </div>}
