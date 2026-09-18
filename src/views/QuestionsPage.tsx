@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { db } from '../services/db';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { QuestionCard } from '../components/QuestionCard';
@@ -7,15 +7,16 @@ import { QuestionCard } from '../components/QuestionCard';
 export const QuestionsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [questionType, setQuestionType] = useState<'ALL' | 'QCM' | 'OPEN' | 'ORAL'>('ALL');
   const pageSize = 50;
 
   const total = useMemo(() => {
-    return db.searchCount(db.activeBankId(), search);
-  }, [search]);
+    return db.searchCount(db.activeBankId(), search, null, questionType === 'ALL' ? null : questionType);
+  }, [search, questionType]);
 
   const questions = useMemo(() => {
-    return db.questionPage(db.activeBankId(), search, null, pageSize, page * pageSize);
-  }, [search, page]);
+    return db.questionPage(db.activeBankId(), search, null, pageSize, page * pageSize, questionType === 'ALL' ? null : questionType);
+  }, [search, page, questionType]);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -51,6 +52,31 @@ export const QuestionsPage: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         )}
+      </div>
+
+      {/* Question type filter */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
+          <SlidersHorizontal className="w-4 h-4" />
+        </div>
+        {([
+          ['ALL', 'الكل'],
+          ['QCM', 'اختيار متعدد'],
+          ['OPEN', 'مفتوح'],
+          ['ORAL', 'شفهي'],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => { setQuestionType(value); setPage(0); }}
+            className={`shrink-0 px-3.5 py-2 rounded-[12px] text-xs font-bold border transition-colors ${
+              questionType === value
+                ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]'
+                : 'bg-white text-gray-600 border-[#E6E2F0]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Results Count Header */}
