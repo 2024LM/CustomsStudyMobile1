@@ -13,11 +13,9 @@ const NexusAds = registerPlugin<NexusAdsPlugin>('NexusAds');
 let initialized = false;
 
 async function ensureInitialized(): Promise<boolean> {
-  const choice = localStorage.getItem('ads_privacy_choice');
-  if (choice === null) return false;
   if (initialized) return true;
   try {
-    await NexusAds.initializeAds({ personalized: choice === '1' });
+    await NexusAds.initializeAds({ personalized: false });
     initialized = true;
     return true;
   } catch {
