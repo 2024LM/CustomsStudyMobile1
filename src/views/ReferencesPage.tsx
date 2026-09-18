@@ -19,7 +19,7 @@ function renderInline(text: string): React.ReactNode[] {
 function MarkdownReader({ text }: { text: string }) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   return (
-    <article className="text-[#3D3550] text-[14px] leading-8">
+    <article className="reference-document text-[#3D3550] text-[14px] leading-8">
       {lines.map((raw, i) => {
         const line = raw.trimEnd();
         if (!line.trim()) return <div key={i} className="h-3" />;
@@ -57,7 +57,7 @@ function DocumentReader({ text, type }: { text: string; type: string }) {
   const markdown = type.toLowerCase().includes('md') || looksLikeMarkdown(text);
   return markdown
     ? <MarkdownReader text={text} />
-    : <div className="whitespace-pre-wrap leading-8 text-[14px] text-[#3D3550] font-medium">{text}</div>;
+    : <div className="reference-document whitespace-pre-wrap leading-8 text-[14px] text-[#3D3550] font-medium">{text}</div>;
 }
 
 export const ReferencesPage: React.FC = () => {
@@ -113,7 +113,7 @@ export const ReferencesPage: React.FC = () => {
             <button onClick={() => setSelected(null)} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
           </div>
         </div>
-        <div className="bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
+        <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
           {!contentLoading && !contentError && <DocumentReader text={content} type={selected.type} />}
