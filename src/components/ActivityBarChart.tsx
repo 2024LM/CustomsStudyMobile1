@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { BarChart2, Calendar, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
-import { ActivityBucket } from '../types';
+import { ActivityBucket, QuestionBank } from '../types';
 
 interface ActivityBarChartProps {
   buckets: ActivityBucket[];
   period: 'daily' | 'weekly' | 'monthly';
   onPeriodChange: (p: 'daily' | 'weekly' | 'monthly') => void;
+  banks?: QuestionBank[];
+  selectedBankId?: string;
+  onBankChange?: (bankId: string) => void;
 }
 
 export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
   buckets,
   period,
   onPeriodChange,
+  banks = [],
+  selectedBankId = 'ALL',
+  onBankChange,
 }) => {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -69,6 +75,22 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
           })}
         </div>
       </div>
+
+      {banks.length > 1 && onBankChange && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-gray-500 shrink-0">البنك:</span>
+          <select
+            value={selectedBankId}
+            onChange={(e) => { onBankChange(e.target.value); setSelectedIdx(null); }}
+            className="min-w-0 flex-1 bg-[#F8F9FD] border border-[#E6E2F0] rounded-[12px] px-3 py-2 text-xs font-bold text-[#2C2145] focus:outline-hidden focus:border-[#5B3FD6]"
+          >
+            <option value="ALL">جميع البنوك</option>
+            {banks.map((bank) => (
+              <option key={bank.id} value={bank.id}>{bank.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-3 gap-2 bg-[#F8F9FD] p-3 rounded-[16px] text-center">
