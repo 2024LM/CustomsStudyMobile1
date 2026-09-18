@@ -18,6 +18,7 @@ import com.unity3d.ads.UnityAdsLoadOptions;
 import com.unity3d.ads.UnityAdsShowOptions;
 import com.unity3d.ads.metadata.MetaData;
 import com.unity3d.services.banners.BannerView;
+import com.unity3d.services.banners.BannerErrorInfo;
 import com.unity3d.services.banners.UnityBannerSize;
 
 @CapacitorPlugin(name = "NexusAds")
@@ -27,6 +28,7 @@ public class NexusAdsPlugin extends Plugin {
     private boolean initialized = false;
     private BannerView bannerView;
     private FrameLayout bannerContainer;
+    private PluginCall pendingBannerCall;
 
     @PluginMethod
     public void initializeAds(PluginCall call) {
@@ -86,12 +88,31 @@ public class NexusAdsPlugin extends Plugin {
             bannerContainer.setLayoutParams(containerParams);
 
             bannerView = new BannerView(activity, BANNER_ID, new UnityBannerSize(320, 50));
+            pendingBannerCall = call;
+            bannerView.setListener(new BannerView.IListener() {
+                @Override public void onBannerLoaded(BannerView view) {
+                    if (pendingBannerCall != null) {
+                        JSObject result = new JSObject();
+                        result.put("loaded", true);
+                        pendingBannerCall.resolve(result);
+                        pendingBannerCall = null;
+                    }
+                }
+                @Override public void onBannerFailedToLoad(BannerView view, BannerErrorInfo errorInfo) {
+                    hideBannerInternal();
+                    if (pendingBannerCall != null) {
+                        pendingBannerCall.reject("Banner failed to load: " + errorInfo.errorMessage);
+                        pendingBannerCall = null;
+                    }
+                }
+                @Override public void onBannerClick(BannerView view) {}
+                @Override public void onBannerLeftApplication(BannerView view) {}
+            });
             bannerContainer.addView(bannerView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
             ));
             activity.addContentView(bannerContainer, containerParams);
             bannerView.load();
-            call.resolve();
         });
     }
 
@@ -104,6 +125,10 @@ public class NexusAdsPlugin extends Plugin {
     }
 
     private void hideBannerInternal() {
+        if (pendingBannerCall != null) {
+            pendingBannerCall.resolve();
+            pendingBannerCall = null;
+        }
         if (bannerView != null) {
             bannerView.destroy();
             bannerView = null;
