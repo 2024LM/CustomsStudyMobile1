@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import * as mammoth from 'mammoth/mammoth.browser';
+import * as mammoth from 'mammoth';
 import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { fetchReferenceContent, fetchReferenceDocx, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
@@ -105,7 +105,7 @@ export const ReferencesPage: React.FC = () => {
       if (word) {
         const result = await mammoth.convertToHtml(
           { arrayBuffer: await fetchReferenceDocx(item) },
-          { convertImage: mammoth.images.imgElement(async (image) => ({ src: await image.read('base64').then((b) => `data:${image.contentType};base64,${b}`) })) }
+          { convertImage: mammoth.images.imgElement(async (image: mammoth.images.Image) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
         );
         setWordHtml(result.value);
       } else {
@@ -129,7 +129,8 @@ export const ReferencesPage: React.FC = () => {
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
-          {!contentLoading && !contentError && wordHtml && <div className="reference-document word-document" dangerouslySetInnerHTML={{ __html: wordHtml }} />}\n          {!contentLoading && !contentError && !wordHtml && <DocumentReader text={content} type={selected.type} />}
+          {!contentLoading && !contentError && wordHtml && <div className="reference-document word-document" dangerouslySetInnerHTML={{ __html: wordHtml }} />}
+          {!contentLoading && !contentError && !wordHtml && <DocumentReader text={content} type={selected.type} />}
         </div>
       </div>
     );
