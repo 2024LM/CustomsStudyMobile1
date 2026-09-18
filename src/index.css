@@ -86,3 +86,38 @@ html.dark .app-shell select {
 html.dark .app-shell nav {
   border-color: #302a3c !important;
 }
+
+/* Reference reader needs explicit dark colors because document prose uses
+   fixed light-theme text/background utility classes. */
+html.dark .app-shell .reference-reader {
+  background-color: #201c2b !important;
+  border-color: #332d40 !important;
+}
+
+html.dark .app-shell .reference-document {
+  color: #ddd7e8 !important;
+}
+
+html.dark .app-shell .reference-document .text-\[\#2C2145\],
+html.dark .app-shell .reference-document strong {
+  color: #f2eef9 !important;
+}
+
+html.dark .app-shell .reference-document blockquote {
+  background-color: #292238 !important;
+  border-color: #6f55d9 !important;
+  color: #c9c2d6 !important;
+}
+
+html.dark .app-shell .reference-document code {
+  background-color: #302844 !important;
+  color: #b9a8ff !important;
+}
+
+html.dark .app-shell .reference-document hr {
+  border-color: #3a3348 !important;
+}
+
+html.dark .app-shell .reference-document a {
+  color: #b9a8ff !important;
+}
