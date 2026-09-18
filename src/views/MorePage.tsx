@@ -44,9 +44,9 @@ export const MorePage: React.FC<MorePageProps> = ({
     setCheckStatus(null);
     try {
       await onRefreshRemote();
-      setCheckStatus('تم فحص التحديثات من GitHub بنجاح.');
+      setCheckStatus('تم فحص التحديثات بنجاح.');
     } catch {
-      setCheckStatus('تعذر الاتصال بـ GitHub حاليًا.');
+      setCheckStatus('تعذر الاتصال بخدمة التحديثات حاليًا.');
     } finally {
       setCheckingUpdate(false);
       setTimeout(() => setCheckStatus(null), 4000);
