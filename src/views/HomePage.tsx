@@ -147,19 +147,24 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* Activity Statistics Bar Chart (Daily / Weekly / Monthly) */}
-      <div data-tour="home-activity">\n      <ActivityBarChart\n        buckets={activityBuckets}
+      <div data-tour="home-activity">
+        <ActivityBarChart
+        buckets={activityBuckets}
         period={period}
         onPeriodChange={setPeriod}
         banks={banks}
         selectedBankId={activityBankId}
         onBankChange={setActivityBankId}
-      />\n      </div>
+      />
+      </div>
 
       {/* Banner directly below activity statistics */}
       <ReferenceBannerAd slot="home-below-stats" />
 
       {/* Start Session Primary CTA */}
-      <button\n        data-tour="home-start-session"\n        onClick={() => onStartSession()}
+      <button
+        data-tour="home-start-session"
+        onClick={() => onStartSession()}
         disabled={qcm === 0}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
           qcm > 0
