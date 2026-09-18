@@ -6,6 +6,8 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
+import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
+import { showReferenceInterstitial } from '../services/ads';
 
 interface SessionPageProps {
   initialTopic?: string | null;
@@ -58,11 +60,12 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (index + 1 >= questions.length) {
       if (sessionId !== null) {
         db.finishSession(sessionId);
       }
+      await showReferenceInterstitial();
       setDone(true);
     } else {
       setIndex((i) => i + 1);
@@ -276,6 +279,9 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
             )}
           </div>
         )}
+
+        {/* Bottom banner during the active session */}
+        <ReferenceBannerAd slot="session-bottom" />
 
         {/* Next Question / Finish Session Button */}
         {isAnswered && (
