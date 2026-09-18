@@ -53,7 +53,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
       {/* Hero Banner Card */}
-      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
+      <div data-tour="home-hero" className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-white">الرئيسية</h2>
@@ -98,7 +98,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* General Progress Card */}
-      <div className="bg-white rounded-[24px] p-5 shadow-xs border border-gray-100 flex items-center gap-4.5">
+      <div data-tour="home-progress" className="bg-white rounded-[24px] p-5 shadow-xs border border-gray-100 flex items-center gap-4.5">
         <CircularProgress
           percentage={rate}
           size={86}
@@ -147,21 +147,19 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* Activity Statistics Bar Chart (Daily / Weekly / Monthly) */}
-      <ActivityBarChart
-        buckets={activityBuckets}
+      <div data-tour="home-activity">\n      <ActivityBarChart\n        buckets={activityBuckets}
         period={period}
         onPeriodChange={setPeriod}
         banks={banks}
         selectedBankId={activityBankId}
         onBankChange={setActivityBankId}
-      />
+      />\n      </div>
 
       {/* Banner directly below activity statistics */}
       <ReferenceBannerAd slot="home-below-stats" />
 
       {/* Start Session Primary CTA */}
-      <button
-        onClick={() => onStartSession()}
+      <button\n        data-tour="home-start-session"\n        onClick={() => onStartSession()}
         disabled={qcm === 0}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
           qcm > 0
