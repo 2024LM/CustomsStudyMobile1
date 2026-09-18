@@ -9,6 +9,7 @@ import {
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
 import { fetchRemoteConfig } from './services/remoteConfig';
+import { showInterstitial } from './services/ads';
 import { SplashScreen } from './components/SplashScreen';
 import { AnnouncementModal } from './components/AnnouncementModal';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -27,6 +28,7 @@ import { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
+  const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
@@ -48,6 +50,20 @@ export function App() {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Show one interstitial after the splash screen, then enter the app.
+  useEffect(() => {
+    if (!ready || startupAdHandled) return;
+    let active = true;
+    const run = async () => {
+      await showInterstitial();
+      if (active) setStartupAdHandled(true);
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [ready, startupAdHandled]);
 
   // Remote Config fetch
   useEffect(() => {
@@ -80,7 +96,7 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!ready) {
+  if (!ready || !startupAdHandled) {
     return <SplashScreen />;
   }
 
