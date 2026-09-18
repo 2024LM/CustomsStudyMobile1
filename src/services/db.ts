@@ -7,6 +7,7 @@ import {
   QuestionState,
   QuizQuestion,
   RemoteState,
+  StoredNotification,
   StudySession,
   StudyStats,
 } from '../types';
@@ -35,6 +36,7 @@ interface DatabaseSchema {
   questionStates: Record<number, QuestionState>;
   sessions: StudySession[];
   settings: Record<string, string>;
+  notifications: StoredNotification[];
 }
 
 function createInitialDatabase(): DatabaseSchema {
@@ -119,6 +121,7 @@ function createInitialDatabase(): DatabaseSchema {
     questionStates,
     sessions: [],
     settings,
+    notifications: [],
   };
 }
 
@@ -140,6 +143,7 @@ class StudyDatabaseService {
           if (parsed.questions.length === 0) {
             return createInitialDatabase();
           }
+          parsed.notifications = Array.isArray(parsed.notifications) ? parsed.notifications : [];
           return parsed;
         }
       }
@@ -830,6 +834,7 @@ class StudyDatabaseService {
   }
 
   public saveRemote(s: RemoteState) {
+    this.syncRemoteNotifications(s);
     this.setSetting('remote_latest', s.latest.toString());
     this.setSetting('remote_minimum', s.minimum.toString());
     this.setSetting('remote_update_url', s.updateUrl);
@@ -850,21 +855,102 @@ class StudyDatabaseService {
     }
   }
 
+  public storedNotifications(): StoredNotification[] {
+    return this.data.notifications
+      .slice()
+      .sort((a, b) => b.receivedAt - a.receivedAt);
+  }
+
+  private syncRemoteNotifications(s: RemoteState) {
+    const incoming: AppNotification[] = [];
+
+    if (s.latest > 1 || s.minimum > 1) {
+      incoming.push({
+        id: `sys_update_${s.latest}`,
+        title: s.updateTitle || 'يتوفر تحديث جديد للتطبيق',
+        message: s.updateMessage || 'يرجى تحديث التطبيق.',
+        type: s.minimum > 1 ? 'alert' : 'update',
+        url: s.updateUrl || undefined,
+        date: 'تحديث فوري',
+      });
+    }
+
+    if (s.announcementEnabled && s.announcementId && s.announcementMessage) {
+      incoming.push({
+        id: `sys_announcement_${s.announcementId}`,
+        title: s.announcementTitle || 'إعلان من الإدارة',
+        message: s.announcementMessage,
+        type: 'info',
+        date: 'تنويه هام',
+      });
+    }
+
+    if (Array.isArray(s.notifications)) {
+      incoming.push(...s.notifications);
+    }
+
+    const now = Date.now();
+    const source = s.source || 'github';
+    for (const item of incoming) {
+      const id = String(item.id || '').trim();
+      if (!id) continue;
+      const existing = this.data.notifications.find((n) => n.id === id);
+      if (existing) {
+        existing.title = item.title;
+        existing.message = item.message;
+        existing.type = item.type;
+        existing.date = item.date;
+        existing.url = item.url;
+        existing.source = source;
+      } else {
+        this.data.notifications.push({
+          ...item,
+          id,
+          receivedAt: now,
+          readAt: null,
+          source,
+        });
+      }
+    }
+  }
+
   public isNotificationRead(id: string): boolean {
+    const stored = this.data.notifications.find((n) => n.id === id);
+    if (stored) return stored.readAt !== null;
     const readIds = this.getReadNotificationIds();
     return readIds.has(id);
   }
 
   public markNotificationAsRead(id: string) {
+    const stored = this.data.notifications.find((n) => n.id === id);
+    if (stored && stored.readAt === null) {
+      stored.readAt = Date.now();
+      this.notify();
+      return;
+    }
     const readIds = this.getReadNotificationIds();
     readIds.add(id);
     this.setSetting('read_notifications_ids', JSON.stringify(Array.from(readIds)));
   }
 
   public markAllNotificationsAsRead(ids: string[]) {
-    const readIds = this.getReadNotificationIds();
-    ids.forEach((id) => readIds.add(id));
-    this.setSetting('read_notifications_ids', JSON.stringify(Array.from(readIds)));
+    const wanted = new Set(ids);
+    const now = Date.now();
+    let changed = false;
+    for (const item of this.data.notifications) {
+      if (wanted.has(item.id) && item.readAt === null) {
+        item.readAt = now;
+        changed = true;
+      }
+    }
+    if (changed) this.notify();
+
+    const missing = ids.filter((id) => !this.data.notifications.some((n) => n.id === id));
+    if (missing.length > 0) {
+      const readIds = this.getReadNotificationIds();
+      missing.forEach((id) => readIds.add(id));
+      this.setSetting('read_notifications_ids', JSON.stringify(Array.from(readIds)));
+    }
   }
 
   private getReadNotificationIds(): Set<string> {
