@@ -9,6 +9,8 @@ import {
   FolderOpen,
   ChevronLeft,
   Bell,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { db } from '../services/db';
 import { CircularProgress } from '../components/CircularProgress';
@@ -22,6 +24,8 @@ interface HomePageProps {
   onViewMistakes: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
+  darkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -30,6 +34,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   onViewMistakes,
   onOpenNotifications,
   unreadNotificationsCount = 0,
+  darkMode = false,
+  onToggleDarkMode,
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const bank = db.activeBank();
@@ -48,6 +54,17 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-white">الرئيسية</h2>
             <div className="flex items-center gap-2">
+              {onToggleDarkMode && (
+                <button
+                  onClick={onToggleDarkMode}
+                  title={darkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
+                  aria-label={darkMode ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'}
+                  className="w-11 h-11 rounded-[14px] bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer shadow-xs"
+                >
+                  {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+              )}
+
               {/* Notifications Button */}
               {onOpenNotifications && (
                 <button
