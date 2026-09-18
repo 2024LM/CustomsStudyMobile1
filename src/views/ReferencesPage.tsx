@@ -105,7 +105,7 @@ export const ReferencesPage: React.FC = () => {
       if (word) {
         const result = await mammoth.convertToHtml(
           { arrayBuffer: await fetchReferenceDocx(item) },
-          { convertImage: mammoth.images.imgElement(async (image: mammoth.images.Image) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
+          { convertImage: mammoth.images.imgElement(async (image: { contentType: string; read: (encoding: string) => Promise<string> }) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
         );
         setWordHtml(result.value);
       } else {
