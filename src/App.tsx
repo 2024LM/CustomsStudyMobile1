@@ -16,7 +16,7 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { DirectQuestionModal } from './components/DirectQuestionModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { Onboarding } from './components/Onboarding';
-import { GuidedTour } from './components/GuidedTour';
+import { GuidedTour, TourStep } from './components/GuidedTour';
 
 import { HomePage } from './views/HomePage';
 import { QuestionsPage } from './views/QuestionsPage';
@@ -32,7 +32,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [username, setUsername] = useState(() => localStorage.getItem('profile_username')?.trim() || '');
   const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('onboarding_version') === '1' && Boolean(localStorage.getItem('profile_username')?.trim()));
-  const [showGuidedTour, setShowGuidedTour] = useState(() => localStorage.getItem('guided_tour_version') !== '1' && localStorage.getItem('onboarding_version') === '1');
+  const [tourRefresh, setTourRefresh] = useState(0);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
@@ -123,7 +123,7 @@ export function App() {
           setUsername(clean);
           setOnboardingComplete(true);
           setStartupAdHandled(true);
-          setShowGuidedTour(true);
+          setTourRefresh((v) => v + 1);
         }}
       />
     );
@@ -155,6 +155,47 @@ export function App() {
     setSessionCount(count || null);
     setPage('SESSION');
   };
+
+
+  const tourDefinitions: Partial<Record<Page, TourStep[]>> = {
+    HOME: [
+      { target: 'home-hero', title: 'هذه صفحتك الرئيسية', text: 'هنا يظهر اسمك والبنك النشط، ومن هنا تصل إلى الإشعارات وتغيير المظهر.' },
+      { target: 'home-progress', title: 'تقدمك العام', text: 'راقب عدد إجاباتك ونسبة نجاحك أثناء المراجعة.' },
+      { target: 'home-activity', title: 'نشاط المراجعة', text: 'تابع نشاطك يوميًا وأسبوعيًا وشهريًا، واختر بنكًا محددًا عند توفر أكثر من بنك.' },
+      { target: 'home-start-session', title: 'ابدأ جلسة مراجعة', text: 'ابدأ جلسة جديدة للمراجعة من هنا.' },
+      { target: 'bottom-navigation', title: 'التنقل داخل التطبيق', text: 'استخدم هذا الشريط للوصول إلى الأسئلة والجلسات والمراجع والمزيد.' },
+    ],
+    QUESTIONS: [
+      { target: 'questions-search', title: 'البحث في الأسئلة', text: 'ابحث عن سؤال أو محور داخل البنك النشط.' },
+      { target: 'questions-filter', title: 'فلترة نوع السؤال', text: 'اعرض جميع الأسئلة أو أسئلة الاختيار المتعدد أو المفتوحة أو الشفهية.' },
+      { target: 'questions-list', title: 'قائمة الأسئلة', text: 'من هنا تتصفح الأسئلة وبياناتها وتراجع محتوى البنك.' },
+    ],
+    SESSION: [
+      { target: 'session-count', title: 'عدد أسئلة الجلسة', text: 'حدد حجم جلسة المراجعة الذي يناسب وقتك.' },
+      { target: 'session-topics', title: 'اختيار المحاور', text: 'يمكنك اختيار محور واحد أو عدة محاور، أو تركها بدون تحديد لجلسة متنوعة.' },
+      { target: 'session-start', title: 'بدء الجلسة', text: 'بعد ضبط خياراتك، ابدأ جلسة المراجعة من هنا.' },
+    ],
+    REFERENCES: [
+      { target: 'references-library', title: 'مكتبة المراجع', text: 'هنا تظهر المراجع والقوالب والمستندات المنشورة للتطبيق.' },
+      { target: 'references-search', title: 'البحث في المراجع', text: 'ابحث بسرعة عن المرجع الذي تحتاج إليه.' },
+      { target: 'references-categories', title: 'تصنيفات المراجع', text: 'استخدم التصنيفات لتضييق النتائج والوصول إلى المحتوى المطلوب.' },
+    ],
+    MORE: [
+      { target: 'more-menu', title: 'أدوات إضافية', text: 'من هنا تصل إلى أخطائك والمفضلة وبنوك الأسئلة والإشعارات والإعدادات.' },
+    ],
+    BANKS: [
+      { target: 'banks-import', title: 'استيراد بنك', text: 'يمكنك إضافة بنك أسئلة من ملف XLSX متوافق.' },
+      { target: 'banks-download', title: 'بنوك قابلة للتحميل', text: 'البنوك المنشورة للتطبيق تظهر هنا ويمكن تنزيلها وفحصها قبل الاستيراد.' },
+      { target: 'banks-list', title: 'البنوك الموجودة', text: 'اختر البنك الذي تريد استخدامه للمراجعة من قائمة البنوك المتاحة.' },
+    ],
+  };
+  const currentTourSteps = tourDefinitions[page];
+  const currentTourKey = `guided_tour_${page.toLowerCase()}_v1`;
+  const shouldShowCurrentTour = Boolean(
+    onboardingComplete &&
+    currentTourSteps?.length &&
+    localStorage.getItem(currentTourKey) !== '1'
+  );
 
   const navItems = [
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
