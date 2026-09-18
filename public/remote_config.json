@@ -1,1 +1,25 @@
-{"config_version":1,"latest_version_code":1,"min_supported_version_code":1,"update":{"url":"https://github.com/2024LM/CustomsStudyMobile/releases/latest","title":"يتوفر تحديث جديد","message":"يرجى تحديث التطبيق للحصول على أحدث التحسينات."},"announcement":{"enabled":false,"id":"","title":"","message":""}}
+{
+  "config_version": 3,
+  "latest_version_code": 1,
+  "min_supported_version_code": 1,
+  "update": {
+    "url": "https://github.com/2024LM/CustomsStudyMobile/releases/latest",
+    "title": "يتوفر تحديث جديد",
+    "message": "يرجى تحديث التطبيق للحصول على أحدث التحسينات."
+  },
+  "announcement": {
+    "enabled": false,
+    "id": "",
+    "title": "",
+    "message": ""
+  },
+  "rating_prompt": {
+    "enabled": false,
+    "store_url": "",
+    "title": "ما رأيك في منصة المراجعة؟",
+    "message": "إذا كان التطبيق يساعدك في المراجعة، اختر تقييمك ثم شاركنا رأيك في المتجر.",
+    "min_usage_days": 3,
+    "min_launches": 5,
+    "repeat_after_days": 14
+  }
+}
