@@ -255,7 +255,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
       )}
 
       {/* Downloadable Banks Catalog */}
-      <div className="flex items-center justify-between mt-1">
+      <div data-tour="banks-download" className="flex items-center justify-between mt-1">
         <h3 className="font-bold text-base text-[#2C2145]">بنوك متاحة للتحميل</h3>
         <button onClick={() => void loadRemoteBanks(true)} disabled={remoteLoading} className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${remoteLoading ? 'animate-spin' : ''}`} />
