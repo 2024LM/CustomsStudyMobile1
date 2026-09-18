@@ -27,7 +27,7 @@ jobs:
           cache: npm
 
       - name: Install web dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Capacitor Android
         run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
