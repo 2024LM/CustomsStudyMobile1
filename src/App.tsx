@@ -28,6 +28,7 @@ import { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
@@ -37,6 +38,11 @@ export function App() {
   const [directQuestion, setDirectQuestion] = useState<QuizQuestion | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [, setDbVersion] = useState(0);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('app_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   // Subscribe to DB changes so any child updates trigger fresh reads
   useEffect(() => {
@@ -132,7 +138,7 @@ export function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
+    <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
       <div className="w-full max-w-md min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md border-x border-gray-100">
         {/* Update Banner */}
@@ -172,6 +178,8 @@ export function App() {
               onViewMistakes={() => setPage('MISTAKES')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
+              darkMode={darkMode}
+              onToggleDarkMode={() => setDarkMode((value) => !value)}
             />
           )}
 
