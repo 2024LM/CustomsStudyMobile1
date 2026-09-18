@@ -1,5 +1,5 @@
 {
-  "config_version": 2,
+  "config_version": 3,
   "latest_version_code": 1,
   "min_supported_version_code": 1,
   "update": {
@@ -29,5 +29,14 @@
       "type": "general",
       "date": "اليوم"
     }
-  ]
+  ],
+  "rating_prompt": {
+    "enabled": false,
+    "store_url": "",
+    "title": "ما رأيك في منصة المراجعة؟",
+    "message": "إذا كان التطبيق يساعدك في المراجعة، اختر تقييمك ثم شاركنا رأيك في المتجر.",
+    "min_usage_days": 3,
+    "min_launches": 5,
+    "repeat_after_days": 14
+  }
 }
