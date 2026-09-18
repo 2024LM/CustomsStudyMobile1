@@ -35,7 +35,7 @@ export const QuestionsPage: React.FC = () => {
       <ScreenHeader title="الأسئلة" subtitle="ابحث وراجع بنك الأسئلة" />
 
       {/* Search Bar */}
-      <div className="relative w-full">
+      <div data-tour="questions-search" className="relative w-full">
         <input
           type="text"
           value={search}
@@ -55,7 +55,7 @@ export const QuestionsPage: React.FC = () => {
       </div>
 
       {/* Question type filter */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <div data-tour="questions-filter" className="flex items-center gap-2 overflow-x-auto pb-1">
         <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
