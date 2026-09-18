@@ -80,6 +80,22 @@ function googleDocExportUrl(url: string): string | null {
   return match ? `https://docs.google.com/document/d/${match[1]}/export?format=txt` : null;
 }
 
+function isWordType(type: string): boolean {
+  const t = type.toLowerCase();
+  return t.includes('docx') || t.includes('word');
+}
+
+export async function fetchReferenceDocx(item: ReferenceItem): Promise<ArrayBuffer> {
+  if (!isWordType(item.type)) throw new Error('نوع الملف ليس Word.');
+  const res = await fetch(item.url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('text/html')) throw new Error('الرابط لا يشير إلى ملف Word مباشر.');
+  const buffer = await res.arrayBuffer();
+  if (!buffer.byteLength || buffer.byteLength > 15 * 1024 * 1024) throw new Error('حجم ملف Word غير مدعوم.');
+  return buffer;
+}
+
 export async function fetchReferenceContent(item: ReferenceItem): Promise<string> {
   const key = CONTENT_CACHE_PREFIX + item.id;
   const target = item.type.toLowerCase().includes('google')
@@ -105,5 +121,5 @@ export async function fetchReferenceContent(item: ReferenceItem): Promise<string
 
 export function isInlineReadable(type: string): boolean {
   const t = type.toLowerCase();
-  return t.includes('md') || t.includes('txt') || t.includes('google');
+  return t.includes('md') || t.includes('txt') || t.includes('google') || isWordType(t);
 }
