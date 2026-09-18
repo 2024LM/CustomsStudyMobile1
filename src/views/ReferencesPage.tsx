@@ -3,6 +3,7 @@ import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiO
 import { ScreenHeader } from '../components/ScreenHeader';
 import { fetchReferenceContent, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
+import { showReferenceInterstitial } from '../services/ads';
 
 function renderInline(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|\`[^\`]+\`|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g);
@@ -79,6 +80,7 @@ export const ReferencesPage: React.FC = () => {
   }), [items, category, query]);
 
   const openItem = async (item: ReferenceItem) => {
+    await showReferenceInterstitial();
     if (!isInlineReadable(item.type)) {
       window.open(item.url, '_blank', 'noopener,noreferrer');
       return;
