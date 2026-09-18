@@ -7,7 +7,7 @@ import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
-import { showReferenceInterstitial } from '../services/ads';
+import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
   initialTopic?: string | null;
@@ -65,7 +65,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
       if (sessionId !== null) {
         db.finishSession(sessionId);
       }
-      await showReferenceInterstitial();
+      await showInterstitial();
       setDone(true);
     } else {
       setIndex((i) => i + 1);
