@@ -16,6 +16,7 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { DirectQuestionModal } from './components/DirectQuestionModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { Onboarding } from './components/Onboarding';
+import { GuidedTour } from './components/GuidedTour';
 
 import { HomePage } from './views/HomePage';
 import { QuestionsPage } from './views/QuestionsPage';
@@ -31,6 +32,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [username, setUsername] = useState(() => localStorage.getItem('profile_username')?.trim() || '');
   const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('onboarding_version') === '1' && Boolean(localStorage.getItem('profile_username')?.trim()));
+  const [showGuidedTour, setShowGuidedTour] = useState(() => localStorage.getItem('guided_tour_version') !== '1' && localStorage.getItem('onboarding_version') === '1');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
@@ -121,6 +123,7 @@ export function App() {
           setUsername(clean);
           setOnboardingComplete(true);
           setStartupAdHandled(true);
+          setShowGuidedTour(true);
         }}
       />
     );
@@ -165,7 +168,7 @@ export function App() {
     <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
       <div className="w-full max-w-md min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md border-x border-gray-100">
-        {/* Update Banner */}
+        {showGuidedTour && page === 'HOME' && (\n          <GuidedTour onComplete={() => {\n            localStorage.setItem('guided_tour_version', '1');\n            setShowGuidedTour(false);\n          }} />\n        )}\n\n        {/* Update Banner */}
         <UpdateBanner remote={remote} />
 
         {/* Remote Announcement Dialog */}
@@ -249,7 +252,7 @@ export function App() {
         </main>
 
         {/* Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
+        <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isSelected =
