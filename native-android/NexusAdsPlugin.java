@@ -1,7 +1,9 @@
 package com.nexus.customsstudy;
 
 import android.app.Activity;
+import android.graphics.Rect;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
@@ -80,11 +82,28 @@ public class NexusAdsPlugin extends Plugin {
         activity.runOnUiThread(() -> {
             hideBannerInternal();
             bannerContainer = new FrameLayout(activity);
-            FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                (int) (50 * activity.getResources().getDisplayMetrics().density)
-            );
-            containerParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+            double cssX = call.getDouble("x", 0.0);
+            double cssY = call.getDouble("y", 0.0);
+            double cssWidth = call.getDouble("width", 320.0);
+            double cssHeight = call.getDouble("height", 50.0);
+
+            View webView = getBridge().getWebView();
+            Rect webRect = new Rect();
+            webView.getGlobalVisibleRect(webRect);
+            float density = activity.getResources().getDisplayMetrics().density;
+            float webScale = webView.getWidth() > 0
+                ? (float) webRect.width() / (float) webView.getWidth()
+                : 1f;
+
+            int left = webRect.left + Math.round((float) cssX * webScale);
+            int top = webRect.top + Math.round((float) cssY * webScale);
+            int width = Math.max(1, Math.round((float) cssWidth * webScale));
+            int height = Math.max(1, Math.round((float) cssHeight * webScale));
+
+            FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(width, height);
+            containerParams.leftMargin = left;
+            containerParams.topMargin = top;
+            containerParams.gravity = Gravity.TOP | Gravity.LEFT;
             bannerContainer.setLayoutParams(containerParams);
 
             bannerView = new BannerView(activity, BANNER_ID, new UnityBannerSize(320, 50));
