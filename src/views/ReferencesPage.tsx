@@ -130,7 +130,7 @@ export const ReferencesPage: React.FC = () => {
 
       <ReferenceBannerAd slot="top" />
 
-      <div className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+      <div data-tour="references-library" className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
         <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} مرجع متاح</p></div></div>
       </div>
 
@@ -139,7 +139,7 @@ export const ReferencesPage: React.FC = () => {
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث في المراجع..." className="w-full h-12 pr-11 pl-4 rounded-[16px] bg-white border border-gray-100 outline-none focus:border-[#5B3FD6]/40 text-sm shadow-xs" />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div data-tour="references-categories" className="flex gap-2 overflow-x-auto pb-1">
         {categories.map((c) => <button key={c} onClick={() => setCategory(c)} className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer ${category === c ? 'bg-[#5B3FD6] text-white' : 'bg-white border border-gray-100 text-gray-500'}`}>{c}</button>)}
       </div>
 
