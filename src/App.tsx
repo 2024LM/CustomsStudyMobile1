@@ -209,7 +209,18 @@ export function App() {
     <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
       <div className="w-full max-w-md min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md border-x border-gray-100">
-        {showGuidedTour && page === 'HOME' && (\n          <GuidedTour onComplete={() => {\n            localStorage.setItem('guided_tour_version', '1');\n            setShowGuidedTour(false);\n          }} />\n        )}\n\n        {/* Update Banner */}
+        {shouldShowCurrentTour && currentTourSteps && (
+          <GuidedTour
+            key={`${page}-${tourRefresh}`}
+            steps={currentTourSteps}
+            onComplete={() => {
+              localStorage.setItem(currentTourKey, '1');
+              setTourRefresh((v) => v + 1);
+            }}
+          />
+        )}
+
+        {/* Update Banner */}
         <UpdateBanner remote={remote} />
 
         {/* Remote Announcement Dialog */}
