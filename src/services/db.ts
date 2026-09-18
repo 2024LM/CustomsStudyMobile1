@@ -240,7 +240,8 @@ class StudyDatabaseService {
     search: string = '',
     topic: string | null = null,
     limit: number = 50,
-    offset: number = 0
+    offset: number = 0,
+    questionType: 'QCM' | 'OPEN' | 'ORAL' | null = null
   ): QuizQuestion[] {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safeOffset = Math.max(offset, 0);
@@ -254,6 +255,7 @@ class StudyDatabaseService {
         if (!matchesQ && !matchesT) return false;
       }
       if (topic && q.topic !== topic) return false;
+      if (questionType && q.questionType !== questionType) return false;
       return true;
     });
 
@@ -263,7 +265,8 @@ class StudyDatabaseService {
   public searchCount(
     bankId: string = this.activeBankId(),
     search: string = '',
-    topic: string | null = null
+    topic: string | null = null,
+    questionType: 'QCM' | 'OPEN' | 'ORAL' | null = null
   ): number {
     const term = search.trim().toLowerCase();
     return this.data.questions.filter((q) => {
@@ -274,6 +277,7 @@ class StudyDatabaseService {
         if (!matchesQ && !matchesT) return false;
       }
       if (topic && q.topic !== topic) return false;
+      if (questionType && q.questionType !== questionType) return false;
       return true;
     }).length;
   }
