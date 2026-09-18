@@ -125,7 +125,7 @@ export const MorePage: React.FC<MorePageProps> = ({
 
       {/* App branding */}
       <div className="p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-1">
-        <span className="font-bold text-sm text-[#5B3FD6]">منصة المراجعة - مفتشو الجمارك</span>
+        <span className="font-bold text-sm text-[#5B3FD6]">منصة المراجعة</span>
         <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
       </div>
     </div>
