@@ -4,9 +4,7 @@ import {
   Clock,
   Info,
   Save,
-  Send,
-  ShieldCheck,
-  Check,
+  Send
 } from 'lucide-react';
 import { db } from '../services/db';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -26,24 +24,6 @@ export const ReminderSettings: React.FC<ReminderSettingsProps> = ({
     return isNaN(val) ? 1 : Math.min(Math.max(val, 1), 24);
   });
   const [status, setStatus] = useState('');
-
-  // Ads personalization preference (default to personalized '1' if not set)
-  const [personalizedAds, setPersonalizedAds] = useState(() => {
-    const saved = localStorage.getItem('ads_privacy_choice');
-    return saved !== '0';
-  });
-  const [adsStatus, setAdsStatus] = useState('');
-
-  const handleAdsChoice = (personalized: boolean) => {
-    setPersonalizedAds(personalized);
-    localStorage.setItem('ads_privacy_choice', personalized ? '1' : '0');
-    setAdsStatus(
-      personalized
-        ? 'تم ضبط تفضيلات الإعلانات: إعلانات مخصصة'
-        : 'تم ضبط تفضيلات الإعلانات: إعلانات غير مخصصة'
-    );
-    setTimeout(() => setAdsStatus(''), 3000);
-  };
 
   const handleSave = async () => {
     if (enabled && 'Notification' in window && Notification.permission !== 'granted') {
@@ -90,57 +70,8 @@ export const ReminderSettings: React.FC<ReminderSettingsProps> = ({
     <div className="flex flex-col gap-4 pb-8 text-right">
       <ScreenHeader
         title="الإعدادات والتذكيرات"
-        subtitle="تخصيص التذكيرات والخصوصية والإعلانات"
+        subtitle="تخصيص تذكيرات المراجعة"
       />
-
-      {/* Ads Personalization Permanent Section */}
-      <div className="bg-white rounded-[22px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-[14px] bg-[#F5F3FF] flex items-center justify-center text-[#5B3FD6] shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm text-[#2C2145]">تخصيص الإعلانات والخصوصية</span>
-            <span className="text-xs text-gray-500">اختر نوع الإعلانات المناسب لك</span>
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-600 leading-relaxed">
-          يمكنك تحديد ما إذا كنت تفضل إعلانات مخصصة تعتمد على اهتماماتك أو إعلانات عامة غير مخصصة. يمكنك تغيير هذا الخيار في أي وقت.
-        </p>
-
-        <div className="grid grid-cols-2 gap-2.5 mt-1">
-          <button
-            onClick={() => handleAdsChoice(true)}
-            className={`py-3 px-3 rounded-[14px] text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
-              personalizedAds
-                ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-xs'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#5B3FD6]/40'
-            }`}
-          >
-            {personalizedAds && <Check className="w-4 h-4" />}
-            <span>إعلانات مخصصة</span>
-          </button>
-
-          <button
-            onClick={() => handleAdsChoice(false)}
-            className={`py-3 px-3 rounded-[14px] text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
-              !personalizedAds
-                ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-xs'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#5B3FD6]/40'
-            }`}
-          >
-            {!personalizedAds && <Check className="w-4 h-4" />}
-            <span>غير مخصصة</span>
-          </button>
-        </div>
-
-        {adsStatus && (
-          <div className="rounded-[12px] p-2.5 text-xs font-medium text-center bg-[#EAF8F0] text-[#16864B] border border-[#C2EED4] animate-in fade-in duration-200">
-            {adsStatus}
-          </div>
-        )}
-      </div>
 
       {/* Main Switch Card */}
       <div className="bg-white rounded-[22px] p-4.5 shadow-xs border border-gray-100 flex items-center justify-between gap-4">
