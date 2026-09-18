@@ -15,6 +15,7 @@ import { AnnouncementModal } from './components/AnnouncementModal';
 import { UpdateBanner } from './components/UpdateBanner';
 import { DirectQuestionModal } from './components/DirectQuestionModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { Onboarding } from './components/Onboarding';
 
 import { HomePage } from './views/HomePage';
 import { QuestionsPage } from './views/QuestionsPage';
@@ -28,6 +29,8 @@ import { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
+  const [username, setUsername] = useState(() => localStorage.getItem('profile_username')?.trim() || '');
+  const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('onboarding_version') === '1' && Boolean(localStorage.getItem('profile_username')?.trim()));
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
@@ -57,9 +60,10 @@ export function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show one interstitial after the splash screen, then enter the app.
+  // Show one interstitial after the splash screen for returning users only.
+  // First-run onboarding stays ad-free so setup cannot be interrupted.
   useEffect(() => {
-    if (!ready || startupAdHandled) return;
+    if (!ready || startupAdHandled || !onboardingComplete) return;
     let active = true;
     const run = async () => {
       await showInterstitial();
@@ -69,7 +73,7 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [ready, startupAdHandled]);
+  }, [ready, startupAdHandled, onboardingComplete]);
 
   // Remote Config fetch
   useEffect(() => {
@@ -102,7 +106,27 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!ready || !startupAdHandled) {
+  if (!ready) {
+    return <SplashScreen />;
+  }
+
+  if (!onboardingComplete) {
+    return (
+      <Onboarding
+        onComplete={(name) => {
+          const clean = name.trim().replace(/\s+/g, ' ').slice(0, 40);
+          if (clean.length < 2) return;
+          localStorage.setItem('profile_username', clean);
+          localStorage.setItem('onboarding_version', '1');
+          setUsername(clean);
+          setOnboardingComplete(true);
+          setStartupAdHandled(true);
+        }}
+      />
+    );
+  }
+
+  if (!startupAdHandled) {
     return <SplashScreen />;
   }
 
@@ -180,6 +204,7 @@ export function App() {
               unreadNotificationsCount={unreadNotificationsCount}
               darkMode={darkMode}
               onToggleDarkMode={() => setDarkMode((value) => !value)}
+              username={username}
             />
           )}
 
