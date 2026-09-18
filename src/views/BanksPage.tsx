@@ -285,7 +285,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
       </div>
 
       {/* Available Banks List */}
-      <h3 className="font-bold text-base text-[#2C2145] mt-1">البنوك المتاحة</h3>
+      <h3 data-tour="banks-list" className="font-bold text-base text-[#2C2145] mt-1">البنوك المتاحة</h3>
       <div className="flex flex-col gap-2.5">
         {banks.map((bank) => {
           const isChosen = activeId === bank.id;
