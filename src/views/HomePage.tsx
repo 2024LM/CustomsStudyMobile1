@@ -26,6 +26,7 @@ interface HomePageProps {
   unreadNotificationsCount?: number;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
+  username?: string;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -36,6 +37,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   unreadNotificationsCount = 0,
   darkMode = false,
   onToggleDarkMode,
+  username = '',
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [activityBankId, setActivityBankId] = useState<string>('ALL');
@@ -89,7 +91,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
           <div className="h-2" />
-          <h1 className="text-2xl font-bold">مرحباً بك مجدداً 👋</h1>
+          <h1 className="text-2xl font-bold">مرحباً {username || 'بك'} 👋</h1>
           <p className="text-[#E6DFFF] text-sm font-semibold">{bank.name}</p>
           <p className="text-[#D8CDFB] text-xs">كل خطوة صغيرة تقرّبك من هدفك</p>
         </div>
