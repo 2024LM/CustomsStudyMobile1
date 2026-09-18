@@ -88,25 +88,8 @@ export function App() {
     !announcementDismissed &&
     !db.announcementSeen(remote.announcementId);
 
-  // Calculate unread notifications count
-  let unreadNotificationsCount = 0;
-  if (1 < remote.latest || 1 < remote.minimum) {
-    if (!db.isNotificationRead(`sys_update_${remote.latest}`)) {
-      unreadNotificationsCount++;
-    }
-  }
-  if (remote.announcementEnabled && remote.announcementId) {
-    if (!db.isNotificationRead(`sys_announcement_${remote.announcementId}`)) {
-      unreadNotificationsCount++;
-    }
-  }
-  if (remote.notifications && Array.isArray(remote.notifications)) {
-    remote.notifications.forEach((n) => {
-      if (!db.isNotificationRead(n.id)) {
-        unreadNotificationsCount++;
-      }
-    });
-  }
+  // Count persisted notifications, including older GitHub messages no longer in remote_config.
+  const unreadNotificationsCount = db.storedNotifications().filter((n) => !db.isNotificationRead(n.id)).length;
 
   const refreshRemote = async () => {
     const fetched = await fetchRemoteConfig();
