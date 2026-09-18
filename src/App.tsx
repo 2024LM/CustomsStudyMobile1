@@ -3,6 +3,7 @@ import {
   Home,
   BookOpen,
   PlayCircle,
+  BookMarked,
   MoreHorizontal,
 } from 'lucide-react';
 import { Page, QuizQuestion, RemoteState } from './types';
@@ -21,7 +22,8 @@ import { MistakesPage } from './views/MistakesPage';
 import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
 import { ReminderSettings } from './views/ReminderSettings';
-import { MorePage } from './views/MorePage';\nimport { ReferencesPage } from './views/ReferencesPage';
+import { MorePage } from './views/MorePage';
+import { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -109,6 +111,7 @@ export function App() {
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
     { p: 'SESSION' as Page, title: 'جلسة', icon: PlayCircle },
+    { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
     { p: 'MORE' as Page, title: 'المزيد', icon: MoreHorizontal },
   ];
 
