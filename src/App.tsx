@@ -168,7 +168,9 @@ export function App() {
             />
           )}
 
-          {page === 'REFERENCES' && <ReferencesPage />}\n\n          {page === 'MISTAKES' && <MistakesPage />}
+          {page === 'REFERENCES' && <ReferencesPage />}
+
+          {page === 'MISTAKES' && <MistakesPage />}
 
           {page === 'FAVORITES' && <FavoritesPage />}
 
