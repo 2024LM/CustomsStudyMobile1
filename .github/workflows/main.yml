@@ -2,6 +2,11 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      rebuild:
+        description: "Manual rebuild marker"
+        required: false
+        default: "manual"
   push:
     branches: [ "main" ]
 
