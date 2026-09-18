@@ -1,29 +1,40 @@
+import { registerPlugin } from '@capacitor/core';
+
 const INTERSTITIAL_PLACEMENT = 'BP_Interstitial_Android';
 
-declare global {
-  interface Window {
-    NexusAds?: {
-      showInterstitial?: (placementId: string) => Promise<void>;
-    };
-  }
+interface NexusAdsPlugin {
+  showInterstitial(options: { placementId: string }): Promise<void>;
+  showBanner(options: { placementId: string; slot?: string }): Promise<void>;
+  hideBanner(): Promise<void>;
 }
 
-/**
- * Requests a full-screen Unity interstitial from the native bridge.
- * Ad availability must never block access to study content.
- */
+const NexusAds = registerPlugin<NexusAdsPlugin>('NexusAds');
+
 export async function showInterstitial(): Promise<void> {
   try {
-    const show = window.NexusAds?.showInterstitial;
-    if (!show) return;
     await Promise.race([
-      show(INTERSTITIAL_PLACEMENT),
+      NexusAds.showInterstitial({ placementId: INTERSTITIAL_PLACEMENT }),
       new Promise<void>((resolve) => window.setTimeout(resolve, 4500)),
     ]);
   } catch {
-    // References remain accessible if the ad is unavailable or the native bridge fails.
+    // Ads never block access to app content.
   }
 }
 
-/** Backward-compatible reference entry point. */
+export async function showBanner(slot?: string): Promise<void> {
+  try {
+    await NexusAds.showBanner({ placementId: 'BP_Banner_Android', slot });
+  } catch {
+    // Banner availability must not affect the screen.
+  }
+}
+
+export async function hideBanner(): Promise<void> {
+  try {
+    await NexusAds.hideBanner();
+  } catch {
+    // no-op
+  }
+}
+
 export const showReferenceInterstitial = showInterstitial;
