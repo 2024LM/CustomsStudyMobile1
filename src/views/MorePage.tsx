@@ -140,7 +140,7 @@ export const MorePage: React.FC<MorePageProps> = ({
               onClick={handleCheckUpdate}
               disabled={checkingUpdate}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#5B3FD6] hover:text-[#4C33B8] p-1.5 rounded-lg hover:bg-[#F5F3FF] transition-colors cursor-pointer disabled:opacity-50"
-              title="إعادة فحص التحديثات من GitHub"
+              title="إعادة فحص التحديثات"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`} />
               <span>فحص التحديث</span>
@@ -151,12 +151,12 @@ export const MorePage: React.FC<MorePageProps> = ({
         <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50/70 p-3 rounded-[14px]">
           <div>
             <span className="text-gray-400 block">الإصدار الحالي:</span>
-            <span className="font-bold text-gray-800">1.0 (كود: 1)</span>
+            <span className="font-bold text-gray-800">1.0</span>
           </div>
           <div>
-            <span className="text-gray-400 block">أحدث إصدار (GitHub):</span>
+            <span className="text-gray-400 block">أحدث إصدار:</span>
             <span className="font-bold text-[#5B3FD6]">
-              {remote.latest ? `كود: ${remote.latest}` : 'جاري الفحص...'}
+              {remote.latest ? `الإصدار ${remote.latest}` : 'جاري الفحص...'}
             </span>
           </div>
         </div>
@@ -186,7 +186,7 @@ export const MorePage: React.FC<MorePageProps> = ({
         ) : (
           <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50/80 px-3 py-2 rounded-[12px] text-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>التطبيق متصل بـ GitHub ومتزامن بأحدث إصدار.</span>
+            <span>التطبيق متزامن بأحدث إصدار.</span>
           </div>
         )}
       </div>
