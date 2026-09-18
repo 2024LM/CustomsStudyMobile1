@@ -3,12 +3,47 @@ import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiO
 import { ScreenHeader } from '../components/ScreenHeader';
 import { fetchReferenceContent, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 
-function PlainReader({ text }: { text: string }) {
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|\`[^\`]+\`|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g);
+  return parts.filter(Boolean).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="font-bold text-[#2C2145]">{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="px-1.5 py-0.5 rounded bg-[#F5F3FF] text-[#5B3FD6] text-[12px]" dir="ltr">{part.slice(1, -1)}</code>;
+    const link = part.match(/^\[([^\]]+)\]\((https:\/\/[^\s)]+)\)$/);
+    if (link) return <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer" className="text-[#5B3FD6] underline underline-offset-2">{link[1]}</a>;
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
+
+function MarkdownReader({ text }: { text: string }) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
   return (
-    <div className="whitespace-pre-wrap leading-8 text-[14px] text-[#3D3550] font-medium">
-      {text}
-    </div>
+    <article className="text-[#3D3550] text-[14px] leading-8">
+      {lines.map((raw, i) => {
+        const line = raw.trimEnd();
+        if (!line.trim()) return <div key={i} className="h-3" />;
+        const heading = line.match(/^(#{1,3})\s+(.+)$/);
+        if (heading) {
+          const size = heading[1].length === 1 ? 'text-xl' : heading[1].length === 2 ? 'text-lg' : 'text-base';
+          return <h2 key={i} className={`${size} font-bold text-[#2C2145] mt-4 mb-1`}>{renderInline(heading[2])}</h2>;
+        }
+        const bullet = line.match(/^[-*]\s+(.+)$/);
+        if (bullet) return <div key={i} className="flex items-start gap-2 pr-1"><span className="text-[#5B3FD6] font-bold">•</span><p className="flex-1">{renderInline(bullet[1])}</p></div>;
+        const numbered = line.match(/^(\d+)\.\s+(.+)$/);
+        if (numbered) return <div key={i} className="flex items-start gap-2 pr-1"><span className="text-[#5B3FD6] font-bold min-w-5">{numbered[1]}.</span><p className="flex-1">{renderInline(numbered[2])}</p></div>;
+        const quote = line.match(/^>\s?(.+)$/);
+        if (quote) return <blockquote key={i} className="my-2 border-r-4 border-[#D8CDFB] bg-[#F8F7FF] rounded-l-[12px] px-3 py-2 text-gray-600">{renderInline(quote[1])}</blockquote>;
+        if (/^---+$/.test(line.trim())) return <hr key={i} className="my-4 border-gray-100" />;
+        return <p key={i} className="font-medium">{renderInline(line)}</p>;
+      })}
+    </article>
   );
+}
+
+function DocumentReader({ text, type }: { text: string; type: string }) {
+  const markdown = type.toLowerCase().includes('md');
+  return markdown
+    ? <MarkdownReader text={text} />
+    : <div className="whitespace-pre-wrap leading-8 text-[14px] text-[#3D3550] font-medium">{text}</div>;
 }
 
 export const ReferencesPage: React.FC = () => {
@@ -66,7 +101,7 @@ export const ReferencesPage: React.FC = () => {
         <div className="bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
-          {!contentLoading && !contentError && <PlainReader text={content} />}
+          {!contentLoading && !contentError && <DocumentReader text={content} type={selected.type} />}
         </div>
       </div>
     );
