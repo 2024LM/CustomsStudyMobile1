@@ -21,7 +21,7 @@ import { MistakesPage } from './views/MistakesPage';
 import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
 import { ReminderSettings } from './views/ReminderSettings';
-import { MorePage } from './views/MorePage';
+import { MorePage } from './views/MorePage';\nimport { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -165,7 +165,7 @@ export function App() {
             />
           )}
 
-          {page === 'MISTAKES' && <MistakesPage />}
+          {page === 'REFERENCES' && <ReferencesPage />}\n\n          {page === 'MISTAKES' && <MistakesPage />}
 
           {page === 'FAVORITES' && <FavoritesPage />}
 
