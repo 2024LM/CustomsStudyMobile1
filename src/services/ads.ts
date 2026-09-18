@@ -5,7 +5,7 @@ const INTERSTITIAL_PLACEMENT = 'BP_Interstitial_Android';
 interface NexusAdsPlugin {
   initializeAds(options: { personalized: boolean }): Promise<void>;
   showInterstitial(options: { placementId: string }): Promise<void>;
-  showBanner(options: { placementId: string; slot?: string }): Promise<{ loaded?: boolean } | void>;
+  showBanner(options: { placementId: string; slot?: string; x: number; y: number; width: number; height: number }): Promise<{ loaded?: boolean } | void>;
   hideBanner(): Promise<void>;
 }
 
@@ -35,10 +35,10 @@ export async function showInterstitial(): Promise<void> {
   }
 }
 
-export async function showBanner(slot?: string): Promise<boolean> {
+export async function showBanner(slot: string | undefined, rect: { x: number; y: number; width: number; height: number }): Promise<boolean> {
   try {
     if (!(await ensureInitialized())) return false;
-    const result = await NexusAds.showBanner({ placementId: 'BP_Banner_Android', slot });
+    const result = await NexusAds.showBanner({ placementId: 'BP_Banner_Android', slot, ...rect });
     return result?.loaded === true;
   } catch {
     return false;
