@@ -114,6 +114,12 @@ export interface AppNotification {
   read?: boolean;
 }
 
+export interface StoredNotification extends AppNotification {
+  receivedAt: number;
+  readAt: number | null;
+  source: 'github' | 'local';
+}
+
 export interface RemoteState {
   latest: number;
   minimum: number;
