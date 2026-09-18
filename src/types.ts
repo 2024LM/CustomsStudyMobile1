@@ -121,6 +121,16 @@ export interface StoredNotification extends AppNotification {
   source: 'github' | 'local';
 }
 
+export interface RatingPromptConfig {
+  enabled: boolean;
+  storeUrl: string;
+  title: string;
+  message: string;
+  minUsageDays: number;
+  minLaunches: number;
+  repeatAfterDays: number;
+}
+
 export interface RemoteState {
   latest: number;
   minimum: number;
@@ -132,6 +142,7 @@ export interface RemoteState {
   announcementMessage: string;
   announcementEnabled: boolean;
   notifications?: AppNotification[];
+  ratingPrompt?: RatingPromptConfig;
   lastCheckedAt?: number;
   source?: 'github' | 'local';
 }
