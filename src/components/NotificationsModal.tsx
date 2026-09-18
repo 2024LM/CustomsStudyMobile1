@@ -10,7 +10,7 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
-import { RemoteState, AppNotification } from '../types';
+import { RemoteState } from '../types';
 import { openUpdate } from '../services/remoteConfig';
 import { db } from '../services/db';
 
@@ -29,44 +29,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 }) => {
   const [, setRerender] = useState({});
 
-  // 1. Build list of notifications from RemoteState:
-  // - System Update notification if version > current
-  // - Announcement notification if enabled
-  // - Custom remote notifications array if any
-  const items: AppNotification[] = [];
-
-  const isUpdateAvailable = CURRENT_VERSION_CODE < remote.latest;
-  const isUnsupported = CURRENT_VERSION_CODE < remote.minimum;
-
-  if (isUpdateAvailable || isUnsupported) {
-    items.push({
-      id: `sys_update_${remote.latest}`,
-      title: remote.updateTitle || 'يتوفر تحديث جديد للتطبيق',
-      message: remote.updateMessage || 'يرجى التحديث للحصول على أحدث التحسينات والأسئلة.',
-      type: isUnsupported ? 'alert' : 'update',
-      url: remote.updateUrl,
-      date: 'تحديث فوري',
-    });
-  }
-
-  if (remote.announcementEnabled && remote.announcementId && remote.announcementMessage) {
-    items.push({
-      id: `sys_announcement_${remote.announcementId}`,
-      title: remote.announcementTitle || 'إعلان من الإدارة',
-      message: remote.announcementMessage,
-      type: 'info',
-      date: 'تنويه هام',
-    });
-  }
-
-  if (remote.notifications && Array.isArray(remote.notifications)) {
-    remote.notifications.forEach((n) => {
-      // Avoid duplicate IDs
-      if (!items.some((existing) => existing.id === n.id)) {
-        items.push(n);
-      }
-    });
-  }
+  // Notifications are persisted when remote config is synchronized.
+  // The center reads from app storage so older GitHub notifications remain available.
+  const items = db.storedNotifications();
 
   // Handle Mark Read
   const handleItemClick = (item: AppNotification) => {
