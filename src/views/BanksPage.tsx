@@ -133,6 +133,25 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
         <Plus className="w-5 h-5 text-[#5B3FD6]" />
       </div>
 
+      {/* Accepted Excel format guide */}
+      <div className="bg-white rounded-[18px] p-4 border border-gray-100 shadow-xs flex flex-col gap-2.5">
+        <div className="flex items-center gap-2">
+          <HelpCircle className="w-4.5 h-4.5 text-[#5B3FD6] shrink-0" />
+          <span className="font-bold text-sm text-[#2C2145]">كيف تُجهّز ملف Excel مقبولًا؟</span>
+        </div>
+        <p className="text-xs text-gray-600 leading-5">
+          استخدم ملف <span className="font-bold" dir="ltr">XLSX</span> بحجم لا يتجاوز 5 MB، وضع البيانات في أول ورقة. يجب أن يكون الصف الأول بالعناوين التالية وبنفس الترتيب:
+        </p>
+        <div className="bg-[#F8F9FD] rounded-[13px] p-3 text-[11px] text-[#4B4560] leading-6 overflow-x-auto" dir="rtl">
+          <span className="whitespace-nowrap">ID ← السؤال ← الجواب الصحيح ← خيار خاطئ 1 ← خيار خاطئ 2 ← خيار خاطئ 3 ← الشرح ← المحور</span>
+        </div>
+        <div className="text-[11px] text-gray-500 leading-5">
+          <p>• الحقول من <b>ID</b> إلى <b>خيار خاطئ 3</b> إلزامية، بينما الشرح والمحور اختياريان.</p>
+          <p>• يجب أن يكون ID فريدًا لكل سؤال، وأن تكون الإجابة الصحيحة والخيارات الخاطئة الثلاثة مختلفة.</p>
+          <p>• الحد الأقصى 5000 سؤال، ولا تُقبل الصيغ داخل الخلايا.</p>
+        </div>
+      </div>
+
       {/* Preview Card */}
       {preview && (
         <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
