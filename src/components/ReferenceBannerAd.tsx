@@ -7,8 +7,11 @@ interface ReferenceBannerAdProps {
 
 export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot }) => {
   useEffect(() => {
-    void showBanner(slot);
+    const activate = () => void showBanner(slot);
+    activate();
+    window.addEventListener('ads-consent-changed', activate);
     return () => {
+      window.removeEventListener('ads-consent-changed', activate);
       void hideBanner();
     };
   }, [slot]);
