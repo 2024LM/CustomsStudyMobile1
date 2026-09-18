@@ -12,6 +12,7 @@ export const AdsConsentModal: React.FC = () => {
 
   const handleChoice = (personalized: boolean) => {
     localStorage.setItem('ads_privacy_choice', personalized ? '1' : '0');
+    window.dispatchEvent(new Event('ads-consent-changed'));
     setOpen(false);
   };
 
