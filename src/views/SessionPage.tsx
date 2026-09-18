@@ -305,7 +305,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
       />
 
       {/* Question Count Setting */}
-      <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
+      <div data-tour="session-count" className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
         <h3 className="font-bold text-sm text-[#2C2145]">عدد الأسئلة</h3>
         <div className="grid grid-cols-3 gap-2">
           {[10, 20, 50].map((n) => {
@@ -328,7 +328,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
       </div>
 
       {/* Multi-topic Filter Setting */}
-      <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
+      <div data-tour="session-topics" className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-0.5">
             <h3 className="font-bold text-sm text-[#2C2145]">المحاور</h3>
@@ -398,7 +398,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
       </div>
 
       {/* Start Button */}
-      <button
+      <button data-tour="session-start"
         onClick={handleStartSession}
         disabled={qcmCount === 0}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
