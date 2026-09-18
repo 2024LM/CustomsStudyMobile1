@@ -38,13 +38,15 @@ export const HomePage: React.FC<HomePageProps> = ({
   onToggleDarkMode,
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [activityBankId, setActivityBankId] = useState<string>('ALL');
   const bank = db.activeBank();
   const total = db.questionCount();
   const qcm = db.qcmReadyCount();
   const stats = db.stats();
   const rate = Math.min(Math.max(stats.successRate, 0), 100);
   const topics = db.topics().slice(0, 8);
-  const activityBuckets = db.getActivityStats(period);
+  const banks = db.banks();
+  const activityBuckets = db.getActivityStats(period, activityBankId === 'ALL' ? null : activityBankId);
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -147,6 +149,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         buckets={activityBuckets}
         period={period}
         onPeriodChange={setPeriod}
+        banks={banks}
+        selectedBankId={activityBankId}
+        onBankChange={setActivityBankId}
       />
 
       {/* Banner directly below activity statistics */}
