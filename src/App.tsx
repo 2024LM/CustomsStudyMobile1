@@ -177,8 +177,8 @@ export function App() {
 
           {page === 'SESSION' && (
             <SessionPage
-              key={sessionTopic || 'all'}
-              initialTopic={sessionTopic}
+              key={Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all')}
+              initialTopic={Array.isArray(sessionTopic) ? sessionTopic[0] ?? null : sessionTopic}
             />
           )}
 
