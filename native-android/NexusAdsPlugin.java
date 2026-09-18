@@ -126,6 +126,7 @@ public class NexusAdsPlugin extends Plugin {
                 }
                 @Override public void onBannerClick(BannerView view) {}
                 @Override public void onBannerLeftApplication(BannerView view) {}
+                @Override public void onBannerShow(BannerView view) {}
             });
             bannerContainer.addView(bannerView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
