@@ -5,14 +5,9 @@ import {
   Library,
   Bell,
   ChevronLeft,
-  RefreshCw,
-  GitBranch,
-  ExternalLink,
-  CheckCircle2,
 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { RemoteState } from '../types';
-import { openUpdate } from '../services/remoteConfig';
 
 interface MorePageProps {
   onGoToMistakes: () => void;
@@ -126,69 +121,6 @@ export const MorePage: React.FC<MorePageProps> = ({
             </button>
           );
         })}
-      </div>
-
-      {/* Version & GitHub Remote Info */}
-      <div className="mt-2 p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col gap-3 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-[#5B3FD6]" />
-            <span className="font-bold text-sm text-[#2C2145]">معلومات الإصدار والتحديثات</span>
-          </div>
-          {onRefreshRemote && (
-            <button
-              onClick={handleCheckUpdate}
-              disabled={checkingUpdate}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#5B3FD6] hover:text-[#4C33B8] p-1.5 rounded-lg hover:bg-[#F5F3FF] transition-colors cursor-pointer disabled:opacity-50"
-              title="إعادة فحص التحديثات"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`} />
-              <span>فحص التحديث</span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50/70 p-3 rounded-[14px]">
-          <div>
-            <span className="text-gray-400 block">الإصدار الحالي:</span>
-            <span className="font-bold text-gray-800">1.0</span>
-          </div>
-          <div>
-            <span className="text-gray-400 block">أحدث إصدار:</span>
-            <span className="font-bold text-[#5B3FD6]">
-              {remote.latest ? `الإصدار ${remote.latest}` : 'جاري الفحص...'}
-            </span>
-          </div>
-        </div>
-
-        {checkStatus && (
-          <p className="text-xs text-center text-emerald-600 font-medium">
-            {checkStatus}
-          </p>
-        )}
-
-        {remote.latest > 1 ? (
-          <div className="flex items-center justify-between bg-[#F5F3FF] text-[#5B3FD6] p-3 rounded-[14px] text-xs">
-            <div>
-              <span className="font-bold block">{remote.updateTitle || 'يتوفر إصدار جديد!'}</span>
-              <span className="text-gray-600 text-[11px]">{remote.updateMessage}</span>
-            </div>
-            {remote.updateUrl && (
-              <button
-                onClick={() => openUpdate(remote.updateUrl)}
-                className="shrink-0 flex items-center gap-1 bg-[#5B3FD6] hover:bg-[#4C33B8] text-white px-3 py-1.5 rounded-[10px] font-bold text-xs shadow-xs cursor-pointer"
-              >
-                <span>تحميل</span>
-                <ExternalLink className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50/80 px-3 py-2 rounded-[12px] text-xs">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>التطبيق متزامن بأحدث إصدار.</span>
-          </div>
-        )}
       </div>
 
       {/* App branding */}
