@@ -43,8 +43,8 @@ function createInitialDatabase(): DatabaseSchema {
   const now = Date.now();
   const builtInBank: QuestionBank = {
     id: BUILTIN_BANK,
-    name: 'مفتشو الجمارك 2026',
-    description: 'بنك الأسئلة الأساسي للتطبيق',
+    name: 'بنك الأسئلة الأساسي',
+    description: 'البنك الأساسي المرفق مع التطبيق',
     version: 1,
     formatVersion: 1,
     builtIn: true,

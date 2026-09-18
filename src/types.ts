@@ -2,6 +2,7 @@ export type Page =
   | 'HOME'
   | 'QUESTIONS'
   | 'SESSION'
+  | 'REFERENCES'
   | 'MISTAKES'
   | 'FAVORITES'
   | 'BANKS'

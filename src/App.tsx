@@ -3,11 +3,13 @@ import {
   Home,
   BookOpen,
   PlayCircle,
+  BookMarked,
   MoreHorizontal,
 } from 'lucide-react';
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
 import { fetchRemoteConfig } from './services/remoteConfig';
+import { showInterstitial } from './services/ads';
 import { SplashScreen } from './components/SplashScreen';
 import { AnnouncementModal } from './components/AnnouncementModal';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -22,9 +24,12 @@ import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
 import { ReminderSettings } from './views/ReminderSettings';
 import { MorePage } from './views/MorePage';
+import { ReferencesPage } from './views/ReferencesPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
+  const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
@@ -33,6 +38,11 @@ export function App() {
   const [directQuestion, setDirectQuestion] = useState<QuizQuestion | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [, setDbVersion] = useState(0);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('app_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   // Subscribe to DB changes so any child updates trigger fresh reads
   useEffect(() => {
@@ -46,6 +56,20 @@ export function App() {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Show one interstitial after the splash screen, then enter the app.
+  useEffect(() => {
+    if (!ready || startupAdHandled) return;
+    let active = true;
+    const run = async () => {
+      await showInterstitial();
+      if (active) setStartupAdHandled(true);
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [ready, startupAdHandled]);
 
   // Remote Config fetch
   useEffect(() => {
@@ -78,7 +102,7 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!ready) {
+  if (!ready || !startupAdHandled) {
     return <SplashScreen />;
   }
 
@@ -109,11 +133,12 @@ export function App() {
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
     { p: 'SESSION' as Page, title: 'جلسة', icon: PlayCircle },
+    { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
     { p: 'MORE' as Page, title: 'المزيد', icon: MoreHorizontal },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
+    <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
       <div className="w-full max-w-md min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md border-x border-gray-100">
         {/* Update Banner */}
@@ -153,6 +178,8 @@ export function App() {
               onViewMistakes={() => setPage('MISTAKES')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
+              darkMode={darkMode}
+              onToggleDarkMode={() => setDarkMode((value) => !value)}
             />
           )}
 
@@ -164,6 +191,8 @@ export function App() {
               initialTopic={Array.isArray(sessionTopic) ? sessionTopic[0] ?? null : sessionTopic}
             />
           )}
+
+          {page === 'REFERENCES' && <ReferencesPage />}
 
           {page === 'MISTAKES' && <MistakesPage />}
 

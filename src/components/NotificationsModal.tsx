@@ -194,7 +194,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
         {/* Footer info & Refresh button */}
         <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-          <span>المصدر: {remote.source === 'github' ? 'GitHub (مباشر)' : 'محلي'}</span>
+          <span>المصدر: {remote.source === 'github' ? 'مباشر' : 'محلي'}</span>
           <button
             onClick={() => {
               if (onRefresh) onRefresh();
