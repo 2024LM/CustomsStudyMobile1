@@ -36,6 +36,9 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      - name: Install native Unity Ads bridge
+        run: bash scripts/install-native-ads.sh
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
