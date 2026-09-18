@@ -13,6 +13,7 @@ import { db } from '../services/db';
 import { ExcelPreview } from '../types';
 import { parseExcelFile } from '../services/excelImporter';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { showInterstitial } from '../services/ads';
 
 interface BanksPageProps {
   onBankSelected: () => void;
@@ -28,6 +29,12 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const banks = db.banks();
+
+  const handleImportClick = async () => {
+    if (importing) return;
+    await showInterstitial();
+    fileInputRef.current?.click();
+  };
 
   const handleFile = async (file: File) => {
     setImporting(true);
@@ -107,7 +114,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
 
       {/* Import Button / Card */}
       <div
-        onClick={() => !importing && fileInputRef.current?.click()}
+        onClick={() => void handleImportClick()}
         className={`w-full bg-[#F5F3FF] rounded-[22px] p-4.5 border border-[#D9D0FA] flex items-center justify-between gap-3 cursor-pointer transition-all hover:bg-[#EFEAFF] active:scale-98 ${
           importing ? 'opacity-60 cursor-wait' : ''
         }`}
