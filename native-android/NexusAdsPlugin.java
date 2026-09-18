@@ -16,6 +16,7 @@ import com.unity3d.ads.IUnityAdsShowListener;
 import com.unity3d.ads.UnityAds;
 import com.unity3d.ads.UnityAdsLoadOptions;
 import com.unity3d.ads.UnityAdsShowOptions;
+import com.unity3d.ads.metadata.MetaData;
 import com.unity3d.services.banners.BannerView;
 import com.unity3d.services.banners.UnityBannerSize;
 
@@ -27,15 +28,26 @@ public class NexusAdsPlugin extends Plugin {
     private BannerView bannerView;
     private FrameLayout bannerContainer;
 
-    @Override
-    public void load() {
-        super.load();
+    @PluginMethod
+    public void initializeAds(PluginCall call) {
+        if (initialized) { call.resolve(); return; }
+        boolean personalized = Boolean.TRUE.equals(call.getBoolean("personalized", false));
         Activity activity = getActivity();
+
+        MetaData consent = new MetaData(activity);
+        consent.set("gdpr.consent", personalized);
+        consent.set("privacy.consent", personalized);
+        consent.commit();
+
         UnityAds.initialize(activity.getApplicationContext(), GAME_ID, BuildConfig.DEBUG,
             new IUnityAdsInitializationListener() {
-                @Override public void onInitializationComplete() { initialized = true; }
+                @Override public void onInitializationComplete() {
+                    initialized = true;
+                    call.resolve();
+                }
                 @Override public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
                     initialized = false;
+                    call.resolve();
                 }
             });
     }
