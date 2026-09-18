@@ -850,6 +850,9 @@ class StudyDatabaseService {
     this.setSetting('remote_announcement_title', s.announcementTitle);
     this.setSetting('remote_announcement_message', s.announcementMessage);
     this.setSetting('remote_announcement_enabled', s.announcementEnabled ? '1' : '0');
+    if (s.ratingPrompt) {
+      this.setSetting('remote_rating_prompt', JSON.stringify(s.ratingPrompt));
+    }
     if (s.notifications) {
       this.setSetting('remote_notifications', JSON.stringify(s.notifications));
     }
@@ -980,6 +983,13 @@ class StudyDatabaseService {
       notifications = [];
     }
 
+    let ratingPrompt;
+    try {
+      ratingPrompt = JSON.parse(this.setting('remote_rating_prompt', 'null'));
+    } catch {
+      ratingPrompt = undefined;
+    }
+
     return {
       latest: parseInt(this.setting('remote_latest', '1'), 10) || 1,
       minimum: parseInt(this.setting('remote_minimum', '1'), 10) || 1,
@@ -991,6 +1001,7 @@ class StudyDatabaseService {
       announcementMessage: this.setting('remote_announcement_message', ''),
       announcementEnabled: this.setting('remote_announcement_enabled', '0') === '1',
       notifications,
+      ratingPrompt: ratingPrompt || undefined,
       lastCheckedAt: lastChecked || undefined,
       source: source || undefined,
     };
