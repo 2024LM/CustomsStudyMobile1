@@ -81,7 +81,7 @@ export const MorePage: React.FC<MorePageProps> = ({
     {
       icon: Bell,
       title: 'الإعدادات والتذكيرات',
-      subtitle: 'التذكيرات، الخصوصية وتخصيص الإعلانات',
+      subtitle: 'تخصيص تذكيرات المراجعة',
       action: onGoToSettings,
     },
   ];
