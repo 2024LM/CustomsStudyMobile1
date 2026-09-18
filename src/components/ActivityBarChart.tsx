@@ -87,8 +87,9 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
       </div>
 
       {/* Bar Chart Area */}
-      <div className="pt-4 pb-2">
-        <div className="h-44 flex items-end justify-between gap-2 px-1 border-b border-gray-100 pb-2">
+      <div className="pt-4 pb-2 w-full overflow-hidden">
+        <div className="w-full overflow-x-auto overscroll-x-contain pb-1" dir="rtl">
+          <div className="h-44 flex items-end gap-2 px-1 border-b border-gray-100 pb-2 min-w-max">
           {buckets.map((b, idx) => {
             const heightPercent = maxTotal > 0 && b.total > 0 ? Math.max((b.total / maxTotal) * 100, 10) : 4;
             const correctPercent = b.total > 0 ? (b.correct / b.total) * 100 : 0;
@@ -98,7 +99,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
               <div
                 key={idx}
                 onClick={() => setSelectedIdx(idx)}
-                className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end cursor-pointer group"
+                className="w-[46px] min-w-[46px] flex flex-col items-center gap-1.5 h-full justify-end cursor-pointer group"
               >
                 {/* Total count bubble on top of bar */}
                 <span
@@ -153,6 +154,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
