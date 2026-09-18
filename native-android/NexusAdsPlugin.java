@@ -39,7 +39,7 @@ public class NexusAdsPlugin extends Plugin {
         consent.set("privacy.consent", personalized);
         consent.commit();
 
-        UnityAds.initialize(activity.getApplicationContext(), GAME_ID, BuildConfig.DEBUG,
+        UnityAds.initialize(activity.getApplicationContext(), GAME_ID, false,
             new IUnityAdsInitializationListener() {
                 @Override public void onInitializationComplete() {
                     initialized = true;
