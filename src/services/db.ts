@@ -312,11 +312,12 @@ class StudyDatabaseService {
 
   public getActivityStats(
     period: 'daily' | 'weekly' | 'monthly',
-    bankId: string = this.activeBankId()
+    bankId: string | null = null
   ): ActivityBucket[] {
+    const enabledBankIds = new Set(this.data.banks.filter((b) => b.enabled).map((b) => b.id));
     const questionIdsInBank = new Set(
       this.data.questions
-        .filter((q) => q.bankId === bankId && q.enabled)
+        .filter((q) => q.enabled && enabledBankIds.has(q.bankId) && (!bankId || q.bankId === bankId))
         .map((q) => q.rowId)
     );
 
