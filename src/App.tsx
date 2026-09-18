@@ -17,6 +17,7 @@ import { DirectQuestionModal } from './components/DirectQuestionModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { Onboarding } from './components/Onboarding';
 import { GuidedTour, TourStep } from './components/GuidedTour';
+import { RatingPrompt } from './components/RatingPrompt';
 
 import { HomePage } from './views/HomePage';
 import { QuestionsPage } from './views/QuestionsPage';
@@ -43,6 +44,7 @@ export function App() {
   const [directQuestion, setDirectQuestion] = useState<QuizQuestion | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [, setDbVersion] = useState(0);
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -86,6 +88,36 @@ export function App() {
       }
     });
   }, []);
+
+
+  // Track real app use and show the remotely-controlled rating prompt only
+  // after the configured age/launch thresholds and cooldown have elapsed.
+  useEffect(() => {
+    if (!onboardingComplete) return;
+    const now = Date.now();
+    const firstUse = Number(localStorage.getItem('rating_first_use_at')) || now;
+    const launches = (Number(localStorage.getItem('rating_launch_count')) || 0) + 1;
+    localStorage.setItem('rating_first_use_at', String(firstUse));
+    localStorage.setItem('rating_launch_count', String(launches));
+  }, [onboardingComplete]);
+
+  useEffect(() => {
+    const cfg = remote.ratingPrompt;
+    if (!ready || !startupAdHandled || !onboardingComplete || !cfg?.enabled || !cfg.storeUrl) {
+      setShowRatingPrompt(false);
+      return;
+    }
+    const firstUse = Number(localStorage.getItem('rating_first_use_at')) || Date.now();
+    const launches = Number(localStorage.getItem('rating_launch_count')) || 0;
+    const lastPrompt = Number(localStorage.getItem('rating_last_prompt_at')) || 0;
+    const day = 24 * 60 * 60 * 1000;
+    const eligible = Date.now() - firstUse >= cfg.minUsageDays * day
+      && launches >= cfg.minLaunches
+      && (!lastPrompt || Date.now() - lastPrompt >= cfg.repeatAfterDays * day);
+    if (!eligible) return;
+    const timer = window.setTimeout(() => setShowRatingPrompt(true), 45000);
+    return () => window.clearTimeout(timer);
+  }, [remote.ratingPrompt, ready, startupAdHandled, onboardingComplete]);
 
   // Periodic Reminder background check (if reminders enabled)
   useEffect(() => {
@@ -216,6 +248,22 @@ export function App() {
             onComplete={() => {
               localStorage.setItem(currentTourKey, '1');
               setTourRefresh((v) => v + 1);
+            }}
+          />
+        )}
+
+        {showRatingPrompt && remote.ratingPrompt && !shouldShowCurrentTour && !showAnnouncement && !showNotificationsModal && !directQuestion && (
+          <RatingPrompt
+            config={remote.ratingPrompt}
+            onDismiss={() => {
+              localStorage.setItem('rating_last_prompt_at', String(Date.now()));
+              setShowRatingPrompt(false);
+            }}
+            onRated={(stars) => {
+              localStorage.setItem('rating_last_prompt_at', String(Date.now()));
+              localStorage.setItem('rating_last_stars', String(stars));
+              setShowRatingPrompt(false);
+              window.open(remote.ratingPrompt!.storeUrl, '_blank', 'noopener,noreferrer');
             }}
           />
         )}
