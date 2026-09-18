@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   UploadCloud,
   CheckCircle2,
@@ -8,12 +8,16 @@ import {
   Plus,
   HelpCircle,
   CheckCircle,
+  Download,
+  RefreshCw,
+  WifiOff,
 } from 'lucide-react';
 import { db } from '../services/db';
 import { ExcelPreview } from '../types';
 import { parseExcelFile } from '../services/excelImporter';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { showInterstitial } from '../services/ads';
+import { fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
 
 interface BanksPageProps {
   onBankSelected: () => void;
@@ -27,6 +31,22 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
   const [status, setStatus] = useState('');
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [remoteBanks, setRemoteBanks] = useState<RemoteBankItem[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(true);
+  const [remoteError, setRemoteError] = useState('');
+
+  const loadRemoteBanks = async (force = false) => {
+    setRemoteLoading(true); setRemoteError('');
+    try { setRemoteBanks((await fetchRemoteBanks(force)).items); }
+    catch { setRemoteError('تعذر تحميل قائمة البنوك المتاحة للتنزيل.'); }
+    finally { setRemoteLoading(false); }
+  };
+
+  useEffect(() => { void loadRemoteBanks(); }, []);
+
+  const downloadRemoteBank = (bank: RemoteBankItem) => {
+    window.open(bank.downloadUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const banks = db.banks();
 
@@ -208,6 +228,29 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
           {status}
         </div>
       )}
+
+      {/* Downloadable Banks Catalog */}
+      <div className="flex items-center justify-between mt-1">
+        <h3 className="font-bold text-base text-[#2C2145]">بنوك متاحة للتحميل</h3>
+        <button onClick={() => void loadRemoteBanks(true)} disabled={remoteLoading} className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-50">
+          <RefreshCw className={`w-4 h-4 ${remoteLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+      {remoteError && <div className="flex items-center gap-2 bg-red-50 text-[#C62828] rounded-[14px] p-3 text-xs"><WifiOff className="w-4 h-4" />{remoteError}</div>}
+      {!remoteLoading && !remoteError && remoteBanks.length === 0 && <div className="bg-[#F8F9FD] rounded-[14px] p-3 text-xs text-gray-500">لا توجد بنوك منشورة حاليًا.</div>}
+      <div className="flex flex-col gap-2.5">
+        {remoteBanks.map((bank) => (
+          <div key={bank.id} className="bg-white rounded-[19px] p-4 border border-gray-100 shadow-xs flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2"><span className="font-bold text-sm text-[#2C2145]">{bank.name}</span>{bank.version && <span className="text-[10px] text-gray-400">v{bank.version}</span>}</div>
+              {bank.description && <p className="text-xs text-gray-500 mt-1 leading-5">{bank.description}</p>}
+            </div>
+            <button onClick={() => downloadRemoteBank(bank)} className="shrink-0 flex items-center gap-1.5 bg-[#5B3FD6] text-white px-3 py-2 rounded-[11px] text-xs font-bold">
+              <Download className="w-4 h-4" /><span>تحميل</span>
+            </button>
+          </div>
+        ))}
+      </div>
 
       {/* Available Banks List */}
       <h3 className="font-bold text-base text-[#2C2145] mt-1">البنوك المتاحة</h3>
