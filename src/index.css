@@ -121,3 +121,21 @@ html.dark .app-shell .reference-document hr {
 html.dark .app-shell .reference-document a {
   color: #b9a8ff !important;
 }
+
+/* DOCX references rendered by Mammoth. */
+.word-document { line-height: 2; font-size: 14px; overflow-wrap: anywhere; }
+.word-document h1,.word-document h2,.word-document h3,.word-document h4 { font-weight: 700; color: #2c2145; margin: 1rem 0 .4rem; }
+.word-document p { margin: .35rem 0; }
+.word-document ul,.word-document ol { padding-right: 1.4rem; margin: .5rem 0; }
+.word-document ul { list-style: disc; }
+.word-document ol { list-style: decimal; }
+.word-document img { max-width: 100%; height: auto; border-radius: 14px; margin: .8rem auto; display: block; }
+.word-document table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; margin: .8rem 0; }
+.word-document td,.word-document th { border: 1px solid #e5e1ee; padding: .45rem .6rem; min-width: 90px; }
+.word-document a { color: #5b3fd6; text-decoration: underline; }
+html.dark .app-shell .word-document h1,
+html.dark .app-shell .word-document h2,
+html.dark .app-shell .word-document h3,
+html.dark .app-shell .word-document h4 { color: #f2eef9 !important; }
+html.dark .app-shell .word-document td,
+html.dark .app-shell .word-document th { border-color: #3a3348; }
