@@ -1,15 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="1" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6841E8"/>
-      <stop offset="1" stop-color="#392080"/>
-    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9A45FF"/><stop offset="1" stop-color="#5220D5"/></linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#303037"/><stop offset="1" stop-color="#111116"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFE06A"/><stop offset=".45" stop-color="#F5B400"/><stop offset="1" stop-color="#C98700"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-opacity=".3"/></filter>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M72 204 256 112l184 92-184 92L72 204Z"/>
-    <path d="M144 240v92c0 36 50 68 112 68s112-32 112-68v-92"/>
-    <path d="M440 204v112"/>
+  <g filter="url(#shadow)">
+    <path d="M82 220 256 132l174 88-174 88L82 220Z" fill="url(#cap)"/>
+    <path d="M150 270v70c0 34 48 62 106 62s106-28 106-62v-70l-106 54-106-54Z" fill="#15151B"/>
+    <circle cx="256" cy="196" r="13" fill="#24242B"/>
+    <path d="M256 196c-42 12-76 31-101 56-16 16-21 38-21 65" fill="none" stroke="url(#gold)" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="134" cy="326" r="14" fill="url(#gold)"/>
+    <path d="M126 339l-12 47m20-47-2 50m10-48 9 43" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
   </g>
-  <circle cx="440" cy="334" r="15" fill="#FFFFFF"/>
 </svg>
