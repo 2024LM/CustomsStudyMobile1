@@ -3,14 +3,14 @@ from pathlib import Path
 import struct, zlib
 
 OUT = Path("android/app/src/main/res")
-BG=(91,63,214,255); WHITE=(255,255,255,255)
+BG=(91,38,218,255); BLACK=(28,28,34,255); GOLD=(246,181,20,255)
 
 def png(path, size, content_scale=0.72, transparent=False):
     w=h=size
     pix=bytearray(w*h*4)
     base=(0,0,0,0) if transparent else BG
     for i in range(w*h): pix[i*4:i*4+4]=bytes(base)
-    def line(x0,y0,x1,y1,width):
+    def line(x0,y0,x1,y1,width,color=BLACK):
         steps=max(abs(x1-x0),abs(y1-y0),1)
         r=width/2
         for k in range(steps+1):
@@ -20,13 +20,21 @@ def png(path, size, content_scale=0.72, transparent=False):
             for y in range(ya,yb+1):
                 for x in range(xa,xb+1):
                     if (x-cx)**2+(y-cy)**2<=rr:
-                        j=(y*w+x)*4; pix[j:j+4]=bytes(WHITE)
+                        j=(y*w+x)*4; pix[j:j+4]=bytes(color)
     s=size/512
     def p(x,y): return (int((256+(x-256)*content_scale)*s), int((256+(y-256)*content_scale)*s))
+    # Compact black graduation cap kept inside Android adaptive-icon safe zone.
     pts=[p(90,205),p(256,122),p(422,205),p(256,288),p(90,205)]
-    for a,b in zip(pts,pts[1:]): line(a[0],a[1],b[0],b[1],max(2,int(22*s*content_scale)))
-    for a,b in [((150,248),(150,330)),((150,330),(256,390)),((256,390),(362,330)),((362,330),(362,248)),((422,205),(422,320))]:
-        a=p(*a); b=p(*b); line(a[0],a[1],b[0],b[1],max(2,int(22*s*content_scale)))
+    for x,y in zip(pts,pts[1:]): line(x[0],x[1],y[0],y[1],max(3,int(34*s*content_scale)),BLACK)
+    for x,y in [((150,248),(150,330)),((150,330),(256,390)),((256,390),(362,330)),((362,330),(362,248))]:
+        x=p(*x); y=p(*y); line(x[0],x[1],y[0],y[1],max(3,int(30*s*content_scale)),BLACK)
+    # Gold cord and tassel.
+    x0=p(256,205); x1=p(150,260); x2=p(140,335)
+    line(x0[0],x0[1],x1[0],x1[1],max(2,int(10*s*content_scale)),GOLD)
+    line(x1[0],x1[1],x2[0],x2[1],max(2,int(10*s*content_scale)),GOLD)
+    for dx in (-14,-7,0,7,14):
+        a=p(140,338); z=p(140+dx,385)
+        line(a[0],a[1],z[0],z[1],max(2,int(7*s*content_scale)),GOLD)
     raw=b''.join(b'\x00'+bytes(pix[y*w*4:(y+1)*w*4]) for y in range(h))
     def chunk(t,d): return struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff)
     data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack(">IIBBBBB",w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
