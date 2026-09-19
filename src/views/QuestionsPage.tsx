@@ -7,16 +7,17 @@ import { QuestionCard } from '../components/QuestionCard';
 export const QuestionsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
-  const [questionType, setQuestionType] = useState<'ALL' | 'QCM' | 'OPEN' | 'ORAL'>('ALL');
+  const [selectedTopic, setSelectedTopic] = useState('ALL');
+  const topics = useMemo(() => Array.from(new Set(db.questions(db.activeBankId()).map((q) => q.topic.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar')), []);
   const pageSize = 50;
 
   const total = useMemo(() => {
-    return db.searchCount(db.activeBankId(), search, null, questionType === 'ALL' ? null : questionType);
-  }, [search, questionType]);
+    return db.searchCount(db.activeBankId(), search, selectedTopic === 'ALL' ? null : selectedTopic);
+  }, [search, selectedTopic]);
 
   const questions = useMemo(() => {
-    return db.questionPage(db.activeBankId(), search, null, pageSize, page * pageSize, questionType === 'ALL' ? null : questionType);
-  }, [search, page, questionType]);
+    return db.questionPage(db.activeBankId(), search, selectedTopic === 'ALL' ? null : selectedTopic, pageSize, page * pageSize);
+  }, [search, page, selectedTopic]);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -59,25 +60,19 @@ export const QuestionsPage: React.FC = () => {
         <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
-        {([
-          ['ALL', 'الكل'],
-          ['QCM', 'اختيار متعدد'],
-          ['OPEN', 'مفتوح'],
-          ['ORAL', 'شفهي'],
-        ] as const).map(([value, label]) => (
+        {[['ALL', 'الكل'], ...topics.map((topic) => [topic, topic])].map(([value, label]) => (
           <button
             key={value}
-            onClick={() => { setQuestionType(value); setPage(0); }}
+            onClick={() => { setSelectedTopic(value); setPage(0); }}
             className={`shrink-0 px-3.5 py-2 rounded-[12px] text-xs font-bold border transition-colors ${
-              questionType === value
+              selectedTopic === value
                 ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]'
                 : 'bg-white text-gray-600 border-[#E6E2F0]'
             }`}
           >
             {label}
           </button>
-        ))}
-      </div>
+        ))}      </div>
 
       {/* Results Count Header */}
       <div className="flex items-center justify-between py-1">
