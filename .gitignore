@@ -4,3 +4,16 @@ local.properties
 **/build/
 *.iml
 .DS_Store
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+google-services.json
+service-account*.json
