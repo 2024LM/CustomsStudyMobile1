@@ -45,6 +45,7 @@ export function App() {
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [, setDbVersion] = useState(0);
   const [showRatingPrompt, setShowRatingPrompt] = useState(false);
+  const [sessionFocus, setSessionFocus] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -316,7 +317,9 @@ export function App() {
           {page === 'SESSION' && (
             <SessionPage
               key={Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all')}
-              initialTopic={Array.isArray(sessionTopic) ? sessionTopic[0] ?? null : sessionTopic}
+              initialTopic={sessionTopic}
+              onActiveChange={setSessionFocus}
+              onExit={() => setPage('HOME')}
             />
           )}
 
@@ -352,7 +355,7 @@ export function App() {
         </main>
 
         {/* Bottom Navigation Bar */}
-        <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
+        {!sessionFocus && <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isSelected =
@@ -388,7 +391,7 @@ export function App() {
               </button>
             );
           })}
-        </nav>
+        </nav>}
       </div>
     </div>
   );
