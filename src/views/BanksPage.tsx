@@ -16,7 +16,6 @@ import { db } from '../services/db';
 import { ExcelPreview } from '../types';
 import { parseExcelFile } from '../services/excelImporter';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { showInterstitial } from '../services/ads';
 import { fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
 
 interface BanksPageProps {
@@ -51,7 +50,6 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
     setPreview(null);
     setStatus('جارٍ تحميل البنك وفحصه…');
     try {
-      await showInterstitial();
       const res = await fetch(bank.downloadUrl, { cache: 'no-store' });
       if (!res.ok) throw new Error(`تعذر تنزيل الملف (HTTP ${res.status})`);
       const contentType = (res.headers.get('content-type') || '').toLowerCase();
@@ -75,9 +73,8 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
 
   const banks = db.banks();
 
-  const handleImportClick = async () => {
+  const handleImportClick = () => {
     if (importing) return;
-    await showInterstitial();
     fileInputRef.current?.click();
   };
 
