@@ -8,6 +8,7 @@ import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
+import { AdventureGame } from '../components/AdventureGame';
 import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
@@ -205,7 +206,27 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
     );
   }
 
-  // 2. Active Session Screen
+  // 2. Interactive adventure mode
+  if (questions.length > 0 && sessionId !== null && currentQuestion && mode === 'adventure') {
+    return (
+      <AdventureGame
+        questions={questions}
+        onAnswer={(question, answer) => db.recordAnswer(question.rowId, answer, sessionId)}
+        onFinish={async () => {
+          db.finishSession(sessionId);
+          await showInterstitial();
+          setDone(true);
+        }}
+        onExit={() => {
+          db.finishSession(sessionId);
+          handleReset();
+          onExit?.();
+        }}
+      />
+    );
+  }
+
+  // 3. Active classic session
   if (questions.length > 0 && sessionId !== null && currentQuestion) {
     const isAnswered = selectedAnswer !== null;
     const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
@@ -389,7 +410,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
           <button onClick={() => setMode('adventure')} className={`p-4 rounded-[16px] border text-right transition-all ${mode === 'adventure' ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'border-gray-200'}`}>
             <Gamepad2 className="w-6 h-6 text-[#5B3FD6] mb-2" />
             <span className="block font-bold text-sm">مغامرة الأسئلة</span>
-            <span className="block text-[10px] text-gray-500 mt-1">تجاوز العقبات بالإجابات الصحيحة</span>
+            <span className="block text-[10px] text-gray-500 mt-1">اركض وتجنب العقبات واجمع أسئلة المكافآت</span>
           </button>
         </div>
       </div>
