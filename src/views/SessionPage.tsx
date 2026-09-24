@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowRight, BookOpen, Gamepad2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from '../services/db';
 import { QuizQuestion, StudyStats } from '../types';
@@ -10,20 +11,36 @@ import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
-  initialTopic?: string | null;
+  initialTopic?: string | string[] | null;
+  onActiveChange?: (active: boolean) => void;
+  onExit?: () => void;
 }
 
-export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null }) => {
+type SessionMode = 'classic' | 'adventure';
+
+export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, onActiveChange, onExit }) => {
+  const initialTopics = Array.isArray(initialTopic) ? initialTopic : initialTopic ? [initialTopic] : [];
   const [count, setCount] = useState<number>(20);
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopic ? [initialTopic] : []);
+  const [mode, setMode] = useState<SessionMode>('classic');
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [index, setIndex] = useState<number>(0);
   const [done, setDone] = useState<boolean>(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [exitPrompt, setExitPrompt] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [xp, setXp] = useState(0);
 
   const topics = useMemo(() => db.topics(), []);
   const qcmCount = db.qcmReadyCount();
+  const sessionActive = questions.length > 0 && sessionId !== null && !done;
+
+  useEffect(() => {
+    onActiveChange?.(sessionActive);
+    return () => onActiveChange?.(false);
+  }, [sessionActive, onActiveChange]);
 
   // Check for open session to resume
   useEffect(() => {
@@ -50,13 +67,16 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
   const handleStartSession = () => {
     const qList = db.sessionQuestions(count, selectedTopics.length > 0 ? selectedTopics : null);
     if (qList.length > 0) {
-      const sid = db.createSession(qList.length, db.activeBankId(), selectedTopics.length > 0 ? 'topics' : 'mixed');
+      const sid = db.createSession(qList.length, db.activeBankId(), mode);
       db.attachSessionQuestions(sid, qList);
       setQuestions(qList);
       setSessionId(sid);
       setIndex(0);
       setDone(false);
       setSelectedAnswer(null);
+      setStreak(0);
+      setBestStreak(0);
+      setXp(0);
     }
   };
 
@@ -79,6 +99,17 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
     setIndex(0);
     setDone(false);
     setSelectedAnswer(null);
+    setStreak(0);
+    setBestStreak(0);
+    setXp(0);
+  };
+
+  const requestExit = () => setExitPrompt(true);
+  const confirmExit = () => {
+    if (sessionId !== null) db.finishSession(sessionId);
+    setExitPrompt(false);
+    handleReset();
+    onExit?.();
   };
 
   // Trigger celebration on result screen if success rate >= 70%
@@ -183,20 +214,34 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
     const handleSelectOption = (opt: string) => {
       if (selectedAnswer !== null) return;
       setSelectedAnswer(opt);
-      db.recordAnswer(currentQuestion.rowId, opt, sessionId);
+      const correct = db.recordAnswer(currentQuestion.rowId, opt, sessionId);
+      if (correct) {
+        const next = streak + 1;
+        setStreak(next);
+        setBestStreak((best) => Math.max(best, next));
+        setXp((value) => value + 10 + Math.min(next - 1, 5) * 2);
+      } else {
+        setStreak(0);
+      }
     };
 
     return (
       <div className="flex flex-col gap-4 pb-8 text-right animate-in fade-in duration-200">
-        {/* Progress & Header */}
-        <div className="flex flex-col gap-2">
+        {/* Focus-mode header */}
+        <div className="flex flex-col gap-2 sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <button onClick={requestExit} className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#2C2145]" aria-label="الرجوع">
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="bg-[#FFF4D6] text-[#8A5B00] px-2.5 py-1.5 rounded-full">🔥 {streak}</span>
+              <span className="bg-[#F5F3FF] text-[#5B3FD6] px-2.5 py-1.5 rounded-full">{xp} XP</span>
+            </div>
+            <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>
+          </div>
           <div className="flex items-center justify-between">
-            <span className="font-bold text-sm text-[#2C2145]">
-              السؤال {index + 1} من {questions.length}
-            </span>
-            <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-semibold px-2.5 py-1 rounded-[12px]">
-              {currentQuestion.topic || 'عام'}
-            </span>
+            <span className="text-[11px] text-gray-500">{mode === 'adventure' ? '🎮 مغامرة الأسئلة' : '📚 مراجعة كلاسيكية'}</span>
+            <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-semibold px-2.5 py-1 rounded-[12px]">{currentQuestion.topic || 'عام'}</span>
           </div>
           <div className="w-full bg-[#E7E2F8] h-2 rounded-full overflow-hidden">
             <div
@@ -205,6 +250,18 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
             />
           </div>
         </div>
+
+        {mode === 'adventure' && (
+          <div className="bg-gradient-to-l from-[#F5F3FF] to-white rounded-[22px] border border-[#DDD4FA] p-4 overflow-hidden">
+            <div className="flex items-center justify-between text-xs font-bold text-[#5B3FD6] mb-3"><span>🏁 النهاية</span><span>العقبة {index + 1}</span></div>
+            <div className="relative h-16 bg-[#EDE9FE] rounded-2xl overflow-hidden">
+              <div className="absolute inset-y-0 right-0 bg-[#CFC5FA] transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+              <span className="absolute right-3 bottom-2 text-3xl transition-all duration-500" style={{ right: `calc(${Math.min(progressPercent, 88)}% - 16px)` }}>🏃</span>
+              <span className="absolute left-4 bottom-2 text-3xl">🚧</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-2 text-center">أجب بشكل صحيح لتتجاوز العقبات وتتقدم في المسار</p>
+          </div>
+        )}
 
         {/* Question Card */}
         <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] flex items-center justify-center text-center">
@@ -280,6 +337,19 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
           </div>
         )}
 
+        {exitPrompt && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-5" onClick={() => setExitPrompt(false)}>
+            <div className="w-full max-w-sm bg-white rounded-[24px] p-5 shadow-xl text-right" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-bold text-lg text-[#2C2145]">إنهاء الجلسة؟</h3>
+              <p className="text-sm text-gray-500 mt-2">وصلت إلى السؤال {index + 1} من {questions.length}. ستُحفظ إجاباتك الحالية.</p>
+              <div className="grid grid-cols-2 gap-2 mt-5">
+                <button onClick={confirmExit} className="py-3 rounded-[14px] border border-red-200 text-red-600 font-bold text-sm">إنهاء والخروج</button>
+                <button onClick={() => setExitPrompt(false)} className="py-3 rounded-[14px] bg-[#5B3FD6] text-white font-bold text-sm">متابعة الجلسة</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bottom banner during the active session */}
         <ReferenceBannerAd slot="session-bottom" />
 
@@ -303,6 +373,26 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null })
         title="إعداد الجلسة"
         subtitle="اختر معايير المراجعة حسب احتياجاتك"
       />
+
+      {/* Session mode */}
+      <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
+        <div>
+          <h3 className="font-bold text-sm text-[#2C2145]">نمط الجلسة</h3>
+          <p className="text-[11px] text-gray-400 mt-1">اختر طريقة المراجعة التي تناسبك</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => setMode('classic')} className={`p-4 rounded-[16px] border text-right transition-all ${mode === 'classic' ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'border-gray-200'}`}>
+            <BookOpen className="w-6 h-6 text-[#5B3FD6] mb-2" />
+            <span className="block font-bold text-sm">مراجعة كلاسيكية</span>
+            <span className="block text-[10px] text-gray-500 mt-1">أسئلة مباشرة مع XP وسلسلة</span>
+          </button>
+          <button onClick={() => setMode('adventure')} className={`p-4 rounded-[16px] border text-right transition-all ${mode === 'adventure' ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'border-gray-200'}`}>
+            <Gamepad2 className="w-6 h-6 text-[#5B3FD6] mb-2" />
+            <span className="block font-bold text-sm">مغامرة الأسئلة</span>
+            <span className="block text-[10px] text-gray-500 mt-1">تجاوز العقبات بالإجابات الصحيحة</span>
+          </button>
+        </div>
+      </div>
 
       {/* Question Count Setting */}
       <div data-tour="session-count" className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
