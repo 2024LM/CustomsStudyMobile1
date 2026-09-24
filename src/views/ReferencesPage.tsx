@@ -6,6 +6,31 @@ import { fetchReferenceContent, fetchReferenceDocx, fetchReferenceIndex, isInlin
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
 
+function sanitizeWordHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const blocked = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','FORM','INPUT','BUTTON','META','LINK','BASE','SVG','MATH']);
+  const allowedAttrs = new Set(['href','src','alt','title','colspan','rowspan']);
+  for (const el of Array.from(doc.body.querySelectorAll('*'))) {
+    if (blocked.has(el.tagName)) { el.remove(); continue; }
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (!allowedAttrs.has(name)) el.removeAttribute(attr.name);
+    }
+    if (el.hasAttribute('href')) {
+      try {
+        const url = new URL(el.getAttribute('href') || '', window.location.href);
+        if (url.protocol !== 'https:') el.removeAttribute('href');
+        else { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+      } catch { el.removeAttribute('href'); }
+    }
+    if (el.hasAttribute('src')) {
+      const src = el.getAttribute('src') || '';
+      if (!src.startsWith('data:image/')) el.removeAttribute('src');
+    }
+  }
+  return doc.body.innerHTML;
+}
+
 function renderInline(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|\`[^\`]+\`|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g);
   return parts.filter(Boolean).map((part, i) => {
@@ -107,7 +132,7 @@ export const ReferencesPage: React.FC = () => {
           { arrayBuffer: await fetchReferenceDocx(item) },
           { convertImage: mammoth.images.imgElement(async (image: { contentType: string; read: (encoding: string) => Promise<string> }) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
         );
-        setWordHtml(result.value);
+        setWordHtml(sanitizeWordHtml(result.value));
       } else {
         setContent(await fetchReferenceContent(item));
       }
