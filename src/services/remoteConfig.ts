@@ -7,7 +7,9 @@ const LOCAL_CONFIG_URL = '/remote_config.json';
 function isTrustedUpdateUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return false;
+    const host = parsed.hostname.toLowerCase();
+    return host === 'github.com' || host === 'play.google.com' || host.endsWith('.google.com');
   } catch {
     return false;
   }
@@ -38,7 +40,8 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
       const announcementObj = data.announcement || {};
       const ratingObj = data.rating_prompt || {};
 
-      const updateUrl = String(updateObj.url || '').trim();
+      const rawUpdateUrl = String(updateObj.url || '').trim();
+      const updateUrl = isTrustedUpdateUrl(rawUpdateUrl) ? rawUpdateUrl : '';
       const announcementEnabled = Boolean(announcementObj.enabled);
       const announcementId = String(announcementObj.id || '').trim().slice(0, 100);
       const announcementTitle = String(announcementObj.title || '').trim().slice(0, 200);
@@ -54,7 +57,7 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
           message: String(n.message || ''),
           type: (['info', 'update', 'alert', 'general'].includes(n.type) ? n.type : 'info') as any,
           date: n.date ? String(n.date) : undefined,
-          url: n.url ? String(n.url) : undefined,
+          url: n.url && isTrustedUpdateUrl(String(n.url)) ? String(n.url) : undefined,
         }));
 
       return {
@@ -70,7 +73,7 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
         notifications,
         ratingPrompt: {
           enabled: Boolean(ratingObj.enabled),
-          storeUrl: String(ratingObj.store_url || '').trim(),
+          storeUrl: isTrustedUpdateUrl(String(ratingObj.store_url || '').trim()) ? String(ratingObj.store_url || '').trim() : '',
           title: String(ratingObj.title || 'ما رأيك في التطبيق؟').trim().slice(0, 200),
           message: String(ratingObj.message || 'ساعدنا بتقييم التطبيق.').trim().slice(0, 1000),
           minUsageDays: Math.max(1, Math.min(365, Number(ratingObj.min_usage_days) || 3)),
