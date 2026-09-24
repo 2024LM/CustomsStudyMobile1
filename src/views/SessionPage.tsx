@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRight, BookOpen, Gamepad2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from '../services/db';
 import { QuizQuestion, StudyStats } from '../types';
@@ -8,7 +8,6 @@ import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
-import { AdventureGame } from '../components/AdventureGame';
 import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
@@ -17,12 +16,9 @@ interface SessionPageProps {
   onExit?: () => void;
 }
 
-type SessionMode = 'classic' | 'adventure';
-
 export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, onActiveChange, onExit }) => {
   const initialTopics = Array.isArray(initialTopic) ? initialTopic : initialTopic ? [initialTopic] : [];
   const [count, setCount] = useState<number>(20);
-  const [mode, setMode] = useState<SessionMode>('classic');
   const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -68,7 +64,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const handleStartSession = () => {
     const qList = db.sessionQuestions(count, selectedTopics.length > 0 ? selectedTopics : null);
     if (qList.length > 0) {
-      const sid = db.createSession(qList.length, db.activeBankId(), mode);
+      const sid = db.createSession(qList.length, db.activeBankId(), 'classic');
       db.attachSessionQuestions(sid, qList);
       setQuestions(qList);
       setSessionId(sid);
@@ -206,27 +202,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
     );
   }
 
-  // 2. Interactive adventure mode
-  if (questions.length > 0 && sessionId !== null && currentQuestion && mode === 'adventure') {
-    return (
-      <AdventureGame
-        questions={questions}
-        onAnswer={(question, answer) => db.recordAnswer(question.rowId, answer, sessionId)}
-        onFinish={async () => {
-          db.finishSession(sessionId);
-          await showInterstitial();
-          setDone(true);
-        }}
-        onExit={() => {
-          db.finishSession(sessionId);
-          handleReset();
-          onExit?.();
-        }}
-      />
-    );
-  }
-
-  // 3. Active classic session
+  // 2. Active classic session
   if (questions.length > 0 && sessionId !== null && currentQuestion) {
     const isAnswered = selectedAnswer !== null;
     const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
@@ -261,7 +237,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">{mode === 'adventure' ? '🎮 مغامرة الأسئلة' : '📚 مراجعة كلاسيكية'}</span>
+            <span className="text-[11px] text-gray-500">📚 مراجعة كلاسيكية</span>
             <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-semibold px-2.5 py-1 rounded-[12px]">{currentQuestion.topic || 'عام'}</span>
           </div>
           <div className="w-full bg-[#E7E2F8] h-2 rounded-full overflow-hidden">
@@ -271,18 +247,6 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             />
           </div>
         </div>
-
-        {mode === 'adventure' && (
-          <div className="bg-gradient-to-l from-[#F5F3FF] to-white rounded-[22px] border border-[#DDD4FA] p-4 overflow-hidden">
-            <div className="flex items-center justify-between text-xs font-bold text-[#5B3FD6] mb-3"><span>🏁 النهاية</span><span>العقبة {index + 1}</span></div>
-            <div className="relative h-16 bg-[#EDE9FE] rounded-2xl overflow-hidden">
-              <div className="absolute inset-y-0 right-0 bg-[#CFC5FA] transition-all duration-500" style={{ width: `${progressPercent}%` }} />
-              <span className="absolute right-3 bottom-2 text-3xl transition-all duration-500" style={{ right: `calc(${Math.min(progressPercent, 88)}% - 16px)` }}>🏃</span>
-              <span className="absolute left-4 bottom-2 text-3xl">🚧</span>
-            </div>
-            <p className="text-[11px] text-gray-500 mt-2 text-center">أجب بشكل صحيح لتتجاوز العقبات وتتقدم في المسار</p>
-          </div>
-        )}
 
         {/* Question Card */}
         <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] flex items-center justify-center text-center">
@@ -394,26 +358,6 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
         title="إعداد الجلسة"
         subtitle="اختر معايير المراجعة حسب احتياجاتك"
       />
-
-      {/* Session mode */}
-      <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
-        <div>
-          <h3 className="font-bold text-sm text-[#2C2145]">نمط الجلسة</h3>
-          <p className="text-[11px] text-gray-400 mt-1">اختر طريقة المراجعة التي تناسبك</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setMode('classic')} className={`p-4 rounded-[16px] border text-right transition-all ${mode === 'classic' ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'border-gray-200'}`}>
-            <BookOpen className="w-6 h-6 text-[#5B3FD6] mb-2" />
-            <span className="block font-bold text-sm">مراجعة كلاسيكية</span>
-            <span className="block text-[10px] text-gray-500 mt-1">أسئلة مباشرة مع XP وسلسلة</span>
-          </button>
-          <button onClick={() => setMode('adventure')} className={`p-4 rounded-[16px] border text-right transition-all ${mode === 'adventure' ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'border-gray-200'}`}>
-            <Gamepad2 className="w-6 h-6 text-[#5B3FD6] mb-2" />
-            <span className="block font-bold text-sm">مغامرة الأسئلة</span>
-            <span className="block text-[10px] text-gray-500 mt-1">اركض وتجنب العقبات واجمع أسئلة المكافآت</span>
-          </button>
-        </div>
-      </div>
 
       {/* Question Count Setting */}
       <div data-tour="session-count" className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
