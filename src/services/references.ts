@@ -10,8 +10,8 @@ export interface ReferenceItem {
 const SHEET_ID = '1wnL7pZRqmSixUA7dyR6d6bJ-a4tM8UDtPUQ0Oo3yrW4';
 const SHEET_NAME = 'Sheet1';
 const INDEX_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
-const CACHE_KEY = 'customs_reference_index_v1';
-const CONTENT_CACHE_PREFIX = 'customs_reference_content_v1:';
+const LEGACY_CACHE_KEY = 'customs_reference_index_v1';
+const LEGACY_CONTENT_CACHE_PREFIX = 'customs_reference_content_v1:';
 const FETCH_TIMEOUT_MS = 12000;
 
 async function safeFetch(url: string): Promise<Response> {
@@ -59,31 +59,21 @@ function normalize(rows: string[][]): ReferenceItem[] {
   })).filter((x) => x.id && x.title && /^https:\/\//i.test(x.url));
 }
 
-export async function fetchReferenceIndex(force = false): Promise<{ items: ReferenceItem[]; cached: boolean }> {
-  if (!force) {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.items) && Date.now() - Number(parsed.savedAt || 0) < 15 * 60 * 1000) {
-          return { items: parsed.items, cached: true };
-        }
-      }
-    } catch { /* refresh below */ }
-  }
+export async function fetchReferenceIndex(_force = false): Promise<{ items: ReferenceItem[]; cached: boolean }> {
+  // References are intentionally network-only: do not persist the index on the device.
+  // Remove caches created by older versions as part of the migration.
   try {
-    const res = await safeFetch(INDEX_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const items = normalize(parseCsv(await res.text()));
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ items, savedAt: Date.now() }));
-    return { items, cached: false };
-  } catch (error) {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) return { items: JSON.parse(raw).items || [], cached: true };
-    } catch { /* no cache */ }
-    throw error;
-  }
+    localStorage.removeItem(LEGACY_CACHE_KEY);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(LEGACY_CONTENT_CACHE_PREFIX)) localStorage.removeItem(key);
+    }
+  } catch { /* storage may be unavailable */ }
+
+  const res = await safeFetch(INDEX_URL);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const items = normalize(parseCsv(await res.text()));
+  return { items, cached: false };
 }
 
 function googleDocExportUrl(url: string): string | null {
@@ -112,26 +102,16 @@ export async function fetchReferenceDocx(item: ReferenceItem): Promise<ArrayBuff
 }
 
 export async function fetchReferenceContent(item: ReferenceItem): Promise<string> {
-  const key = CONTENT_CACHE_PREFIX + item.id;
   const target = item.type.toLowerCase().includes('google')
     ? googleDocExportUrl(item.url)
     : item.url;
   if (!target) throw new Error('رابط المستند غير صالح.');
 
-  try {
-    const res = await safeFetch(target);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    if (!text.trim()) throw new Error('المستند فارغ.');
-    localStorage.setItem(key, JSON.stringify({ text, savedAt: Date.now() }));
-    return text;
-  } catch (error) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) return String(JSON.parse(raw).text || '');
-    } catch { /* no cache */ }
-    throw error;
-  }
+  const res = await safeFetch(target);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text.trim()) throw new Error('المستند فارغ.');
+  return text;
 }
 
 export function isInlineReadable(type: string): boolean {
