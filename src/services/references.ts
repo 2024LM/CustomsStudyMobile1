@@ -12,6 +12,17 @@ const SHEET_NAME = 'Sheet1';
 const INDEX_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
 const CACHE_KEY = 'customs_reference_index_v1';
 const CONTENT_CACHE_PREFIX = 'customs_reference_content_v1:';
+const FETCH_TIMEOUT_MS = 12000;
+
+async function safeFetch(url: string): Promise<Response> {
+  const parsed = new URL(url, window.location.href);
+  if (parsed.protocol !== 'https:' && parsed.origin !== window.location.origin) throw new Error('رابط غير آمن.');
+  if (parsed.username || parsed.password) throw new Error('رابط غير صالح.');
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try { return await fetch(parsed.toString(), { cache: 'no-store', signal: controller.signal }); }
+  finally { window.clearTimeout(timer); }
+}
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -61,7 +72,7 @@ export async function fetchReferenceIndex(force = false): Promise<{ items: Refer
     } catch { /* refresh below */ }
   }
   try {
-    const res = await fetch(INDEX_URL, { cache: 'no-store' });
+    const res = await safeFetch(INDEX_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = normalize(parseCsv(await res.text()));
     localStorage.setItem(CACHE_KEY, JSON.stringify({ items, savedAt: Date.now() }));
@@ -87,12 +98,16 @@ function isWordType(type: string): boolean {
 
 export async function fetchReferenceDocx(item: ReferenceItem): Promise<ArrayBuffer> {
   if (!isWordType(item.type)) throw new Error('نوع الملف ليس Word.');
-  const res = await fetch(item.url, { cache: 'no-store' });
+  const res = await safeFetch(item.url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = (res.headers.get('content-type') || '').toLowerCase();
   if (contentType.includes('text/html')) throw new Error('الرابط لا يشير إلى ملف Word مباشر.');
   const buffer = await res.arrayBuffer();
   if (!buffer.byteLength || buffer.byteLength > 15 * 1024 * 1024) throw new Error('حجم ملف Word غير مدعوم.');
+  const signature = new Uint8Array(buffer, 0, Math.min(4, buffer.byteLength));
+  if (signature.length < 4 || signature[0] !== 0x50 || signature[1] !== 0x4b || signature[2] !== 0x03 || signature[3] !== 0x04) {
+    throw new Error('الملف ليس DOCX صالحًا.');
+  }
   return buffer;
 }
 
@@ -104,7 +119,7 @@ export async function fetchReferenceContent(item: ReferenceItem): Promise<string
   if (!target) throw new Error('رابط المستند غير صالح.');
 
   try {
-    const res = await fetch(target, { cache: 'no-store' });
+    const res = await safeFetch(target);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     if (!text.trim()) throw new Error('المستند فارغ.');
