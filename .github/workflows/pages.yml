@@ -2,7 +2,7 @@ name: Deploy Web to GitHub Pages
 
 on:
   push:
-    branches: [ "feature/github-pages-preview" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
