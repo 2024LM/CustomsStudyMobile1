@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { RemoteState } from '../types';
+import { appConfig } from '../config/appConfig';
 
 interface MorePageProps {
   onGoToMistakes: () => void;
@@ -94,7 +95,7 @@ export const MorePage: React.FC<MorePageProps> = ({
     <div className="flex flex-col gap-3 pb-8 text-right">
       <ScreenHeader
         title="المزيد"
-        subtitle="أدوات وإعدادات منصة المراجعة"
+        subtitle={`أدوات وإعدادات ${appConfig.appName}`}
       />
 
       <div className="flex flex-col gap-2.5">
@@ -134,7 +135,7 @@ export const MorePage: React.FC<MorePageProps> = ({
 
       {/* App branding */}
       <div className="p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-1">
-        <span className="font-bold text-sm text-[#5B3FD6]">منصة المراجعة</span>
+        <span className="font-bold text-sm text-[#5B3FD6]">{appConfig.appName}</span>
         <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
       </div>
     </div>
