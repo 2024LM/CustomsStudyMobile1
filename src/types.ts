@@ -9,6 +9,8 @@ export type Page =
   | 'DOMAINS'
   | 'SETTINGS'
   | 'TOOLS'
+  | 'PLAN'
+  | 'DOWNLOADS'
   | 'MORE';
 
 export interface StudyDomain {
