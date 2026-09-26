@@ -190,7 +190,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <span className="font-bold text-sm text-[#2C2145] mt-1">
               جميع الأسئلة
             </span>
-            <span className="text-xs text-gray-500 font-medium">{qcm} جاهز</span>
+            <span className="text-xs text-gray-500 font-medium">{playable} جاهز</span>
           </button>
 
           <button
