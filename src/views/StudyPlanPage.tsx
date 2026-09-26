@@ -5,6 +5,7 @@ import { db } from '../services/db';
 import {
   cancelStudyAlarm,
   saveAlarmAudio,
+  requestStudyAlarmPermission,
   scheduleStudyAlarm,
   StudyAlarmSound,
 } from '../services/studyAlarm';
@@ -67,6 +68,8 @@ export const StudyPlanPage: React.FC = () => {
 
       if (alarmEnabled) {
         if (alarmSound === 'custom' && !customPath) throw new Error('اختر ملفًا صوتيًا خاصًا أولًا.');
+        const permissionGranted = await requestStudyAlarmPermission();
+        if (!permissionGranted) throw new Error('يجب السماح بإشعارات التطبيق حتى يعمل منبّه المراجعة.');
         const result = await scheduleStudyAlarm({
           time: alarmTime,
           sound: alarmSound,
