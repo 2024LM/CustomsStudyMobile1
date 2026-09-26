@@ -42,6 +42,8 @@ export function App() {
   const [page, setPage] = useState<Page>('HOME');
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
+  const [sessionMode, setSessionMode] = useState<'classic' | 'review' | 'mistakes' | 'favorites' | 'smart'>('classic');
+  const [sessionAutoStart, setSessionAutoStart] = useState(false);
   const [remote, setRemote] = useState<RemoteState>(() => db.cachedRemote());
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [directQuestion, setDirectQuestion] = useState<QuizQuestion | null>(null);
@@ -167,9 +169,16 @@ export function App() {
     }
   };
 
-  const startSessionWithTopic = (topic?: string | string[], count?: number) => {
+  const startSessionWithTopic = (
+    topic?: string | string[],
+    count?: number,
+    mode: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart' = 'classic',
+    autoStart: boolean = false
+  ) => {
     setSessionTopic(topic || null);
     setSessionCount(count || null);
+    setSessionMode(mode);
+    setSessionAutoStart(autoStart);
     setPage('SESSION');
   };
 
@@ -300,10 +309,16 @@ export function App() {
 
           {page === 'SESSION' && (
             <SessionPage
-              key={Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all')}
+              key={[Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all'), sessionMode, sessionCount || 0, sessionAutoStart ? 'auto' : 'manual'].join(':')}
               initialTopic={sessionTopic}
+              initialMode={sessionMode}
+              initialCount={sessionCount}
+              autoStart={sessionAutoStart}
               onActiveChange={setSessionFocus}
-              onExit={() => setPage('HOME')}
+              onExit={() => {
+                setSessionAutoStart(false);
+                setPage('HOME');
+              }}
             />
           )}
 
@@ -357,6 +372,9 @@ export function App() {
                 onClick={() => {
                   if (item.p === 'SESSION') {
                     setSessionTopic(null);
+                    setSessionCount(null);
+                    setSessionMode('classic');
+                    setSessionAutoStart(false);
                   }
                   setPage(item.p);
                 }}
