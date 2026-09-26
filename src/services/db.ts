@@ -71,7 +71,7 @@ function createInitialDatabase(): DatabaseSchema {
   const questions: QuizQuestion[] = rawList.map((raw, idx) => {
     const isOral = raw.type?.toUpperCase() === 'ORAL';
     const hasDistractors = Boolean(raw.wrong1 && raw.wrong2 && raw.wrong3);
-    const qType: 'QCM' | 'OPEN' | 'ORAL' = isOral ? 'ORAL' : hasDistractors ? 'QCM' : 'OPEN';
+    const qType: 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL' = isOral ? 'ORAL' : hasDistractors ? 'QCM' : 'OPEN';
     const qStatus: 'NOT_READY' | 'DRAFT' | 'READY' =
       raw.qcmStatus?.toUpperCase() === 'READY'
         ? 'READY'
@@ -439,12 +439,30 @@ class StudyDatabaseService {
       (q) =>
         q.bankId === bankId &&
         q.enabled &&
-        q.questionType === 'QCM' &&
+        (q.questionType === 'QCM' || q.questionType === 'TRUE_FALSE') &&
         q.qcmStatus === 'READY' &&
         q.wrong1 !== '' &&
         q.wrong2 !== '' &&
         q.wrong3 !== ''
     ).length;
+  }
+
+  public playableQuestionCount(bankId: string = this.activeBankId()): number {
+    return this.playableQuestions(bankId).length;
+  }
+
+  public playableQuestions(bankId: string = this.activeBankId()): QuizQuestion[] {
+    return this.data.questions.filter((q) => {
+      if (q.bankId !== bankId || !q.enabled || q.qcmStatus !== 'READY') return false;
+      if (q.questionType === 'TRUE_FALSE') {
+        const answer = q.correctAnswer.trim().toLowerCase();
+        return ['صحيح', 'خطأ', 'true', 'false'].includes(answer);
+      }
+      return (
+        q.questionType === 'QCM' &&
+        Boolean(q.wrong1 && q.wrong2 && q.wrong3)
+      );
+    });
   }
 
   public questions(bankId: string = this.activeBankId(), qcmOnly: boolean = false): QuizQuestion[] {
@@ -467,7 +485,7 @@ class StudyDatabaseService {
     topic: string | null = null,
     limit: number = 50,
     offset: number = 0,
-    questionType: 'QCM' | 'OPEN' | 'ORAL' | null = null
+    questionType: 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL' | null = null
   ): QuizQuestion[] {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safeOffset = Math.max(offset, 0);
@@ -492,7 +510,7 @@ class StudyDatabaseService {
     bankId: string = this.activeBankId(),
     search: string = '',
     topic: string | null = null,
-    questionType: 'QCM' | 'OPEN' | 'ORAL' | null = null
+    questionType: 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL' | null = null
   ): number {
     const term = search.trim().toLowerCase();
     return this.data.questions.filter((q) => {
@@ -693,14 +711,14 @@ class StudyDatabaseService {
         item.rowId === rowId &&
         item.bankId === bankId &&
         item.enabled &&
-        item.questionType === 'QCM' &&
+        (item.questionType === 'QCM' || item.questionType === 'TRUE_FALSE') &&
         item.qcmStatus === 'READY'
     );
     return q || null;
   }
 
   public randomQuestion(bankId: string = this.activeBankId()): QuizQuestion | null {
-    const readyQuestions = this.questions(bankId, true);
+    const readyQuestions = this.playableQuestions(bankId);
     if (readyQuestions.length === 0) return null;
     const index = Math.floor(Math.random() * readyQuestions.length);
     return readyQuestions[index];
@@ -807,7 +825,7 @@ class StudyDatabaseService {
 
   public topics(bankId: string = this.activeBankId()): string[] {
     const set = new Set<string>();
-    const readyQuestions = this.questions(bankId, true);
+    const readyQuestions = this.playableQuestions(bankId);
     for (const q of readyQuestions) {
       if (q.topic.trim()) {
         set.add(q.topic.trim());
@@ -818,7 +836,7 @@ class StudyDatabaseService {
 
   public topicCounts(bankId: string = this.activeBankId()): Record<string, number> {
     const counts: Record<string, number> = {};
-    const readyQuestions = this.questions(bankId, true);
+    const readyQuestions = this.playableQuestions(bankId);
     for (const q of readyQuestions) {
       const t = q.topic.trim();
       if (t) {
@@ -862,7 +880,7 @@ class StudyDatabaseService {
   ): QuizQuestion[] {
     const safe = Math.min(Math.max(count, 1), 500);
     const now = Date.now();
-    let pool = this.questions(bankId, true).filter((question) => {
+    let pool = this.playableQuestions(bankId).filter((question) => {
       const state = this.data.questionStates[question.rowId];
       return Boolean(state?.nextReviewAt && state.nextReviewAt <= now);
     });
@@ -891,7 +909,7 @@ class StudyDatabaseService {
     bankId: string = this.activeBankId()
   ): QuizQuestion[] {
     const safe = Math.min(Math.max(count, 1), 500);
-    let pool = this.questions(bankId, true);
+    let pool = this.playableQuestions(bankId);
     if (Array.isArray(topic)) {
       const activeTopics = new Set(topic.map((t) => t.trim()).filter(Boolean));
       if (activeTopics.size > 0) {
@@ -1056,13 +1074,15 @@ class StudyDatabaseService {
         externalId: row.externalId,
         question: row.question,
         correctAnswer: row.answer,
-        wrong1: row.wrong1,
-        wrong2: row.wrong2,
-        wrong3: row.wrong3,
+        wrong1: row.questionType === 'TRUE_FALSE'
+          ? (row.answer.trim().toLowerCase() === 'صحيح' || row.answer.trim().toLowerCase() === 'true' ? 'خطأ' : 'صحيح')
+          : row.wrong1,
+        wrong2: row.questionType === 'TRUE_FALSE' ? '' : row.wrong2,
+        wrong3: row.questionType === 'TRUE_FALSE' ? '' : row.wrong3,
         explanation: row.explanation,
         topic: row.topic,
         sourceDate: '',
-        questionType: 'QCM',
+        questionType: row.questionType || 'QCM',
         qcmStatus: 'READY',
         enabled: true,
       };
