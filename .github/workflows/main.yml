@@ -41,7 +41,7 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
-      - name: Install native Unity Ads bridge
+      - name: Install native Android bridges
         run: bash scripts/install-native-ads.sh
 
       - name: Generate Android launcher icon
