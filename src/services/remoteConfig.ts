@@ -2,7 +2,7 @@ import { RemoteState } from '../types';
 
 export const CONFIG_URL = 'https://raw.githubusercontent.com/2024LM/-Lm/BOT-SCRFY/remote_config.json';
 const GITHUB_RELEASES_API = 'https://api.github.com/repos/2024LM/-Lm/releases/latest';
-const LOCAL_CONFIG_URL = '/remote_config.json';
+const LOCAL_CONFIG_URL = `${import.meta.env.BASE_URL}remote_config.json`;
 
 function isTrustedUpdateUrl(url: string): boolean {
   try {
