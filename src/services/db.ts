@@ -772,6 +772,114 @@ class StudyDatabaseService {
     }
   }
 
+  public searchAcrossActiveDomain(term: string): Array<{ question: QuizQuestion; bankName: string }> {
+    const q = term.trim().toLowerCase();
+    if (!q) return [];
+    const bankMap = new Map(
+      this.data.banks
+        .filter((bank) => bank.enabled && bank.domainId === this.activeDomainId())
+        .map((bank) => [bank.id, bank.name] as const)
+    );
+
+    return this.data.questions
+      .filter((question) => {
+        if (!question.enabled || !bankMap.has(question.bankId)) return false;
+        return question.question.toLowerCase().includes(q)
+          || question.topic.toLowerCase().includes(q)
+          || question.explanation.toLowerCase().includes(q)
+          || question.correctAnswer.toLowerCase().includes(q);
+      })
+      .slice(0, 100)
+      .map((question) => ({ question, bankName: bankMap.get(question.bankId) || '' }));
+  }
+
+  public questionNote(questionRowId: number): string {
+    try {
+      const raw = this.setting('question_notes_v1', '{}');
+      const notes = JSON.parse(raw) as Record<string, string>;
+      return notes[String(questionRowId)] || '';
+    } catch {
+      return '';
+    }
+  }
+
+  public setQuestionNote(questionRowId: number, note: string) {
+    let notes: Record<string, string> = {};
+    try {
+      notes = JSON.parse(this.setting('question_notes_v1', '{}')) || {};
+    } catch {}
+    const clean = note.trim().slice(0, 4000);
+    if (clean) notes[String(questionRowId)] = clean;
+    else delete notes[String(questionRowId)];
+    this.data.settings['question_notes_v1'] = JSON.stringify(notes);
+    this.notify();
+  }
+
+  public notedQuestions(): Array<{ question: QuizQuestion; note: string }> {
+    let notes: Record<string, string> = {};
+    try {
+      notes = JSON.parse(this.setting('question_notes_v1', '{}')) || {};
+    } catch {}
+    return Object.entries(notes)
+      .map(([rowId, note]) => ({
+        question: this.data.questions.find((q) => q.rowId === Number(rowId) && q.enabled),
+        note,
+      }))
+      .filter((item): item is { question: QuizQuestion; note: string } => Boolean(item.question && item.note.trim()))
+      .sort((a, b) => a.question.question.localeCompare(b.question.question, 'ar'));
+  }
+
+  public addManualQuestion(input: {
+    bankId?: string;
+    question: string;
+    correctAnswer: string;
+    wrong1: string;
+    wrong2: string;
+    wrong3: string;
+    explanation?: string;
+    topic?: string;
+  }): number {
+    const bankId = input.bankId || this.activeBankId();
+    const bank = this.data.banks.find(
+      (item) => item.id === bankId && item.enabled && item.domainId === this.activeDomainId()
+    );
+    if (!bank) throw new Error('Unknown or inactive bank');
+
+    const question = input.question.trim();
+    const answer = input.correctAnswer.trim();
+    const wrongs = [input.wrong1, input.wrong2, input.wrong3].map((v) => v.trim());
+    if (question.length < 3 || !answer || wrongs.some((v) => !v)) {
+      throw new Error('Question and all four answer options are required');
+    }
+    const normalized = new Set([answer, ...wrongs].map((v) => v.toLocaleLowerCase('ar')));
+    if (normalized.size !== 4) throw new Error('Answer options must be different');
+
+    const rowId = this.data.questions.length
+      ? Math.max(...this.data.questions.map((q) => q.rowId)) + 1
+      : 1;
+    const externalId = 'manual_' + Date.now().toString(36);
+
+    this.data.questions.push({
+      rowId,
+      bankId,
+      externalId,
+      question: question.slice(0, 2000),
+      correctAnswer: answer.slice(0, 2000),
+      wrong1: wrongs[0].slice(0, 2000),
+      wrong2: wrongs[1].slice(0, 2000),
+      wrong3: wrongs[2].slice(0, 2000),
+      explanation: (input.explanation || '').trim().slice(0, 2000),
+      topic: (input.topic || '').trim().slice(0, 200),
+      sourceDate: '',
+      questionType: 'QCM',
+      qcmStatus: 'READY',
+      enabled: true,
+    });
+    this.ensureQuestionState(rowId);
+    this.notify();
+    return rowId;
+  }
+
   public setting(key: string, defaultValue: string = ''): string {
     return this.data.settings[key] ?? defaultValue;
   }
