@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as mammoth from 'mammoth';
-import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X } from 'lucide-react';
+import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X, Upload, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { fetchReferenceContent, fetchReferenceDocx, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
+import { addLocalReference, deleteLocalReference, listLocalReferences, LocalReference } from '../services/localReferences';
+import { db } from '../services/db';
 
 function sanitizeWordHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -98,6 +100,10 @@ export const ReferencesPage: React.FC = () => {
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState('');
   const [wordHtml, setWordHtml] = useState('');
+  const [localItems, setLocalItems] = useState<LocalReference[]>([]);
+  const [localSelected, setLocalSelected] = useState<LocalReference | null>(null);
+  const [localPdfUrl, setLocalPdfUrl] = useState('');
+  const [localStatus, setLocalStatus] = useState('');
 
   const load = async (force = false) => {
     setLoading(true); setError('');
@@ -109,7 +115,24 @@ export const ReferencesPage: React.FC = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, []);
+  const loadLocal = async () => {
+    try {
+      setLocalItems(await listLocalReferences(db.activeDomainId()));
+    } catch {
+      setLocalStatus('تعذر قراءة المراجع المحلية.');
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    void loadLocal();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (localPdfUrl) URL.revokeObjectURL(localPdfUrl);
+    };
+  }, [localPdfUrl]);
 
   const categories = useMemo(() => ['الكل', ...Array.from(new Set(items.flatMap((x) => x.categories)))], [items]);
   const filtered = useMemo(() => items.filter((x) => {
@@ -117,6 +140,70 @@ export const ReferencesPage: React.FC = () => {
     const q = query.trim().toLowerCase();
     return inCategory && (!q || x.title.toLowerCase().includes(q) || x.description.toLowerCase().includes(q));
   }), [items, category, query]);
+
+  const handleLocalUpload = async (file: File | null) => {
+    if (!file) return;
+    setLocalStatus('');
+    try {
+      await addLocalReference(file, db.activeDomainId());
+      await loadLocal();
+      setLocalStatus('تمت إضافة المرجع إلى مكتبتك.');
+    } catch (error: any) {
+      setLocalStatus(error?.message || 'تعذر إضافة المرجع');
+    }
+  };
+
+  const openLocalItem = async (item: LocalReference) => {
+    await showReferenceInterstitial();
+    setSelected(null);
+    setLocalSelected(item);
+    setContent('');
+    setWordHtml('');
+    setContentError('');
+    setContentLoading(true);
+
+    if (localPdfUrl) {
+      URL.revokeObjectURL(localPdfUrl);
+      setLocalPdfUrl('');
+    }
+
+    try {
+      if (item.type === 'pdf') {
+        setLocalPdfUrl(URL.createObjectURL(item.data));
+      } else if (item.type === 'docx') {
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer: await item.data.arrayBuffer() },
+          { convertImage: mammoth.images.imgElement(async (image: { contentType: string; read: (encoding: string) => Promise<string> }) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
+        );
+        setWordHtml(sanitizeWordHtml(result.value));
+      } else {
+        setContent(await item.data.text());
+      }
+    } catch {
+      setContentError('تعذر فتح هذا المرجع داخل التطبيق.');
+    } finally {
+      setContentLoading(false);
+    }
+  };
+
+  const removeLocalItem = async (item: LocalReference, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!window.confirm(`حذف المرجع "${item.name}" من الجهاز؟`)) return;
+    try {
+      await deleteLocalReference(item.id);
+      if (localSelected?.id === item.id) {
+        setLocalSelected(null);
+        if (localPdfUrl) {
+          URL.revokeObjectURL(localPdfUrl);
+          setLocalPdfUrl('');
+        }
+      }
+      await loadLocal();
+      setLocalStatus('تم حذف المرجع.');
+    } catch {
+      setLocalStatus('تعذر حذف المرجع.');
+    }
+  };
 
   const openItem = async (item: ReferenceItem) => {
     await showReferenceInterstitial();
@@ -140,6 +227,56 @@ export const ReferencesPage: React.FC = () => {
     catch { setContentError('تعذر قراءة هذا المستند داخل التطبيق. تحقق من صلاحية الرابط وإتاحة الملف للقراءة.'); }
     finally { setContentLoading(false); }
   };
+
+  if (localSelected) {
+    return (
+      <div className="flex flex-col gap-3 pb-8 text-right">
+        <div className="sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md py-1">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={() => {
+                setLocalSelected(null);
+                if (localPdfUrl) {
+                  URL.revokeObjectURL(localPdfUrl);
+                  setLocalPdfUrl('');
+                }
+              }}
+              className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs"
+            >
+              <ChevronLeft className="w-5 h-5 rotate-180" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-base text-[#2C2145] truncate">{localSelected.name}</h1>
+              <p className="text-[11px] text-gray-400">مرجع محلي • {localSelected.type.toUpperCase()}</p>
+            </div>
+            <button onClick={() => setLocalSelected(null)} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
+          {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري فتح المرجع...</div>}
+          {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
+          {!contentLoading && !contentError && localSelected.type === 'pdf' && localPdfUrl && (
+            <iframe
+              title={localSelected.name}
+              src={localPdfUrl}
+              className="w-full min-h-[72vh] rounded-[14px] border-0 bg-white"
+            />
+          )}
+          {!contentLoading && !contentError && localSelected.type === 'docx' && wordHtml && (
+            <div className="reference-document word-document p-2" dangerouslySetInnerHTML={{ __html: wordHtml }} />
+          )}
+          {!contentLoading && !contentError && (localSelected.type === 'md' || localSelected.type === 'txt') && (
+            <div className="p-2">
+              <DocumentReader text={content} type={localSelected.type} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (selected) {
     return (
@@ -171,6 +308,66 @@ export const ReferencesPage: React.FC = () => {
 
       <div data-tour="references-library" className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
         <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} مرجع متاح</p></div></div>
+      </div>
+
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-[#2C2145]">مراجعي الخاصة</h3>
+            <p className="text-[11px] text-gray-400 mt-1">PDF و DOCX و Markdown و TXT • محفوظة على هذا الجهاز</p>
+          </div>
+          <label className="shrink-0 h-10 px-3 rounded-[13px] bg-[#5B3FD6] text-white text-xs font-bold flex items-center gap-2 justify-center cursor-pointer">
+            <Upload className="w-4 h-4" />
+            رفع مرجع
+            <input
+              type="file"
+              accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                void handleLocalUpload(file);
+                event.currentTarget.value = '';
+              }}
+            />
+          </label>
+        </div>
+
+        {localStatus && <div className="text-[11px] rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2">{localStatus}</div>}
+
+        {localItems.length === 0 ? (
+          <div className="rounded-[14px] bg-[#F8F9FD] px-3 py-4 text-center text-xs text-gray-400">
+            لم تضف أي مرجع خاص بعد.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {localItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => void openLocalItem(item)}
+                className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
+                    <FileText className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-[#2C2145] truncate">{item.name}</div>
+                    <div className="text-[10px] text-gray-400 mt-1">
+                      {item.type.toUpperCase()} • {(item.size / 1024 / 1024).toFixed(item.size >= 1024 * 1024 ? 1 : 2)} MB
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={(event) => void removeLocalItem(item, event)}
+                  className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0"
+                  aria-label="حذف المرجع"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div data-tour="references-search" className="relative">
