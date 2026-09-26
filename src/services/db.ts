@@ -48,8 +48,8 @@ function createInitialDatabase(): DatabaseSchema {
   const now = Date.now();
   const defaultDomain: StudyDomain = {
     id: appConfig.defaultDomainId,
-    name: 'الجمارك المغربية',
-    description: 'المجال الافتراضي المرفق مع التطبيق',
+    name: appConfig.defaultDomainName,
+    description: appConfig.defaultDomainDescription,
     enabled: true,
     builtIn: true,
     createdAt: now,
@@ -161,8 +161,8 @@ class StudyDatabaseService {
             ? parsed.domains
             : [{
                 id: appConfig.defaultDomainId,
-                name: 'الجمارك المغربية',
-                description: 'المجال الافتراضي المرفق مع التطبيق',
+                name: appConfig.defaultDomainName,
+                description: appConfig.defaultDomainDescription,
                 enabled: true,
                 builtIn: true,
                 createdAt: Date.now(),
@@ -210,8 +210,8 @@ class StudyDatabaseService {
             ? parsed.domains
             : [{
                 id: appConfig.defaultDomainId,
-                name: 'الجمارك المغربية',
-                description: 'المجال الافتراضي المرفق مع التطبيق',
+                name: appConfig.defaultDomainName,
+                description: appConfig.defaultDomainDescription,
                 enabled: true,
                 builtIn: true,
                 createdAt: Date.now(),
