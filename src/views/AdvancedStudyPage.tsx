@@ -54,6 +54,8 @@ type Section =
   | 'analytics'
   | 'backup';
 
+type StudyGroup = 'study' | 'knowledge' | 'performance' | 'banks' | 'backup';
+
 function downloadText(filename: string, text: string, type = 'application/json') {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
@@ -109,17 +111,38 @@ export const AdvancedStudyPage: React.FC = () => {
 
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  const sections = [
-    { id: 'tools' as const, label: 'بحث وإضافة', icon: Search },
-    { id: 'smart' as const, label: 'مراجعة ذكية', icon: Brain },
-    { id: 'flashcards' as const, label: 'Flashcards', icon: Layers3 },
-    { id: 'history' as const, label: 'سجل الجلسات', icon: ListChecks },
-    { id: 'pomodoro' as const, label: 'Pomodoro', icon: Clock3 },
-    { id: 'knowledge' as const, label: 'المعرفة', icon: NotebookPen },
-    { id: 'banks' as const, label: 'مختبر البنوك', icon: Database },
-    { id: 'analytics' as const, label: 'التحليلات', icon: ChartNoAxesCombined },
-    { id: 'backup' as const, label: 'نسخ احتياطي', icon: ShieldCheck },
+  const groupForSection = (value: Section): StudyGroup => {
+    if (value === 'tools' || value === 'smart' || value === 'pomodoro') return 'study';
+    if (value === 'flashcards' || value === 'knowledge') return 'knowledge';
+    if (value === 'history' || value === 'analytics') return 'performance';
+    if (value === 'banks') return 'banks';
+    return 'backup';
+  };
+
+  const activeGroup = groupForSection(section);
+  const groups: Array<{ id: StudyGroup; label: string; icon: any; defaultSection: Section }> = [
+    { id: 'study', label: 'الدراسة', icon: Brain, defaultSection: 'smart' },
+    { id: 'knowledge', label: 'المعرفة', icon: Layers3, defaultSection: 'flashcards' },
+    { id: 'performance', label: 'الأداء', icon: ChartNoAxesCombined, defaultSection: 'analytics' },
+    { id: 'banks', label: 'البنوك', icon: Database, defaultSection: 'banks' },
+    { id: 'backup', label: 'النسخ', icon: ShieldCheck, defaultSection: 'backup' },
   ];
+
+  const subSections: Partial<Record<StudyGroup, Array<{ id: Section; label: string }>>> = {
+    study: [
+      { id: 'smart', label: 'مراجعة ذكية' },
+      { id: 'tools', label: 'بحث وإضافة' },
+      { id: 'pomodoro', label: 'Pomodoro' },
+    ],
+    knowledge: [
+      { id: 'flashcards', label: 'Flashcards' },
+      { id: 'knowledge', label: 'قاموس وملاحظات' },
+    ],
+    performance: [
+      { id: 'analytics', label: 'التحليلات' },
+      { id: 'history', label: 'سجل الجلسات' },
+    ],
+  };
 
   const weakTopics = db.weakTopics();
   const smartQuestions = db.smartQuestionPool(20);
@@ -267,13 +290,13 @@ export const AdvancedStudyPage: React.FC = () => {
     <div className="flex flex-col gap-4 pb-8 text-right">
       <ScreenHeader title="مركز المراجعة المتقدم" subtitle="أدوات التعلم والتحليل وإدارة المحتوى" />
 
-      <div className="grid grid-cols-2 gap-2">
-        {sections.map(({ id, label, icon: Icon }) => (
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {groups.map(({ id, label, icon: Icon, defaultSection }) => (
           <button
             key={id}
-            onClick={() => { setSection(id); setStatus(''); }}
+            onClick={() => { setSection(defaultSection); setStatus(''); }}
             className={`rounded-[17px] border p-3.5 flex items-center gap-3 text-right transition-all ${
-              section === id ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]' : 'bg-white border-gray-100 text-[#2C2145]'
+              activeGroup === id ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]' : 'bg-white border-gray-100 text-[#2C2145]'
             }`}
           >
             <div className="w-9 h-9 rounded-[11px] bg-white flex items-center justify-center shadow-xs">
@@ -283,6 +306,24 @@ export const AdvancedStudyPage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {subSections[activeGroup] && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {subSections[activeGroup]!.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { setSection(item.id); setStatus(''); }}
+              className={`shrink-0 px-3 py-2 rounded-[11px] text-[11px] font-bold border ${
+                section === item.id
+                  ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]'
+                  : 'bg-white text-gray-600 border-gray-100'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {status && (
         <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>
@@ -386,7 +427,7 @@ export const AdvancedStudyPage: React.FC = () => {
 
       {section === 'smart' && (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-white rounded-[18px] p-4 border border-gray-100">
               <Brain className="w-5 h-5 text-[#5B3FD6] mb-2" />
               <div className="text-xs text-gray-400">أسئلة مقترحة</div>
@@ -468,7 +509,7 @@ export const AdvancedStudyPage: React.FC = () => {
 
       {section === 'flashcards' && (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-white rounded-[17px] p-4 border border-gray-100">
               <div className="text-xs text-gray-400">كل البطاقات</div>
               <div className="text-2xl font-bold">{cards.length}</div>
@@ -686,7 +727,7 @@ export const AdvancedStudyPage: React.FC = () => {
               <div className="text-xs text-gray-400">تحتاج إلى بنكين على الأقل لإجراء المقارنة.</div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <select value={compareA} onChange={(e) => setCompareA(e.target.value)}
                     className="rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-2.5 text-xs">
                     {banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
@@ -810,7 +851,7 @@ export const AdvancedStudyPage: React.FC = () => {
 
       {section === 'analytics' && (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-white rounded-[18px] p-4 border border-gray-100">
               <div className="text-xs text-gray-400">Streak الحالي</div>
               <div className="text-3xl font-bold text-[#5B3FD6] mt-1">{streak}</div>
