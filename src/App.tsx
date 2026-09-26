@@ -130,7 +130,7 @@ export function App() {
           try {
             new Notification('🎓 تذكير مراجعة الجمارك', {
               body: randomQ.question,
-              icon: '/favicon.ico',
+              icon: `${import.meta.env.BASE_URL}favicon.ico`,
             });
           } catch {
             // ignore
