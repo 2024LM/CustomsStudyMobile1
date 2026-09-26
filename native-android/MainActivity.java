@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NexusAdsPlugin.class);
+        registerPlugin(NexusStoragePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
