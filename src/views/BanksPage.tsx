@@ -16,7 +16,8 @@ import { db } from '../services/db';
 import { ExcelPreview } from '../types';
 import { parseExcelFile } from '../services/excelImporter';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
+import { fetchRemoteBankFile, fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
+import { showInterstitial } from '../services/ads';
 
 interface BanksPageProps {
   onBankSelected: () => void;
@@ -49,21 +50,18 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
     setDownloadingBankId(bank.id);
     setPreview(null);
     setStatus('جارٍ تحميل البنك وفحصه…');
+
     try {
-      const res = await fetch(bank.downloadUrl, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`تعذر تنزيل الملف (HTTP ${res.status})`);
-      const contentType = (res.headers.get('content-type') || '').toLowerCase();
-      const blob = await res.blob();
-      if (blob.size > 5 * 1024 * 1024) throw new Error('حجم البنك يتجاوز 5 MB');
-      if (blob.size === 0) throw new Error('ملف البنك فارغ');
-      if (contentType.includes('text/html')) throw new Error('الرابط لا يشير إلى ملف XLSX مباشر');
-      const file = new File([blob], `${bank.name.slice(0, 60) || bank.id}.xlsx`, {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+      const file = await fetchRemoteBankFile(bank);
       const parsed = await parseExcelFile(file);
       setPreview(parsed);
       setBankName(bank.name.slice(0, 80));
-      setStatus(parsed.valid ? 'تم تنزيل البنك وفحصه. راجع البيانات ثم أكد الاستيراد.' : 'تم تنزيل الملف لكنه لم يجتز فحص صيغة البنك.');
+      setStatus(parsed.valid
+        ? 'تم تنزيل البنك وفحصه. راجع البيانات ثم أكد الاستيراد.'
+        : 'تم تنزيل الملف لكنه لم يجتز فحص صيغة البنك.');
+
+      // الإعلان اختياري ولا يملك إيقاف التنزيل أو الفحص.
+      void showInterstitial();
     } catch (e: any) {
       setStatus(e?.message || 'تعذر تحميل البنك أو فحصه');
     } finally {
@@ -75,7 +73,10 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
 
   const handleImportClick = () => {
     if (importing) return;
-    fileInputRef.current?.click();
+    const input = fileInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
   };
 
   const handleFile = async (file: File) => {
@@ -88,6 +89,8 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
       const defaultName = file.name.replace(/\.[^/.]+$/, '').slice(0, 80) || 'بنك أسئلة';
       setBankName(defaultName);
       setStatus('');
+      // بعد التقاط الملف فقط؛ حتى لا يفقد Android حدث الضغط الخاص بمنتقي الملفات.
+      void showInterstitial();
     } catch (e: any) {
       setStatus(e?.message || 'تعذر فحص الملف');
     } finally {
@@ -96,9 +99,10 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0] || null;
+    e.target.value = '';
     if (file) {
-      handleFile(file);
+      void handleFile(file);
     }
   };
 
