@@ -12,15 +12,37 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Calendar;
 
-@CapacitorPlugin(name = "NexusStudyAlarm")
+@CapacitorPlugin(name = "NexusStudyAlarm", permissions = {\n    @Permission(alias = "notifications", strings = { Manifest.permission.POST_NOTIFICATIONS })\n})
 public class NexusStudyAlarmPlugin extends Plugin {
     private static final int REQUEST_CODE = 7401;
+
+    @PluginMethod
+    public void requestNotificationPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || getPermissionState("notifications") == PermissionState.GRANTED) {
+            JSObject result = new JSObject();
+            result.put("granted", true);
+            call.resolve(result);
+            return;
+        }
+        requestPermissionForAlias("notifications", call, "notificationPermissionCallback");
+    }
+
+    @PermissionCallback
+    private void notificationPermissionCallback(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", getPermissionState("notifications") == PermissionState.GRANTED);
+        call.resolve(result);
+    }
 
     @PluginMethod
     public void saveCustomSound(PluginCall call) {
