@@ -81,7 +81,7 @@ export const MorePage: React.FC<MorePageProps> = ({
       icon: Bell,
       title: 'الإشعارات والتحديثات',
       subtitle: unreadNotificationsCount > 0 ? `لديك ${unreadNotificationsCount} إشعار جديد` : 'عرض إعلانات وتحديثات التطبيق',
-      action: onOpenNotifications || onGoToSettings,
+      action: onOpenNotifications || (() => {}),
       badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined,
     },
     {
