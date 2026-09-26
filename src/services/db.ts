@@ -1,4 +1,5 @@
 import initialQuestionsRaw from '../data/questions.json';
+import { loadNativeSnapshot, saveNativeSnapshot } from './nativeStorage';
 import {
   ActivityBucket,
   AppNotification,
@@ -129,9 +130,45 @@ function createInitialDatabase(): DatabaseSchema {
 class StudyDatabaseService {
   private data: DatabaseSchema;
   private listeners: Set<() => void> = new Set();
+  private nativePersistenceReady = false;
 
   constructor() {
     this.data = this.loadFromStorage();
+  }
+
+  public async initializePersistence(): Promise<void> {
+    const nativeSnapshot = await loadNativeSnapshot();
+
+    if (nativeSnapshot) {
+      try {
+        const parsed = JSON.parse(nativeSnapshot) as DatabaseSchema;
+        if (parsed.banks && parsed.questions && parsed.settings) {
+          parsed.attempts = Array.isArray(parsed.attempts) ? parsed.attempts : [];
+          parsed.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
+          parsed.notifications = Array.isArray(parsed.notifications) ? parsed.notifications : [];
+          parsed.questionStates = parsed.questionStates && typeof parsed.questionStates === 'object'
+            ? parsed.questionStates
+            : {};
+
+          this.data = parsed;
+          this.nativePersistenceReady = true;
+
+          // Keep a browser-readable recovery copy. SQLite remains authoritative on Android.
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+          } catch (error) {
+            console.warn('Unable to refresh localStorage recovery copy:', error);
+          }
+          return;
+        }
+      } catch (error) {
+        console.warn('Native SQLite snapshot was invalid; migrating local data instead.', error);
+      }
+    }
+
+    // First Android launch after this upgrade: migrate the existing localStorage state.
+    this.nativePersistenceReady = true;
+    await saveNativeSnapshot(JSON.stringify(this.data));
   }
 
   private loadFromStorage(): DatabaseSchema {
@@ -157,10 +194,17 @@ class StudyDatabaseService {
   }
 
   private saveToStorage(data: DatabaseSchema) {
+    const serialized = JSON.stringify(data);
+
+    // Keep this recovery copy for the web build and for safe rollback during migration.
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, serialized);
     } catch (e) {
       console.warn('Storage quota exceeded or storage error:', e);
+    }
+
+    if (this.nativePersistenceReady) {
+      void saveNativeSnapshot(serialized);
     }
   }
 
