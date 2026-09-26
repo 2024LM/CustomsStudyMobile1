@@ -341,10 +341,15 @@ export const ReferencesPage: React.FC = () => {
         ) : (
           <div className="flex flex-col gap-2">
             {localItems.map((item) => (
-              <button
+              <div
                 key={item.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => void openLocalItem(item)}
-                className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') void openLocalItem(item);
+                }}
+                className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
@@ -364,7 +369,7 @@ export const ReferencesPage: React.FC = () => {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}
