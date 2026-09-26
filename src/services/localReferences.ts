@@ -14,6 +14,8 @@ export interface LocalReference {
   description?: string;
   categories?: string[];
   originalUrl?: string;
+  downloadedVersion?: number;
+  remoteUpdatedAt?: string;
   data: Blob;
 }
 
@@ -100,6 +102,8 @@ export async function saveDownloadedReference(input: {
   description: string;
   categories: string[];
   originalUrl: string;
+  version: number;
+  updatedAt: string;
   type: LocalReferenceType;
   mimeType: string;
   data: Blob;
@@ -122,6 +126,8 @@ export async function saveDownloadedReference(input: {
     description: input.description.slice(0, 500),
     categories: input.categories.slice(0, 20),
     originalUrl: input.originalUrl,
+    downloadedVersion: Math.max(1, Math.floor(input.version || 1)),
+    remoteUpdatedAt: input.updatedAt || '',
     data: input.data,
   };
 
