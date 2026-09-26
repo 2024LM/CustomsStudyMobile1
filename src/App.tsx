@@ -225,7 +225,7 @@ export function App() {
   return (
     <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
-      <div className="w-full max-w-md min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md border-x border-gray-100">
+      <div className="w-full max-w-md sm:max-w-none min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md sm:shadow-none border-x sm:border-x-0 border-gray-100">
         {shouldShowCurrentTour && currentTourSteps && (
           <GuidedTour
             key={`${page}-${tourRefresh}`}
@@ -343,7 +343,7 @@ export function App() {
         </main>
 
         {/* Bottom Navigation Bar */}
-        {!sessionFocus && <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
+        {!sessionFocus && <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 flex items-center justify-around shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isSelected =
