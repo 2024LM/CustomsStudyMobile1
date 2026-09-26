@@ -302,6 +302,99 @@ class StudyDatabaseService {
     this.notify();
   }
 
+  public createDomain(name: string, description: string = ''): string {
+    const cleanName = name.trim().replace(/\s+/g, ' ');
+    if (cleanName.length < 2 || cleanName.length > 80) {
+      throw new Error('Domain name must be 2..80 characters');
+    }
+
+    const duplicate = this.data.domains.some(
+      (domain) => domain.enabled && domain.name.trim().toLocaleLowerCase('ar') === cleanName.toLocaleLowerCase('ar')
+    );
+    if (duplicate) throw new Error('A study domain with this name already exists');
+
+    const now = Date.now();
+    const domainId = 'domain_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+    const bankId = 'bank_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+
+    this.data.domains.push({
+      id: domainId,
+      name: cleanName,
+      description: description.trim().slice(0, 300),
+      enabled: true,
+      builtIn: false,
+      createdAt: now,
+    });
+
+    this.data.banks.push({
+      domainId,
+      id: bankId,
+      name: 'البنك الرئيسي',
+      description: 'بنك افتراضي للمجال الجديد',
+      version: 1,
+      formatVersion: 1,
+      builtIn: false,
+      enabled: true,
+      importedAt: now,
+      sourceName: 'generated',
+    });
+
+    this.data.settings['active_domain_id'] = domainId;
+    this.data.settings['active_bank_id'] = bankId;
+    this.notify();
+    return domainId;
+  }
+
+  public deleteUserDomain(domainId: string) {
+    const domain = this.data.domains.find((item) => item.id === domainId && item.enabled);
+    if (!domain) throw new Error('Unknown or disabled study domain');
+    if (domain.builtIn) throw new Error('Built-in study domain cannot be deleted');
+
+    domain.enabled = false;
+    const bankIds = new Set(
+      this.data.banks
+        .filter((bank) => bank.domainId === domainId)
+        .map((bank) => bank.id)
+    );
+
+    for (const bank of this.data.banks) {
+      if (bankIds.has(bank.id)) bank.enabled = false;
+    }
+    for (const question of this.data.questions) {
+      if (bankIds.has(question.bankId)) question.enabled = false;
+    }
+
+    if (this.activeDomainId() === domainId) {
+      const fallbackDomain = this.data.domains.find((item) => item.enabled);
+      if (!fallbackDomain) throw new Error('No enabled study domain remains');
+      this.data.settings['active_domain_id'] = fallbackDomain.id;
+
+      const fallbackBank = this.data.banks.find(
+        (bank) => bank.enabled && bank.domainId === fallbackDomain.id
+      );
+      if (fallbackBank) this.data.settings['active_bank_id'] = fallbackBank.id;
+    }
+
+    this.notify();
+  }
+
+  public domainQuestionCount(domainId: string): number {
+    const bankIds = new Set(
+      this.data.banks
+        .filter((bank) => bank.enabled && bank.domainId === domainId)
+        .map((bank) => bank.id)
+    );
+    return this.data.questions.filter(
+      (question) => question.enabled && bankIds.has(question.bankId)
+    ).length;
+  }
+
+  public domainBankCount(domainId: string): number {
+    return this.data.banks.filter(
+      (bank) => bank.enabled && bank.domainId === domainId
+    ).length;
+  }
+
   public banks(): QuestionBank[] {
     const domainId = this.activeDomainId();
     return this.data.banks
@@ -318,8 +411,11 @@ class StudyDatabaseService {
   }
 
   public setActiveBank(bankId: string) {
-    const bank = this.data.banks.find((b) => b.id === bankId && b.enabled);
-    if (!bank) throw new Error('Unknown or disabled bank');
+    const domainId = this.activeDomainId();
+    const bank = this.data.banks.find(
+      (b) => b.id === bankId && b.enabled && b.domainId === domainId
+    );
+    if (!bank) throw new Error('Unknown, disabled, or cross-domain bank');
     this.data.settings['active_bank_id'] = bankId;
     this.notify();
   }
