@@ -3,6 +3,8 @@ export interface AppTemplateConfig {
   appId: string;
   appName: string;
   defaultDomainId: string;
+  defaultDomainName: string;
+  defaultDomainDescription: string;
   features: {
     banks: boolean;
     references: boolean;
@@ -18,6 +20,8 @@ export const appConfig: AppTemplateConfig = {
   appId: 'com.nexus.customsstudy',
   appName: 'منصة المراجعة',
   defaultDomainId: 'customs_ma',
+  defaultDomainName: 'الجمارك المغربية',
+  defaultDomainDescription: 'المجال الافتراضي المرفق مع التطبيق',
   features: {
     banks: true,
     references: true,
