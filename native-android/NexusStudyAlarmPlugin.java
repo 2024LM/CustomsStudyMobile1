@@ -21,7 +21,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Calendar;
 
-@CapacitorPlugin(name = "NexusStudyAlarm", permissions = {\n    @Permission(alias = "notifications", strings = { Manifest.permission.POST_NOTIFICATIONS })\n})
+@CapacitorPlugin(
+    name = "NexusStudyAlarm",
+    permissions = {
+        @Permission(
+            alias = "notifications",
+            strings = { Manifest.permission.POST_NOTIFICATIONS }
+        )
+    }
+)
 public class NexusStudyAlarmPlugin extends Plugin {
     private static final int REQUEST_CODE = 7401;
 
