@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowRight, Clock3, Eye, Shuffle, Gauge, FastForward } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from '../services/db';
@@ -12,14 +12,24 @@ import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
   initialTopic?: string | string[] | null;
+  initialMode?: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart';
+  initialCount?: number | null;
+  autoStart?: boolean;
   onActiveChange?: (active: boolean) => void;
   onExit?: () => void;
 }
 
-export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, onActiveChange, onExit }) => {
+export const SessionPage: React.FC<SessionPageProps> = ({
+  initialTopic = null,
+  initialMode = 'classic',
+  initialCount = null,
+  autoStart = false,
+  onActiveChange,
+  onExit,
+}) => {
   const initialTopics = Array.isArray(initialTopic) ? initialTopic : initialTopic ? [initialTopic] : [];
-  const [count, setCount] = useState<number>(20);
-  const [sessionMode, setSessionMode] = useState<'classic' | 'review' | 'mistakes' | 'favorites' | 'smart'>('classic');
+  const [count, setCount] = useState<number>(initialCount || 20);
+  const [sessionMode, setSessionMode] = useState<'classic' | 'review' | 'mistakes' | 'favorites' | 'smart'>(initialMode);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -47,6 +57,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const favoritesCount = db.favorites().filter((q) => q.qcmStatus === 'READY').length;
   const smartCount = db.smartQuestionPool(500).length;
   const sessionActive = questions.length > 0 && sessionId !== null && !done;
+  const autoStartHandled = useRef(false);
 
   useEffect(() => {
     onActiveChange?.(sessionActive);
@@ -119,6 +130,12 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
       setXp(0);
     }
   };
+
+  useEffect(() => {
+    if (!autoStart || autoStartHandled.current || sessionId !== null || questions.length > 0) return;
+    autoStartHandled.current = true;
+    handleStartSession();
+  }, [autoStart, sessionId, questions.length]);
 
   const handleNext = async () => {
     if (index + 1 >= questions.length) {
