@@ -5,6 +5,9 @@ export interface ReferenceItem {
   description: string;
   url: string;
   type: string;
+  version: number;
+  updatedAt: string;
+  enabled: boolean;
 }
 
 const SHEET_ID = '1wnL7pZRqmSixUA7dyR6d6bJ-a4tM8UDtPUQ0Oo3yrW4';
@@ -49,14 +52,25 @@ function normalize(rows: string[][]): ReferenceItem[] {
   const required = ['ID', 'التصنيفات', 'العنوان', 'وصف مختصر', 'رابط الملف', 'نوع الملف'];
   if (required.some((h) => at(h) < 0)) throw new Error('صيغة فهرس المراجع غير متوافقة مع التطبيق.');
 
-  return rows.slice(1).map((r) => ({
-    id: (r[at('ID')] || '').trim(),
-    categories: (r[at('التصنيفات')] || '').split('|').map((x) => x.trim()).filter(Boolean),
-    title: (r[at('العنوان')] || '').trim(),
-    description: (r[at('وصف مختصر')] || '').trim(),
-    url: (r[at('رابط الملف')] || '').trim(),
-    type: (r[at('نوع الملف')] || '').trim(),
-  })).filter((x) => x.id && x.title && /^https:\/\//i.test(x.url));
+  const versionIndex = at('Version');
+  const updatedAtIndex = at('UpdatedAt');
+  const enabledIndex = at('Enabled');
+
+  return rows.slice(1).map((r) => {
+    const parsedVersion = versionIndex >= 0 ? Number((r[versionIndex] || '').trim()) : 1;
+    const enabledRaw = enabledIndex >= 0 ? (r[enabledIndex] || '').trim().toLowerCase() : 'true';
+    return {
+      id: (r[at('ID')] || '').trim(),
+      categories: (r[at('التصنيفات')] || '').split('|').map((x) => x.trim()).filter(Boolean),
+      title: (r[at('العنوان')] || '').trim(),
+      description: (r[at('وصف مختصر')] || '').trim(),
+      url: (r[at('رابط الملف')] || '').trim(),
+      type: (r[at('نوع الملف')] || '').trim(),
+      version: Number.isFinite(parsedVersion) && parsedVersion >= 1 ? Math.floor(parsedVersion) : 1,
+      updatedAt: updatedAtIndex >= 0 ? (r[updatedAtIndex] || '').trim() : '',
+      enabled: !['false', '0', 'no', 'off'].includes(enabledRaw),
+    };
+  }).filter((x) => x.enabled && x.id && x.title && /^https:\/\//i.test(x.url));
 }
 
 export async function fetchReferenceIndex(_force = false): Promise<{ items: ReferenceItem[]; cached: boolean }> {
