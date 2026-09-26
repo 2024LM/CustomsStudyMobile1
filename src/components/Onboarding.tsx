@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, BarChart3, BookOpen, GraduationCap, Library, UserRound } from 'lucide-react';
+import { appConfig } from '../config/appConfig';
 
 interface OnboardingProps { onComplete: (name: string) => void; }
 
 const slides = [
-  { icon: GraduationCap, title: 'مرحبًا بك في منصة المراجعة', text: 'مساحتك لتنظيم المراجعة، استخدام بنوك الأسئلة، ومتابعة تقدمك في مكان واحد.' },
+  { icon: GraduationCap, title: `مرحبًا بك في ${appConfig.appName}`, text: 'مساحتك لتنظيم المراجعة، استخدام بنوك الأسئلة، ومتابعة تقدمك في مكان واحد.' },
   { icon: BookOpen, title: 'راجع بطريقتك', text: 'اختر بنك الأسئلة، ابحث وفلتر حسب النوع، وحدد المحاور وعدد الأسئلة التي تريد مراجعتها.' },
   { icon: BarChart3, title: 'تابع تقدمك', text: 'راجع أخطاءك ومفضلتك، وتابع نشاطك اليومي والأسبوعي والشهري لجميع البنوك أو لبنك محدد.' },
   { icon: Library, title: 'مراجع وبنوك قابلة للتوسّع', text: 'استفد من المراجع المنشورة، وحمّل بنوك أسئلة إضافية أو استورد ملف XLSX متوافقًا مع التطبيق.' },
@@ -24,7 +25,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     <div className="min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]" dir="rtl">
       <div className="w-full max-w-md min-h-screen bg-white flex flex-col px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[#5B3FD6]">منصة المراجعة</span>
+          <span className="text-xs font-bold text-[#5B3FD6]">{appConfig.appName}</span>
           <span className="text-xs text-gray-400">{step + 1} / {slides.length + 1}</span>
         </div>
 
