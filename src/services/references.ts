@@ -114,6 +114,53 @@ export async function fetchReferenceContent(item: ReferenceItem): Promise<string
   return text;
 }
 
+export function downloadableReferenceType(type: string): 'pdf' | 'docx' | 'md' | 'txt' | null {
+  const t = type.toLowerCase();
+  if (t.includes('pdf')) return 'pdf';
+  if (isWordType(t)) return 'docx';
+  if (t.includes('md') || t.includes('markdown')) return 'md';
+  if (t.includes('txt') || t.includes('text') || t.includes('google')) return 'txt';
+  return null;
+}
+
+export async function fetchReferenceDownload(item: ReferenceItem): Promise<{ blob: Blob; type: 'pdf' | 'docx' | 'md' | 'txt'; mimeType: string }> {
+  const type = downloadableReferenceType(item.type);
+  if (!type) throw new Error('هذا النوع غير مدعوم للتنزيل داخل التطبيق.');
+
+  if (type === 'docx') {
+    const buffer = await fetchReferenceDocx(item);
+    return {
+      blob: new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      type,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+  }
+
+  if (type === 'txt' && item.type.toLowerCase().includes('google')) {
+    const text = await fetchReferenceContent(item);
+    return { blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), type, mimeType: 'text/plain' };
+  }
+
+  const res = await safeFetch(item.url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  if (!blob.size) throw new Error('المرجع فارغ.');
+  if (blob.size > 25 * 1024 * 1024) throw new Error('حجم المرجع يتجاوز 25 MB.');
+
+  const mimeType = (blob.type || res.headers.get('content-type') || '').split(';')[0].trim();
+  if (mimeType === 'text/html') throw new Error('الرابط لا يشير إلى ملف مباشر صالح للتنزيل.');
+
+  return {
+    blob,
+    type,
+    mimeType: mimeType || (
+      type === 'pdf' ? 'application/pdf'
+        : type === 'md' ? 'text/markdown'
+          : 'text/plain'
+    ),
+  };
+}
+
 export function isInlineReadable(type: string): boolean {
   const t = type.toLowerCase();
   return t.includes('md') || t.includes('txt') || t.includes('google') || isWordType(t);
