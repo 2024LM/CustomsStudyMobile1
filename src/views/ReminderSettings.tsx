@@ -54,7 +54,7 @@ export const ReminderSettings: React.FC<ReminderSettingsProps> = ({
 
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
-        new Notification('🎓 سؤال مراجعة الجمارك', {
+        new Notification(`🎓 سؤال مراجعة: ${db.activeDomain().name}`, {
           body: randomQ.question,
           icon: `${import.meta.env.BASE_URL}favicon.ico`,
         });
