@@ -9,7 +9,17 @@ export type Page =
   | 'SETTINGS'
   | 'MORE';
 
+export interface StudyDomain {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  builtIn: boolean;
+  createdAt: number;
+}
+
 export interface QuestionBank {
+  domainId: string;
   id: string;
   name: string;
   description: string;
