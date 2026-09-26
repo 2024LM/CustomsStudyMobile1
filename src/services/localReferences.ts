@@ -1,4 +1,5 @@
 export type LocalReferenceType = 'pdf' | 'docx' | 'md' | 'txt';
+export type LocalReferenceSource = 'upload' | 'download';
 
 export interface LocalReference {
   id: string;
@@ -8,11 +9,16 @@ export interface LocalReference {
   size: number;
   addedAt: number;
   domainId: string;
+  source: LocalReferenceSource;
+  remoteId?: string;
+  description?: string;
+  categories?: string[];
+  originalUrl?: string;
   data: Blob;
 }
 
 const DB_NAME = 'study_local_references';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'files';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -21,11 +27,15 @@ function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
+      let store: IDBObjectStore;
       if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id' });
-        store.createIndex('domainId', 'domainId', { unique: false });
-        store.createIndex('addedAt', 'addedAt', { unique: false });
+        store = db.createObjectStore(STORE, { keyPath: 'id' });
+      } else {
+        store = request.transaction!.objectStore(STORE);
       }
+      if (!store.indexNames.contains('domainId')) store.createIndex('domainId', 'domainId', { unique: false });
+      if (!store.indexNames.contains('addedAt')) store.createIndex('addedAt', 'addedAt', { unique: false });
+      if (!store.indexNames.contains('source')) store.createIndex('source', 'source', { unique: false });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('Unable to open local reference database'));
@@ -64,6 +74,7 @@ export async function addLocalReference(file: File, domainId: string): Promise<L
     size: file.size,
     addedAt: Date.now(),
     domainId,
+    source: 'upload',
     data: file.slice(0, file.size, file.type || undefined),
   };
 
@@ -83,6 +94,53 @@ export async function addLocalReference(file: File, domainId: string): Promise<L
   return item;
 }
 
+export async function saveDownloadedReference(input: {
+  remoteId: string;
+  title: string;
+  description: string;
+  categories: string[];
+  originalUrl: string;
+  type: LocalReferenceType;
+  mimeType: string;
+  data: Blob;
+  domainId: string;
+}): Promise<LocalReference> {
+  if (input.data.size <= 0) throw new Error('المرجع فارغ');
+  if (input.data.size > MAX_FILE_BYTES) throw new Error('حجم المرجع يتجاوز 25 MB');
+
+  const id = 'download_' + input.domainId + '_' + input.remoteId;
+  const item: LocalReference = {
+    id,
+    name: input.title.slice(0, 180),
+    type: input.type,
+    mimeType: input.mimeType || 'application/octet-stream',
+    size: input.data.size,
+    addedAt: Date.now(),
+    domainId: input.domainId,
+    source: 'download',
+    remoteId: input.remoteId,
+    description: input.description.slice(0, 500),
+    categories: input.categories.slice(0, 20),
+    originalUrl: input.originalUrl,
+    data: input.data,
+  };
+
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(item);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Unable to save downloaded reference'));
+      tx.onabort = () => reject(tx.error || new Error('Reference download save was aborted'));
+    });
+  } finally {
+    db.close();
+  }
+
+  return item;
+}
+
 export async function listLocalReferences(domainId: string): Promise<LocalReference[]> {
   const db = await openDb();
   try {
@@ -91,7 +149,9 @@ export async function listLocalReferences(domainId: string): Promise<LocalRefere
       const index = tx.objectStore(STORE).index('domainId');
       const request = index.getAll(IDBKeyRange.only(domainId));
       request.onsuccess = () => {
-        const items = (request.result as LocalReference[]).sort((a, b) => b.addedAt - a.addedAt);
+        const items = (request.result as LocalReference[])
+          .map((item) => ({ ...item, source: item.source || 'upload' }))
+          .sort((a, b) => b.addedAt - a.addedAt);
         resolve(items);
       };
       request.onerror = () => reject(request.error || new Error('Unable to list references'));
