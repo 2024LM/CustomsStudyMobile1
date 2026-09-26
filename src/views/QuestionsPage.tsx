@@ -8,16 +8,29 @@ export const QuestionsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('ALL');
+  const [selectedType, setSelectedType] = useState<'ALL' | 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL'>('ALL');
   const topics = useMemo(() => Array.from(new Set(db.questions(db.activeBankId()).map((q) => q.topic.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar')), []);
   const pageSize = 50;
 
   const total = useMemo(() => {
-    return db.searchCount(db.activeBankId(), search, selectedTopic === 'ALL' ? null : selectedTopic);
-  }, [search, selectedTopic]);
+    return db.searchCount(
+      db.activeBankId(),
+      search,
+      selectedTopic === 'ALL' ? null : selectedTopic,
+      selectedType === 'ALL' ? null : selectedType
+    );
+  }, [search, selectedTopic, selectedType]);
 
   const questions = useMemo(() => {
-    return db.questionPage(db.activeBankId(), search, selectedTopic === 'ALL' ? null : selectedTopic, pageSize, page * pageSize);
-  }, [search, page, selectedTopic]);
+    return db.questionPage(
+      db.activeBankId(),
+      search,
+      selectedTopic === 'ALL' ? null : selectedTopic,
+      pageSize,
+      page * pageSize,
+      selectedType === 'ALL' ? null : selectedType
+    );
+  }, [search, page, selectedTopic, selectedType]);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -57,6 +70,32 @@ export const QuestionsPage: React.FC = () => {
 
       {/* Question type filter */}
       <div data-tour="questions-filter" className="flex items-center gap-2 overflow-x-auto pb-1">
+        {[
+          ['ALL', 'كل الأنواع'],
+          ['QCM', 'اختيار متعدد'],
+          ['TRUE_FALSE', 'صح / خطأ'],
+          ['OPEN', 'مفتوح'],
+          ['ORAL', 'شفهي'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => {
+              setSelectedType(value as 'ALL' | 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL');
+              setPage(0);
+            }}
+            className={`shrink-0 px-3.5 py-2 rounded-[12px] text-xs font-bold border transition-colors ${
+              selectedType === value
+                ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]'
+                : 'bg-white text-gray-600 border-[#E6E2F0]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Topic filter */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
