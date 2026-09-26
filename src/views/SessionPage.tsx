@@ -19,7 +19,7 @@ interface SessionPageProps {
 export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, onActiveChange, onExit }) => {
   const initialTopics = Array.isArray(initialTopic) ? initialTopic : initialTopic ? [initialTopic] : [];
   const [count, setCount] = useState<number>(20);
-  const [sessionMode, setSessionMode] = useState<'classic' | 'review'>('classic');
+  const [sessionMode, setSessionMode] = useState<'classic' | 'review' | 'mistakes' | 'favorites' | 'smart'>('classic');
   const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -43,6 +43,9 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const topics = useMemo(() => db.topics(), []);
   const playableCount = db.playableQuestionCount();
   const dueReviewCount = db.dueReviewQuestions(500).length;
+  const mistakesCount = db.mistakes().filter((q) => q.qcmStatus === 'READY').length;
+  const favoritesCount = db.favorites().filter((q) => q.qcmStatus === 'READY').length;
+  const smartCount = db.smartQuestionPool(500).length;
   const sessionActive = questions.length > 0 && sessionId !== null && !done;
 
   useEffect(() => {
@@ -83,9 +86,26 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const handleStartSession = () => {
     persistSessionPreferences();
     const topicFilter = selectedTopics.length > 0 ? selectedTopics : null;
-    const qList = sessionMode === 'review'
-      ? db.dueReviewQuestions(count, topicFilter)
-      : db.sessionQuestions(count, topicFilter);
+    let qList: QuizQuestion[] = [];
+    if (sessionMode === 'review') {
+      qList = db.dueReviewQuestions(count, topicFilter);
+    } else if (sessionMode === 'mistakes') {
+      qList = db.mistakes()
+        .filter((q) => q.qcmStatus === 'READY')
+        .filter((q) => !topicFilter || (Array.isArray(topicFilter) ? topicFilter.includes(q.topic) : q.topic === topicFilter))
+        .slice(0, count);
+    } else if (sessionMode === 'favorites') {
+      qList = db.favorites()
+        .filter((q) => q.qcmStatus === 'READY')
+        .filter((q) => !topicFilter || (Array.isArray(topicFilter) ? topicFilter.includes(q.topic) : q.topic === topicFilter))
+        .slice(0, count);
+    } else if (sessionMode === 'smart') {
+      qList = db.smartQuestionPool(500)
+        .filter((q) => !topicFilter || (Array.isArray(topicFilter) ? topicFilter.includes(q.topic) : q.topic === topicFilter))
+        .slice(0, count);
+    } else {
+      qList = db.sessionQuestions(count, topicFilter);
+    }
     if (qList.length > 0) {
       const sid = db.createSession(qList.length, db.activeBankId(), sessionMode);
       db.attachSessionQuestions(sid, qList);
@@ -308,7 +328,13 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             {showProgress && <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">{sessionMode === 'review' ? '🧠 مراجعة ذكية' : '📚 مراجعة كلاسيكية'}</span>
+            <span className="text-[11px] text-gray-500">{
+              sessionMode === 'review' ? '🧠 مراجعة مستحقة'
+                : sessionMode === 'mistakes' ? '❌ مراجعة الأخطاء'
+                  : sessionMode === 'favorites' ? '❤️ المفضلة'
+                    : sessionMode === 'smart' ? '✨ اختيار ذكي'
+                      : '📚 مراجعة كلاسيكية'
+            }</span>
             <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-semibold px-2.5 py-1 rounded-[12px]">{currentQuestion.topic || 'عام'}</span>
           </div>
           {showProgress && (
@@ -440,32 +466,37 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm text-[#2C2145]">نوع الجلسة</h3>
-          <span className="text-[11px] text-gray-400">{dueReviewCount} سؤال مستحق للمراجعة</span>
+          <span className="text-[11px] text-gray-400">اختر المصدر الأنسب للمراجعة</span>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setSessionMode('classic')}
-            className={`p-3.5 rounded-[16px] border text-right transition-all ${
-              sessionMode === 'classic'
-                ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]'
-                : 'bg-white border-[#E7E3EF] text-gray-700'
-            }`}
-          >
-            <span className="block text-sm font-bold">📚 كلاسيكية</span>
-            <span className="block text-[11px] mt-1 opacity-70">اختيار عشوائي من الأسئلة</span>
-          </button>
-          <button
-            onClick={() => setSessionMode('review')}
-            disabled={dueReviewCount === 0}
-            className={`p-3.5 rounded-[16px] border text-right transition-all disabled:opacity-40 ${
-              sessionMode === 'review'
-                ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]'
-                : 'bg-white border-[#E7E3EF] text-gray-700'
-            }`}
-          >
-            <span className="block text-sm font-bold">🧠 ذكية</span>
-            <span className="block text-[11px] mt-1 opacity-70">الأسئلة المستحقة حسب أدائك</span>
-          </button>
+          {[
+            ['classic', '📚 كلاسيكية', `${playableCount} جاهز`],
+            ['smart', '✨ ذكية', `${smartCount} مقترح`],
+            ['review', '🧠 مستحقة', `${dueReviewCount} مستحق`],
+            ['mistakes', '❌ أخطائي', `${mistakesCount} سؤال`],
+            ['favorites', '❤️ المفضلة', `${favoritesCount} سؤال`],
+          ].map(([mode, title, subtitle]) => {
+            const unavailable =
+              (mode === 'review' && dueReviewCount === 0) ||
+              (mode === 'mistakes' && mistakesCount === 0) ||
+              (mode === 'favorites' && favoritesCount === 0) ||
+              (mode === 'smart' && smartCount === 0);
+            return (
+              <button
+                key={mode}
+                onClick={() => setSessionMode(mode as 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart')}
+                disabled={unavailable}
+                className={`p-3.5 rounded-[16px] border text-right transition-all disabled:opacity-40 ${
+                  sessionMode === mode
+                    ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]'
+                    : 'bg-white border-[#E7E3EF] text-gray-700'
+                }`}
+              >
+                <span className="block text-sm font-bold">{title}</span>
+                <span className="block text-[11px] mt-1 opacity-70">{subtitle}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -654,9 +685,21 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
       {/* Start Button */}
       <button data-tour="session-start"
         onClick={handleStartSession}
-        disabled={playableCount === 0 || (sessionMode === 'review' && dueReviewCount === 0)}
+        disabled={
+          playableCount === 0 ||
+          (sessionMode === 'review' && dueReviewCount === 0) ||
+          (sessionMode === 'mistakes' && mistakesCount === 0) ||
+          (sessionMode === 'favorites' && favoritesCount === 0) ||
+          (sessionMode === 'smart' && smartCount === 0)
+        }
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
-          playableCount > 0 && (sessionMode === 'classic' || dueReviewCount > 0)
+          playableCount > 0 &&
+          !(
+            (sessionMode === 'review' && dueReviewCount === 0) ||
+            (sessionMode === 'mistakes' && mistakesCount === 0) ||
+            (sessionMode === 'favorites' && favoritesCount === 0) ||
+            (sessionMode === 'smart' && smartCount === 0)
+          )
             ? 'bg-[#5B3FD6] hover:bg-[#4C33B8] text-white cursor-pointer'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
