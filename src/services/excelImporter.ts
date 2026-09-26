@@ -11,6 +11,7 @@ const HEADERS = [
   'الشرح',
   'المحور',
 ];
+const OPTIONAL_TYPE_HEADER = 'النوع';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 5000;
@@ -84,6 +85,11 @@ export async function parseExcelFile(file: File): Promise<ExcelPreview> {
       }
     }
 
+    const optionalTypeHeader = String(headerRow[8] || '').trim();
+    if (optionalTypeHeader && optionalTypeHeader !== OPTIONAL_TYPE_HEADER) {
+      errors.push(`العمود 9 الاختياري يجب أن يكون: ${OPTIONAL_TYPE_HEADER}`);
+    }
+
     if (errors.length > 0) {
       return {
         rows: [],
@@ -123,15 +129,33 @@ export async function parseExcelFile(file: File): Promise<ExcelPreview> {
       const w3 = cellVal(5);
       const exp = cellVal(6);
       const topic = cellVal(7);
+      const rawType = cellVal(8).toUpperCase().replace(/[\s-]+/g, '_');
+      const questionType: 'QCM' | 'TRUE_FALSE' = ['TRUE_FALSE', 'صح_خطأ', 'صح/خطأ'].includes(rawType)
+        ? 'TRUE_FALSE'
+        : 'QCM';
 
       // Skip completely empty rows
-      if (!id && !q && !a && !w1 && !w2 && !w3 && !exp && !topic) {
+      if (!id && !q && !a && !w1 && !w2 && !w3 && !exp && !topic && !rawType) {
         continue;
       }
 
-      if (!id || !q || !a || !w1 || !w2 || !w3) {
-        errors.push(`السطر ${rowNumber}: ID والسؤال والإجابة والخيارات الثلاثة مطلوبة`);
+      if (!id || !q || !a) {
+        errors.push(`السطر ${rowNumber}: ID والسؤال والإجابة مطلوبة`);
         continue;
+      }
+
+      if (questionType === 'QCM' && (!w1 || !w2 || !w3)) {
+        errors.push(`السطر ${rowNumber}: سؤال QCM يحتاج ثلاثة خيارات خاطئة`);
+        continue;
+      }
+
+      if (questionType === 'TRUE_FALSE') {
+        const normalizedAnswer = normalized(a);
+        const allowed = new Set(['صحيح', 'خطأ', 'true', 'false']);
+        if (!allowed.has(normalizedAnswer)) {
+          errors.push(`السطر ${rowNumber}: جواب صح/خطأ يجب أن يكون صحيح أو خطأ`);
+          continue;
+        }
       }
 
       if (seenIds.has(id)) {
@@ -140,10 +164,12 @@ export async function parseExcelFile(file: File): Promise<ExcelPreview> {
       }
       seenIds.add(id);
 
-      const distinctOptions = new Set([a, w1, w2, w3].map(normalized));
-      if (distinctOptions.size !== 4) {
-        errors.push(`السطر ${rowNumber}: الخيارات الأربعة يجب أن تكون مختلفة`);
-        continue;
+      if (questionType === 'QCM') {
+        const distinctOptions = new Set([a, w1, w2, w3].map(normalized));
+        if (distinctOptions.size !== 4) {
+          errors.push(`السطر ${rowNumber}: الخيارات الأربعة يجب أن تكون مختلفة`);
+          continue;
+        }
       }
 
       if ([q, a, w1, w2, w3, exp, topic].some((text) => text.length > MAX_TEXT)) {
@@ -153,6 +179,7 @@ export async function parseExcelFile(file: File): Promise<ExcelPreview> {
 
       rows.push({
         externalId: id,
+        questionType,
         question: q,
         answer: a,
         wrong1: w1,
