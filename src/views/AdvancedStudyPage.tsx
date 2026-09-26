@@ -97,6 +97,9 @@ export const AdvancedStudyPage: React.FC = () => {
   const [bankSearch, setBankSearch] = useState('');
   const [selectedMergeBanks, setSelectedMergeBanks] = useState<string[]>([]);
   const [mergedName, setMergedName] = useState('بنك مدمج');
+  const [compareA, setCompareA] = useState(() => db.banks()[0]?.id || '');
+  const [compareB, setCompareB] = useState(() => db.banks()[1]?.id || db.banks()[0]?.id || '');
+  const [listening, setListening] = useState(false);
 
   const backupInputRef = useRef<HTMLInputElement>(null);
 
@@ -212,6 +215,44 @@ export const AdvancedStudyPage: React.FC = () => {
     const sec = seconds % 60;
     return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
+  const stopListening = () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setListening(false);
+  };
+
+  const startListening = () => {
+    if (!('speechSynthesis' in window) || smartQuestions.length === 0) {
+      setStatus('ميزة القراءة الصوتية غير متاحة على هذا الجهاز أو لا توجد أسئلة جاهزة.');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    setListening(true);
+    const queue = smartQuestions.slice(0, 10);
+    let index = 0;
+
+    const playNext = () => {
+      if (index >= queue.length) {
+        setListening(false);
+        setStatus('اكتملت جلسة الاستماع.');
+        return;
+      }
+      const q = queue[index++];
+      const text = `السؤال. ${q.question}. الإجابة الصحيحة. ${q.correctAnswer}. ${q.explanation ? 'الشرح. ' + q.explanation : ''}`;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ar-MA';
+      utterance.rate = 0.9;
+      utterance.onend = playNext;
+      utterance.onerror = () => {
+        setListening(false);
+        setStatus('توقفت القراءة الصوتية.');
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    playNext();
+  };
+
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -250,6 +291,22 @@ export const AdvancedStudyPage: React.FC = () => {
               <ChartNoAxesCombined className="w-5 h-5 text-[#5B3FD6] mb-2" />
               <div className="text-xs text-gray-400">محاور بها بيانات</div>
               <div className="text-2xl font-bold">{weakTopics.length}</div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-sm">وضع الاستماع</h3>
+                <p className="text-[11px] text-gray-400 mt-1">يقرأ حتى 10 أسئلة مقترحة ثم الإجابة والشرح تلقائيًا.</p>
+              </div>
+              <button
+                onClick={listening ? stopListening : startListening}
+                className={`shrink-0 px-3 py-2.5 rounded-[12px] text-xs font-bold flex items-center gap-1.5 ${listening ? 'bg-red-50 text-red-600' : 'bg-[#5B3FD6] text-white'}`}
+              >
+                <Headphones className="w-4 h-4" />
+                {listening ? 'إيقاف' : 'استماع'}
+              </button>
             </div>
           </div>
 
@@ -513,6 +570,45 @@ export const AdvancedStudyPage: React.FC = () => {
                 </div>
               );
             })()}
+          </div>
+
+          <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+            <div className="font-bold text-sm mb-3">مقارنة بنكين</div>
+            {banks.length < 2 ? (
+              <div className="text-xs text-gray-400">تحتاج إلى بنكين على الأقل لإجراء المقارنة.</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={compareA} onChange={(e) => setCompareA(e.target.value)}
+                    className="rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-2.5 text-xs">
+                    {banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                  </select>
+                  <select value={compareB} onChange={(e) => setCompareB(e.target.value)}
+                    className="rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-2.5 text-xs">
+                    {banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+                  </select>
+                </div>
+                {compareA && compareB && compareA !== compareB && (() => {
+                  const result = db.compareBanks(compareA, compareB);
+                  return (
+                    <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                      <div className="rounded-[11px] bg-[#F8F9FD] p-2">
+                        <div className="text-[9px] text-gray-400">مشتركة</div>
+                        <div className="font-bold text-sm">{result.shared}</div>
+                      </div>
+                      <div className="rounded-[11px] bg-[#F5F3FF] p-2">
+                        <div className="text-[9px] text-[#5B3FD6]">فقط الأول</div>
+                        <div className="font-bold text-sm">{result.onlyA}</div>
+                      </div>
+                      <div className="rounded-[11px] bg-[#F5F3FF] p-2">
+                        <div className="text-[9px] text-[#5B3FD6]">فقط الثاني</div>
+                        <div className="font-bold text-sm">{result.onlyB}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-[20px] p-4 border border-gray-100">
