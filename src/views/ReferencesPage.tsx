@@ -138,7 +138,15 @@ export const ReferencesPage: React.FC = () => {
 
   const uploadedItems = useMemo(() => localItems.filter((item) => item.source === 'upload'), [localItems]);
   const downloadedItems = useMemo(() => localItems.filter((item) => item.source === 'download'), [localItems]);
-  const downloadedRemoteIds = useMemo(() => new Set(downloadedItems.map((item) => item.remoteId).filter(Boolean)), [downloadedItems]);
+  const downloadedByRemoteId = useMemo(() => {
+    const map = new Map<string, LocalReference>();
+    for (const item of downloadedItems) {
+      if (item.remoteId) map.set(item.remoteId, item);
+    }
+    return map;
+  }, [downloadedItems]);
+
+  const onlineById = useMemo(() => new Map(items.map((item) => [item.id, item] as const)), [items]);
 
   const categories = useMemo(() => ['الكل', ...Array.from(new Set(items.flatMap((x) => x.categories)))], [items]);
   const filtered = useMemo(() => items.filter((x) => {
@@ -230,13 +238,15 @@ export const ReferencesPage: React.FC = () => {
         description: item.description,
         categories: item.categories,
         originalUrl: item.url,
+        version: item.version,
+        updatedAt: item.updatedAt,
         type: downloaded.type,
         mimeType: downloaded.mimeType,
         data: downloaded.blob,
         domainId: db.activeDomainId(),
       });
       await loadLocal();
-      setLocalStatus('تم تنزيل المرجع وأصبح متاحًا بدون إنترنت.');
+      setLocalStatus(downloadedByRemoteId.has(item.id) ? 'تم تحديث المرجع إلى أحدث إصدار.' : 'تم تنزيل المرجع وأصبح متاحًا بدون إنترنت.');
     } catch (error: any) {
       setLocalStatus(error?.message || 'تعذر تنزيل المرجع.');
     } finally {
@@ -455,12 +465,31 @@ export const ReferencesPage: React.FC = () => {
                     <HardDrive className="w-5 h-5 text-[#5B3FD6] shrink-0" />
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-[#2C2145] truncate">{item.name}</div>
-                      <div className="text-[10px] text-gray-400 mt-1">متاح Offline • {item.type.toUpperCase()}</div>
+                      <div className="text-[10px] text-gray-400 mt-1">
+                        متاح Offline • {item.type.toUpperCase()} • v{item.downloadedVersion || 1}
+                      </div>
+                      {item.remoteId && onlineById.get(item.remoteId) && onlineById.get(item.remoteId)!.version > (item.downloadedVersion || 1) && (
+                        <div className="text-[10px] font-bold text-amber-600 mt-1">
+                          تحديث متوفر: v{onlineById.get(item.remoteId)!.version}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <button onClick={(event) => void removeLocalItem(item, event)} className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {item.remoteId && onlineById.get(item.remoteId) && onlineById.get(item.remoteId)!.version > (item.downloadedVersion || 1) && (
+                      <button
+                        onClick={(event) => void downloadOnlineItem(onlineById.get(item.remoteId!)!, event)}
+                        disabled={downloadingId === item.remoteId}
+                        className="h-9 px-2.5 rounded-[11px] bg-amber-50 text-amber-700 text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {downloadingId === item.remoteId ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        تحديث
+                      </button>
+                    )}
+                    <button onClick={(event) => void removeLocalItem(item, event)} className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -496,21 +525,33 @@ export const ReferencesPage: React.FC = () => {
               className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div></div></div>
+                <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div>
+                  <div className="text-[10px] text-gray-400 mt-1">الإصدار {item.version}{item.updatedAt ? ` • ${item.updatedAt}` : ''}</div></div></div>
                 <div className="flex items-center gap-1 shrink-0 mt-1">
                   {downloadableReferenceType(item.type) && (
-                    <button
-                      onClick={(event) => void downloadOnlineItem(item, event)}
-                      disabled={downloadingId === item.id || downloadedRemoteIds.has(item.id)}
-                      className="w-9 h-9 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-45"
-                      aria-label="تنزيل المرجع"
-                    >
-                      {downloadingId === item.id
-                        ? <RefreshCw className="w-4 h-4 animate-spin" />
-                        : downloadedRemoteIds.has(item.id)
-                          ? <HardDrive className="w-4 h-4" />
-                          : <Download className="w-4 h-4" />}
-                    </button>
+                    {(() => {
+                      const local = downloadedByRemoteId.get(item.id);
+                      const needsUpdate = Boolean(local && item.version > (local.downloadedVersion || 1));
+                      const isCurrent = Boolean(local && !needsUpdate);
+                      return (
+                        <button
+                          onClick={(event) => void downloadOnlineItem(item, event)}
+                          disabled={downloadingId === item.id || isCurrent}
+                          className={`h-9 px-2.5 rounded-[11px] flex items-center justify-center gap-1 text-[10px] font-bold disabled:opacity-45 ${
+                            needsUpdate ? 'bg-amber-50 text-amber-700' : 'bg-[#F5F3FF] text-[#5B3FD6]'
+                          }`}
+                          aria-label={needsUpdate ? 'تحديث المرجع' : 'تنزيل المرجع'}
+                        >
+                          {downloadingId === item.id
+                            ? <RefreshCw className="w-4 h-4 animate-spin" />
+                            : needsUpdate
+                              ? <><RefreshCw className="w-4 h-4" /><span>تحديث</span></>
+                              : isCurrent
+                                ? <HardDrive className="w-4 h-4" />
+                                : <Download className="w-4 h-4" />}
+                        </button>
+                      );
+                    })()}
                   )}
                   <ChevronLeft className="w-4 h-4 text-gray-400" />
                 </div>
