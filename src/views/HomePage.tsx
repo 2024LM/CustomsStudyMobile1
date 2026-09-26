@@ -23,7 +23,7 @@ import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { focusMinutesToday } from '../services/advancedStudyTools';
 
 interface HomePageProps {
-  onStartSession: (topic?: string) => void;
+  onStartSession: (topic?: string | string[], count?: number, mode?: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart', autoStart?: boolean) => void;
   onViewQuestions: () => void;
   onViewMistakes: () => void;
   onOpenNotifications?: () => void;
@@ -66,10 +66,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   const focusToday = focusMinutesToday();
   const topics = db.topics().slice(0, 8);
   const weeklyDelta = analytics.weeklyDelta;
+  const smartPlan = db.smartSessionPlan(20);
 
   return (
-    <div className="flex flex-col gap-4 pb-8 text-right">
-      <div data-tour="home-hero" className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8 text-right">
+      <div data-tour="home-hero" className="sm:col-span-2 w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-white">الرئيسية</h2>
@@ -113,7 +114,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-[20px] p-3 border border-gray-100">
+      <div className="sm:col-span-2 bg-white rounded-[20px] p-3 border border-gray-100">
         <label className="text-[11px] font-bold text-gray-500">إحصائيات</label>
         <select
           value={statsBankId}
@@ -162,7 +163,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="sm:col-span-2 grid grid-cols-4 gap-2">
         {[
           { icon: CheckCircle2, label: 'صحيح', value: analytics.stats.correct, className: 'bg-emerald-50 text-emerald-700' },
           { icon: XCircle, label: 'خطأ', value: analytics.stats.wrong, className: 'bg-red-50 text-red-600' },
@@ -177,7 +178,47 @@ export const HomePage: React.FC<HomePageProps> = ({
         ))}
       </div>
 
-      <div data-tour="home-activity">
+      <div className="sm:col-span-2 bg-gradient-to-l from-[#2F1A73] to-[#5B3FD6] rounded-[22px] p-4 text-white shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] text-[#DDD5FF] font-bold">المراجعة المقترحة الآن</div>
+            <h3 className="text-base font-black mt-1">ماذا أراجع الآن؟</h3>
+            <p className="text-[11px] text-[#E7E1FF] mt-1 leading-5">
+              جلسة ذكية من {smartPlan.questions.length} سؤال حسب أخطائك ومواعيد المراجعة والأسئلة الجديدة.
+            </p>
+          </div>
+          <Target className="w-7 h-7 text-white shrink-0" />
+        </div>
+
+        <div className="grid grid-cols-4 gap-1.5 mt-3 text-center">
+          <div className="rounded-[10px] bg-white/10 p-2">
+            <div className="text-base font-black">{smartPlan.mistakes}</div>
+            <div className="text-[9px] text-[#E7E1FF]">أخطاء</div>
+          </div>
+          <div className="rounded-[10px] bg-white/10 p-2">
+            <div className="text-base font-black">{smartPlan.due}</div>
+            <div className="text-[9px] text-[#E7E1FF]">مستحقة</div>
+          </div>
+          <div className="rounded-[10px] bg-white/10 p-2">
+            <div className="text-base font-black">{smartPlan.unseen}</div>
+            <div className="text-[9px] text-[#E7E1FF]">جديدة</div>
+          </div>
+          <div className="rounded-[10px] bg-white/10 p-2">
+            <div className="text-base font-black">{smartPlan.other}</div>
+            <div className="text-[9px] text-[#E7E1FF]">تعزيز</div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onStartSession(undefined, Math.max(smartPlan.questions.length, 1), 'smart', true)}
+          disabled={smartPlan.questions.length === 0}
+          className="w-full mt-3 py-3 rounded-[13px] bg-white text-[#4C33B8] text-sm font-black disabled:opacity-50"
+        >
+          ابدأ الجلسة الذكية الآن
+        </button>
+      </div>
+
+      <div data-tour="home-activity" className="sm:col-span-2">
         <ActivityBarChart
           buckets={activityBuckets}
           period={period}
@@ -277,13 +318,14 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
-      <ReferenceBannerAd slot="home-below-stats" />
+      <div className="sm:col-span-2"><ReferenceBannerAd slot="home-below-stats" /></div>
 
       <button
         data-tour="home-start-session"
+        
         onClick={() => onStartSession()}
         disabled={analytics.playableQuestions === 0}
-        className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
+        className={`sm:col-span-2 w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
           analytics.playableQuestions > 0
             ? 'bg-[#5B3FD6] hover:bg-[#4C33B8] text-white cursor-pointer'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -293,7 +335,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         {analytics.playableQuestions > 0 && <span>▶</span>}
       </button>
 
-      <div className="flex flex-col gap-2.5 mt-1">
+      <div className="sm:col-span-2 flex flex-col gap-2.5 mt-1">
         <h3 className="font-bold text-base text-[#2C2145]">وصول سريع</h3>
         <div className="grid grid-cols-2 gap-2.5">
           <button
@@ -321,7 +363,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {topics.length > 0 && (
-        <div className="flex flex-col gap-2.5 mt-1">
+        <div className="sm:col-span-2 flex flex-col gap-2.5 mt-1">
           <h3 className="font-bold text-base text-[#2C2145]">المحاور</h3>
           <div className="flex flex-col gap-2">
             {topics.map((topic, i) => (
