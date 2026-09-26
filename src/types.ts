@@ -7,8 +7,6 @@ export type Page =
   | 'FAVORITES'
   | 'BANKS'
   | 'DOMAINS'
-  | 'SETTINGS'
-  | 'TOOLS'
   | 'PLAN'
   | 'DOWNLOADS'
   | 'ADVANCED'
