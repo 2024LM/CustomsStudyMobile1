@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NexusAdsPlugin.class);
         registerPlugin(NexusStoragePlugin.class);
         registerPlugin(NexusStudyAlarmPlugin.class);
+        registerPlugin(NexusTtsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
