@@ -528,8 +528,7 @@ export const ReferencesPage: React.FC = () => {
                 <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div>
                   <div className="text-[10px] text-gray-400 mt-1">الإصدار {item.version}{item.updatedAt ? ` • ${item.updatedAt}` : ''}</div></div></div>
                 <div className="flex items-center gap-1 shrink-0 mt-1">
-                  {downloadableReferenceType(item.type) && (
-                    {(() => {
+                  {downloadableReferenceType(item.type) && (() => {
                       const local = downloadedByRemoteId.get(item.id);
                       const needsUpdate = Boolean(local && item.version > (local.downloadedVersion || 1));
                       const isCurrent = Boolean(local && !needsUpdate);
@@ -552,7 +551,6 @@ export const ReferencesPage: React.FC = () => {
                         </button>
                       );
                     })()}
-                  )}
                   <ChevronLeft className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
