@@ -4,6 +4,7 @@ JAVA_DIR="android/app/src/main/java/com/nexus/customsstudy"
 mkdir -p "$JAVA_DIR"
 cp native-android/NexusAdsPlugin.java "$JAVA_DIR/NexusAdsPlugin.java"
 cp native-android/MainActivity.java "$JAVA_DIR/MainActivity.java"
+cp native-android/NexusStoragePlugin.java "$JAVA_DIR/NexusStoragePlugin.java"
 
 python3 - <<'PY'
 from pathlib import Path
