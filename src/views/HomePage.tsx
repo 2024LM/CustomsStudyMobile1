@@ -43,7 +43,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [activityBankId, setActivityBankId] = useState<string>('ALL');
   const bank = db.activeBank();
   const total = db.questionCount();
-  const qcm = db.qcmReadyCount();
+  const playable = db.playableQuestionCount();
   const stats = db.stats();
   const rate = Math.min(Math.max(stats.successRate, 0), 100);
   const topics = db.topics().slice(0, 8);
@@ -165,15 +165,15 @@ export const HomePage: React.FC<HomePageProps> = ({
       <button
         data-tour="home-start-session"
         onClick={() => onStartSession()}
-        disabled={qcm === 0}
+        disabled={playable === 0}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
-          qcm > 0
+          playable > 0
             ? 'bg-[#5B3FD6] hover:bg-[#4C33B8] text-white cursor-pointer'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
       >
-        <span>{qcm > 0 ? 'ابدأ جلسة مراجعة' : 'لا توجد أسئلة QCM جاهزة'}</span>
-        {qcm > 0 && <span>▶</span>}
+        <span>{playable > 0 ? 'ابدأ جلسة مراجعة' : 'لا توجد أسئلة تفاعلية جاهزة'}</span>
+        {playable > 0 && <span>▶</span>}
       </button>
 
       {/* Quick Access */}
