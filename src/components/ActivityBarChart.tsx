@@ -36,7 +36,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
 }) => {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [chartMode, setChartMode] = useState<ChartMode>('bars');
-  const [activeSeries, setActiveSeries] = useState<LineSeries>('total');
+  const [visibleSeries, setVisibleSeries] = useState<Record<LineSeries, boolean>>({ total: true, correct: true, wrong: true });
 
   const maxTotal = Math.max(...buckets.map((b) => b.total), 1);
   const totalPeriodAnswered = buckets.reduce((acc, b) => acc + b.total, 0);
@@ -260,17 +260,26 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
           <div className="flex gap-2 overflow-x-auto">
             {(Object.keys(SERIES_META) as LineSeries[]).map((series) => {
               const meta = SERIES_META[series];
-              const selected = activeSeries === series;
+              const enabled = visibleSeries[series];
               return (
                 <button
                   key={series}
-                  onClick={() => setActiveSeries(series)}
-                  className={`shrink-0 px-3 py-2 rounded-[11px] text-[11px] font-bold border transition-all ${
-                    selected
-                      ? 'bg-[#2C2145] text-white border-[#2C2145]'
-                      : 'bg-white text-gray-500 border-gray-100'
+                  onClick={() => {
+                    const nextEnabled = !enabled;
+                    const enabledCount = Object.values(visibleSeries).filter(Boolean).length;
+                    if (!nextEnabled && enabledCount === 1) return;
+                    setVisibleSeries((current) => ({ ...current, [series]: nextEnabled }));
+                  }}
+                  className={`shrink-0 px-3 py-2 rounded-[11px] text-[11px] font-bold border transition-all flex items-center gap-2 ${
+                    enabled
+                      ? 'bg-white text-[#2C2145] border-gray-200 shadow-xs'
+                      : 'bg-gray-50 text-gray-400 border-gray-100 opacity-60'
                   }`}
                 >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: meta.stroke }}
+                  />
                   {meta.label}
                 </button>
               );
@@ -298,22 +307,21 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
               ))}
 
               {(Object.keys(SERIES_META) as LineSeries[]).map((series) => {
+                if (!visibleSeries[series]) return null;
                 const meta = SERIES_META[series];
                 const geo = lineGeometry[series];
-                const selected = activeSeries === series;
                 return (
                   <g key={series}>
-                    {selected && geo.area && (
+                    {geo.area && (
                       <polygon points={geo.area} fill={meta.fill} />
                     )}
                     <polyline
                       points={geo.polyline}
                       fill="none"
                       stroke={meta.stroke}
-                      strokeWidth={selected ? 4 : 2}
+                      strokeWidth="3.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      opacity={selected ? 1 : 0.28}
                     />
                     {geo.points.map((point, index) => {
                       const bucket = buckets[index];
@@ -323,11 +331,10 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
                           <circle
                             cx={point.x}
                             cy={point.y}
-                            r={isPointSelected && selected ? 6 : selected ? 4 : 2.5}
+                            r={isPointSelected ? 5.5 : 3.5}
                             fill="#fff"
                             stroke={meta.stroke}
-                            strokeWidth={selected ? 3 : 1.5}
-                            opacity={selected ? 1 : 0.35}
+                            strokeWidth="2.5"
                           />
                           <rect
                             x={point.x - 18}
@@ -338,7 +345,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
                             onMouseEnter={() => setSelectedIdx(index)}
                             onClick={() => setSelectedIdx(index)}
                           />
-                          {isPointSelected && selected && (
+                          {isPointSelected && (
                             <>
                               <line
                                 x1={point.x}
@@ -346,7 +353,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
                                 y1={lineGeometry.top}
                                 y2={lineGeometry.top + lineGeometry.innerH}
                                 stroke={meta.stroke}
-                                strokeOpacity="0.16"
+                                strokeOpacity="0.14"
                                 strokeWidth="2"
                               />
                               <rect
@@ -355,7 +362,7 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
                                 width="60"
                                 height="24"
                                 rx="10"
-                                fill="#2C2145"
+                                fill={meta.stroke}
                               />
                               <text
                                 x={Math.max(36, Math.min(point.x, lineGeometry.width - 36))}
@@ -369,18 +376,16 @@ export const ActivityBarChart: React.FC<ActivityBarChartProps> = ({
                               </text>
                             </>
                           )}
-                          {selected && (
-                            <text
-                              x={point.x}
-                              y={lineGeometry.height - 12}
-                              textAnchor="middle"
-                              fontSize="10"
-                              fontWeight={index === selectedIdx ? '700' : '500'}
-                              fill={index === selectedIdx ? '#5B3FD6' : '#8B849D'}
-                            >
-                              {bucket.label}
-                            </text>
-                          )}
+                          <text
+                            x={point.x}
+                            y={lineGeometry.height - 12}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight={index === selectedIdx ? '700' : '500'}
+                            fill={index === selectedIdx ? '#5B3FD6' : '#8B849D'}
+                          >
+                            {bucket.label}
+                          </text>
                         </g>
                       );
                     })}
