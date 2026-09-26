@@ -167,6 +167,54 @@ export async function listLocalReferences(domainId: string): Promise<LocalRefere
   }
 }
 
+export async function localReferenceStorageSummary(domainId: string): Promise<{
+  totalBytes: number;
+  uploadedBytes: number;
+  downloadedBytes: number;
+  uploadedCount: number;
+  downloadedCount: number;
+}> {
+  const items = await listLocalReferences(domainId);
+  return items.reduce((summary, item) => {
+    summary.totalBytes += item.size;
+    if (item.source === 'download') {
+      summary.downloadedBytes += item.size;
+      summary.downloadedCount += 1;
+    } else {
+      summary.uploadedBytes += item.size;
+      summary.uploadedCount += 1;
+    }
+    return summary;
+  }, {
+    totalBytes: 0,
+    uploadedBytes: 0,
+    downloadedBytes: 0,
+    uploadedCount: 0,
+    downloadedCount: 0,
+  });
+}
+
+export async function clearDownloadedReferences(domainId: string): Promise<number> {
+  const items = await listLocalReferences(domainId);
+  const targets = items.filter((item) => item.source === 'download');
+  if (targets.length === 0) return 0;
+
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      for (const item of targets) store.delete(item.id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Unable to clear downloaded references'));
+      tx.onabort = () => reject(tx.error || new Error('Clear download operation aborted'));
+    });
+  } finally {
+    db.close();
+  }
+  return targets.length;
+}
+
 export async function deleteLocalReference(id: string): Promise<void> {
   const db = await openDb();
   try {
