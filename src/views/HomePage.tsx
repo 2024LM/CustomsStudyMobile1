@@ -1,22 +1,26 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  GraduationCap,
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
-  BookOpen,
   AlertCircle,
-  FolderOpen,
-  ChevronLeft,
   Bell,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  Flame,
+  FolderOpen,
+  GraduationCap,
   Moon,
+  RotateCcw,
   Sun,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  XCircle,
 } from 'lucide-react';
 import { db } from '../services/db';
-import { CircularProgress } from '../components/CircularProgress';
-import { MetricCard } from '../components/MetricCard';
 import { ActivityBarChart } from '../components/ActivityBarChart';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
+import { focusMinutesToday } from '../services/advancedStudyTools';
 
 interface HomePageProps {
   onStartSession: (topic?: string) => void;
@@ -27,6 +31,13 @@ interface HomePageProps {
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
   username?: string;
+}
+
+function rateLabel(rate: number): string {
+  if (rate >= 80) return 'مستوى قوي';
+  if (rate >= 60) return 'مستوى متوسط';
+  if (rate > 0) return 'يحتاج مراجعة';
+  return 'ابدأ المراجعة';
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -40,19 +51,24 @@ export const HomePage: React.FC<HomePageProps> = ({
   username = '',
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [activityBankId, setActivityBankId] = useState<string>('ALL');
+  const [statsBankId, setStatsBankId] = useState<string>('ALL');
   const bank = db.activeBank();
-  const total = db.questionCount();
-  const playable = db.playableQuestionCount();
-  const stats = db.stats();
-  const rate = Math.min(Math.max(stats.successRate, 0), 100);
-  const topics = db.topics().slice(0, 8);
   const banks = db.banks();
-  const activityBuckets = db.getActivityStats(period, activityBankId === 'ALL' ? null : activityBankId);
+
+  const selectedBankId = statsBankId === 'ALL' ? null : statsBankId;
+  const analytics = useMemo(
+    () => db.dashboardAnalytics(selectedBankId),
+    [selectedBankId]
+  );
+
+  const activityBuckets = db.getActivityStats(period, selectedBankId);
+  const streak = db.studyStreak();
+  const focusToday = focusMinutesToday();
+  const topics = db.topics().slice(0, 8);
+  const weeklyDelta = analytics.weeklyDelta;
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      {/* Hero Banner Card */}
       <div data-tour="home-hero" className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
@@ -69,7 +85,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </button>
               )}
 
-              {/* Notifications Button */}
               {onOpenNotifications && (
                 <button
                   onClick={onOpenNotifications}
@@ -78,7 +93,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 >
                   <Bell className="w-5 h-5" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E11D48] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#392080] animate-pulse">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E11D48] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#392080]">
                       {unreadNotificationsCount}
                     </span>
                   )}
@@ -90,93 +105,194 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             </div>
           </div>
+
           <div className="h-2" />
           <h1 className="text-2xl font-bold">مرحباً {username || 'بك'} 👋</h1>
           <p className="text-[#E6DFFF] text-sm font-semibold">{bank.name}</p>
-          <p className="text-[#D8CDFB] text-xs">كل خطوة صغيرة تقرّبك من هدفك</p>
+          <p className="text-[#D8CDFB] text-xs">تابع تقدمك وحدد أولويتك التالية بسرعة</p>
         </div>
       </div>
 
-      {/* General Progress Card */}
-      <div data-tour="home-progress" className="bg-white rounded-[24px] p-5 shadow-xs border border-gray-100 flex items-center gap-4.5">
-        <CircularProgress
-          percentage={rate}
-          size={86}
-          strokeWidth={9}
-          color="#5B3FD6"
-          trackColor="#E9E5F8"
-        />
-        <div className="flex-1 flex flex-col gap-2">
-          <h3 className="font-bold text-base text-[#2C2145]">تقدمك العام</h3>
-          <p className="text-xs text-gray-500 font-medium">
-            {stats.answered} إجابة حتى الآن
-          </p>
-          {/* Linear Progress Bar */}
-          <div className="w-full bg-[#EAE6FA] h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-[#5B3FD6] h-full rounded-full transition-all duration-500"
-              style={{ width: `${rate}%` }}
-            />
+      <div className="bg-white rounded-[20px] p-3 border border-gray-100">
+        <label className="text-[11px] font-bold text-gray-500">إحصائيات</label>
+        <select
+          value={statsBankId}
+          onChange={(e) => setStatsBankId(e.target.value)}
+          className="w-full mt-2 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm font-semibold"
+        >
+          <option value="ALL">كل بنوك المجال</option>
+          {banks.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </div>
+
+      <div data-tour="home-progress" className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-xs">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs text-gray-400">نسبة النجاح</div>
+            <div className="flex items-end gap-2 mt-1">
+              <span className="text-4xl font-black text-[#2C2145]">{analytics.stats.successRate}%</span>
+              <span className="text-xs font-bold text-[#5B3FD6] mb-1">{rateLabel(analytics.stats.successRate)}</span>
+            </div>
+            <div className="text-[11px] text-gray-400 mt-1">{analytics.stats.answered} إجابة مسجلة</div>
+          </div>
+
+          <div className={`px-3 py-2 rounded-[12px] text-xs font-bold flex items-center gap-1.5 ${
+            weeklyDelta > 0
+              ? 'bg-emerald-50 text-emerald-700'
+              : weeklyDelta < 0
+                ? 'bg-red-50 text-red-600'
+                : 'bg-gray-100 text-gray-500'
+          }`}>
+            {weeklyDelta > 0 ? <TrendingUp className="w-4 h-4" /> : weeklyDelta < 0 ? <TrendingDown className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+            {weeklyDelta > 0 ? '+' : ''}{weeklyDelta}%
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="rounded-[14px] bg-[#F8F9FD] p-3">
+            <div className="text-[10px] text-gray-400">هذا الأسبوع</div>
+            <div className="font-bold text-lg">{analytics.currentWeek.rate}%</div>
+            <div className="text-[10px] text-gray-400">{analytics.currentWeek.total} إجابة</div>
+          </div>
+          <div className="rounded-[14px] bg-[#F8F9FD] p-3">
+            <div className="text-[10px] text-gray-400">الأسبوع السابق</div>
+            <div className="font-bold text-lg">{analytics.previousWeek.rate}%</div>
+            <div className="text-[10px] text-gray-400">{analytics.previousWeek.total} إجابة</div>
           </div>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <MetricCard
-          icon={CheckCircle2}
-          label="صحيحة"
-          value={stats.correct}
-          bgColor="#EAF8F0"
-          accentColor="#16864B"
-        />
-        <MetricCard
-          icon={XCircle}
-          label="أخطاء"
-          value={stats.wrong}
-          bgColor="#FFEEED"
-          accentColor="#C62828"
-        />
-        <MetricCard
-          icon={HelpCircle}
-          label="الأسئلة"
-          value={total}
-          bgColor="#F0EDFF"
-          accentColor="#5B3FD6"
-        />
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { icon: CheckCircle2, label: 'صحيح', value: analytics.stats.correct, className: 'bg-emerald-50 text-emerald-700' },
+          { icon: XCircle, label: 'خطأ', value: analytics.stats.wrong, className: 'bg-red-50 text-red-600' },
+          { icon: Target, label: 'مستحق', value: analytics.dueReview, className: 'bg-amber-50 text-amber-700' },
+          { icon: BookOpen, label: 'جديد', value: analytics.unseen, className: 'bg-[#F5F3FF] text-[#5B3FD6]' },
+        ].map(({ icon: Icon, label, value, className }) => (
+          <div key={label} className={`rounded-[16px] p-3 text-center ${className}`}>
+            <Icon className="w-4 h-4 mx-auto mb-1" />
+            <div className="text-lg font-black">{value}</div>
+            <div className="text-[9px] font-bold">{label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Activity Statistics Bar Chart (Daily / Weekly / Monthly) */}
       <div data-tour="home-activity">
         <ActivityBarChart
-        buckets={activityBuckets}
-        period={period}
-        onPeriodChange={setPeriod}
-        banks={banks}
-        selectedBankId={activityBankId}
-        onBankChange={setActivityBankId}
-      />
+          buckets={activityBuckets}
+          period={period}
+          onPeriodChange={setPeriod}
+          banks={banks}
+          selectedBankId={statsBankId}
+          onBankChange={setStatsBankId}
+        />
       </div>
 
-      {/* Banner directly below activity statistics */}
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-sm">نشاط آخر 28 يومًا</h3>
+          <div className="flex items-center gap-1 text-[10px] text-gray-400">
+            <Flame className="w-3.5 h-3.5 text-orange-500" />
+            {streak} يوم متتالٍ
+          </div>
+        </div>
+        <div className="grid grid-cols-14 gap-1">
+          {analytics.heatmap.map((day) => (
+            <div
+              key={day.date}
+              title={`${day.date}: ${day.total}`}
+              className={`aspect-square rounded-[4px] ${
+                day.total === 0 ? 'bg-gray-100' : day.total < 5 ? 'bg-[#DDD5FF]' : day.total < 15 ? 'bg-[#A58EF4]' : 'bg-[#5B3FD6]'
+              }`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="rounded-[12px] bg-[#F8F9FD] p-3">
+            <div className="text-[10px] text-gray-400">وقت التركيز اليوم</div>
+            <div className="font-bold text-base">{focusToday} دقيقة</div>
+          </div>
+          <div className="rounded-[12px] bg-[#F8F9FD] p-3">
+            <div className="text-[10px] text-gray-400">أسئلة جاهزة</div>
+            <div className="font-bold text-base">{analytics.playableQuestions} / {analytics.totalQuestions}</div>
+          </div>
+        </div>
+      </div>
+
+      {analytics.weakTopics.length > 0 && (
+        <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+          <h3 className="font-bold text-sm mb-3">أضعف المحاور</h3>
+          <div className="flex flex-col gap-2">
+            {analytics.weakTopics.map((item) => (
+              <button
+                key={item.topic}
+                onClick={() => onStartSession(item.topic)}
+                className="w-full rounded-[13px] bg-[#F8F9FD] p-3 text-right flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">{item.topic}</div>
+                  <div className="text-[10px] text-gray-400 mt-1">{item.wrong} خطأ من {item.attempts} محاولة</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-bold text-red-500">{item.successRate}%</div>
+                  <div className="text-[9px] text-[#5B3FD6]">راجع الآن</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {analytics.strongTopics.length > 0 && (
+        <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+          <h3 className="font-bold text-sm mb-3">أقوى المحاور</h3>
+          <div className="flex flex-col gap-2">
+            {analytics.strongTopics.slice(0, 3).map((item) => (
+              <div key={item.topic} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">{item.topic}</div>
+                  <div className="text-[10px] text-gray-400">{item.attempts} محاولة</div>
+                </div>
+                <div className="text-emerald-600 font-bold text-sm">{item.successRate}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {analytics.topMistakes.length > 0 && (
+        <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-sm">أكثر الأسئلة خطأ</h3>
+            <button onClick={onViewMistakes} className="text-[10px] font-bold text-[#5B3FD6]">عرض الكل</button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {analytics.topMistakes.map((item) => (
+              <div key={item.question.rowId} className="rounded-[13px] bg-red-50/50 p-3">
+                <div className="text-xs font-bold leading-5">{item.question.question}</div>
+                <div className="text-[10px] text-red-500 mt-1">{item.wrongCount} مرات خطأ</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ReferenceBannerAd slot="home-below-stats" />
 
-      {/* Start Session Primary CTA */}
       <button
         data-tour="home-start-session"
         onClick={() => onStartSession()}
-        disabled={playable === 0}
+        disabled={analytics.playableQuestions === 0}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
-          playable > 0
+          analytics.playableQuestions > 0
             ? 'bg-[#5B3FD6] hover:bg-[#4C33B8] text-white cursor-pointer'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
       >
-        <span>{playable > 0 ? 'ابدأ جلسة مراجعة' : 'لا توجد أسئلة تفاعلية جاهزة'}</span>
-        {playable > 0 && <span>▶</span>}
+        <span>{analytics.playableQuestions > 0 ? 'ابدأ جلسة مراجعة' : 'لا توجد أسئلة تفاعلية جاهزة'}</span>
+        {analytics.playableQuestions > 0 && <span>▶</span>}
       </button>
 
-      {/* Quick Access */}
       <div className="flex flex-col gap-2.5 mt-1">
         <h3 className="font-bold text-base text-[#2C2145]">وصول سريع</h3>
         <div className="grid grid-cols-2 gap-2.5">
@@ -187,10 +303,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="w-10 h-10 rounded-[12px] bg-[#F5F3FF] flex items-center justify-center text-[#5B3FD6]">
               <BookOpen className="w-5 h-5" />
             </div>
-            <span className="font-bold text-sm text-[#2C2145] mt-1">
-              جميع الأسئلة
-            </span>
-            <span className="text-xs text-gray-500 font-medium">{playable} جاهز</span>
+            <span className="font-bold text-sm text-[#2C2145] mt-1">جميع الأسئلة</span>
+            <span className="text-xs text-gray-500 font-medium">{analytics.playableQuestions} جاهز</span>
           </button>
 
           <button
@@ -200,17 +314,12 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="w-10 h-10 rounded-[12px] bg-[#FFEEED] flex items-center justify-center text-[#C62828]">
               <AlertCircle className="w-5 h-5" />
             </div>
-            <span className="font-bold text-sm text-[#2C2145] mt-1">
-              مراجعة الأخطاء
-            </span>
-            <span className="text-xs text-gray-500 font-medium">
-              {stats.wrong} خطأ
-            </span>
+            <span className="font-bold text-sm text-[#2C2145] mt-1">مراجعة الأخطاء</span>
+            <span className="text-xs text-gray-500 font-medium">{analytics.stats.wrong} خطأ</span>
           </button>
         </div>
       </div>
 
-      {/* Topics */}
       {topics.length > 0 && (
         <div className="flex flex-col gap-2.5 mt-1">
           <h3 className="font-bold text-base text-[#2C2145]">المحاور</h3>
@@ -225,9 +334,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] flex items-center justify-center text-[#5B3FD6] shrink-0">
                     <FolderOpen className="w-4.5 h-4.5" />
                   </div>
-                  <span className="font-semibold text-sm text-[#2C2145]">
-                    {topic}
-                  </span>
+                  <span className="font-semibold text-sm text-[#2C2145]">{topic}</span>
                 </div>
                 <ChevronLeft className="w-4 h-4 text-gray-400" />
               </button>
