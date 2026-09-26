@@ -25,6 +25,7 @@ import { SessionPage } from './views/SessionPage';
 import { MistakesPage } from './views/MistakesPage';
 import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
+import { DomainsPage } from './views/DomainsPage';
 import { ReminderSettings } from './views/ReminderSettings';
 import { MorePage } from './views/MorePage';
 import { ReferencesPage } from './views/ReferencesPage';
@@ -331,6 +332,8 @@ export function App() {
 
           {page === 'BANKS' && <BanksPage onBankSelected={() => setPage('HOME')} />}
 
+          {page === 'DOMAINS' && <DomainsPage onDomainSelected={() => setPage('HOME')} />}
+
           {page === 'SETTINGS' && (
             <ReminderSettings
               onTriggerDirectQuestion={() => {
@@ -345,6 +348,7 @@ export function App() {
               onGoToMistakes={() => setPage('MISTAKES')}
               onGoToFavorites={() => setPage('FAVORITES')}
               onGoToBanks={() => setPage('BANKS')}
+              onGoToDomains={() => setPage('DOMAINS')}
               onGoToSettings={() => setPage('SETTINGS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
@@ -361,7 +365,7 @@ export function App() {
             const isSelected =
               page === item.p ||
               (item.p === 'MORE' &&
-                ['MISTAKES', 'FAVORITES', 'BANKS', 'SETTINGS'].includes(page));
+                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'SETTINGS'].includes(page));
 
             return (
               <button
