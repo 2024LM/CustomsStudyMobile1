@@ -6,6 +6,7 @@ export type Page =
   | 'MISTAKES'
   | 'FAVORITES'
   | 'BANKS'
+  | 'DOMAINS'
   | 'SETTINGS'
   | 'MORE';
 
