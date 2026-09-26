@@ -5,6 +5,7 @@ import {
   Library,
   Layers3,
   Bell,
+  Wrench,
   ChevronLeft,
 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -17,6 +18,7 @@ interface MorePageProps {
   onGoToBanks: () => void;
   onGoToDomains: () => void;
   onGoToSettings: () => void;
+  onGoToTools: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -29,6 +31,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToBanks,
   onGoToDomains,
   onGoToSettings,
+  onGoToTools,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -52,6 +55,12 @@ export const MorePage: React.FC<MorePageProps> = ({
     }
   };
   const menuItems = [
+    {
+      icon: Wrench,
+      title: 'أدوات الدراسة',
+      subtitle: 'بحث شامل، ملاحظات، سؤال يدوي، تنزيلات وخطة مراجعة',
+      action: onGoToTools,
+    },
     {
       icon: Bell,
       title: 'الإشعارات والتحديثات',
