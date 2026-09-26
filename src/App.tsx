@@ -26,10 +26,8 @@ import { MistakesPage } from './views/MistakesPage';
 import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
 import { DomainsPage } from './views/DomainsPage';
-import { ReminderSettings } from './views/ReminderSettings';
 import { MorePage } from './views/MorePage';
 import { ReferencesPage } from './views/ReferencesPage';
-import { StudyToolsPage } from './views/StudyToolsPage';
 import { StudyPlanPage } from './views/StudyPlanPage';
 import { DownloadsPage } from './views/DownloadsPage';
 import { AdvancedStudyPage } from './views/AdvancedStudyPage';
@@ -125,26 +123,7 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, [remote.ratingPrompt, ready, startupAdHandled, onboardingComplete]);
 
-  // Periodic Reminder background check (if reminders enabled)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const enabled = db.setting('reminders_enabled', '0') === '1';
-      if (enabled && 'Notification' in window && Notification.permission === 'granted') {
-        const randomQ = db.randomQuestion();
-        if (randomQ) {
-          try {
-            new Notification(`🎓 تذكير مراجعة: ${db.activeDomain().name}`, {
-              body: randomQ.question,
-              icon: `${import.meta.env.BASE_URL}favicon.ico`,
-            });
-          } catch {
-            // ignore
-          }
-        }
-      }
-    }, 60 * 60 * 1000); // 1 hour check
-    return () => clearInterval(interval);
-  }, []);
+
 
   if (!ready) {
     return <SplashScreen />;
@@ -338,22 +317,13 @@ export function App() {
 
           {page === 'DOMAINS' && <DomainsPage onDomainSelected={() => setPage('HOME')} />}
 
-          {page === 'TOOLS' && <StudyToolsPage />}
-
           {page === 'PLAN' && <StudyPlanPage />}
 
           {page === 'DOWNLOADS' && <DownloadsPage />}
 
           {page === 'ADVANCED' && <AdvancedStudyPage />}
 
-          {page === 'SETTINGS' && (
-            <ReminderSettings
-              onTriggerDirectQuestion={() => {
-                const randomQ = db.randomQuestion();
-                if (randomQ) setDirectQuestion(randomQ);
-              }}
-            />
-          )}
+
 
           {page === 'MORE' && (
             <MorePage
@@ -361,8 +331,6 @@ export function App() {
               onGoToFavorites={() => setPage('FAVORITES')}
               onGoToBanks={() => setPage('BANKS')}
               onGoToDomains={() => setPage('DOMAINS')}
-              onGoToSettings={() => setPage('SETTINGS')}
-              onGoToTools={() => setPage('TOOLS')}
               onGoToPlan={() => setPage('PLAN')}
               onGoToDownloads={() => setPage('DOWNLOADS')}
               onGoToAdvanced={() => setPage('ADVANCED')}
@@ -381,7 +349,7 @@ export function App() {
             const isSelected =
               page === item.p ||
               (item.p === 'MORE' &&
-                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'SETTINGS', 'TOOLS', 'PLAN', 'DOWNLOADS', 'ADVANCED'].includes(page));
+                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED'].includes(page));
 
             return (
               <button
