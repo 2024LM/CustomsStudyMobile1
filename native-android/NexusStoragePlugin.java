@@ -35,10 +35,22 @@ public class NexusStoragePlugin extends Plugin {
     @PluginMethod
     public void loadSnapshot(PluginCall call) {
         try {
-            SQLiteDatabase db = helper.getReadableDatabase();
-            String value = hasNormalizedData(db)
-                    ? buildSnapshotFromTables(db).toString()
-                    : loadLegacySnapshot(db);
+            SQLiteDatabase db = helper.getWritableDatabase();
+            String value;
+            if (hasNormalizedData(db)) {
+                value = buildSnapshotFromTables(db).toString();
+            } else {
+                value = loadLegacySnapshot(db);
+                if (value != null && !value.isEmpty()) {
+                    db.beginTransaction();
+                    try {
+                        replaceNormalizedData(db, new JSONObject(value));
+                        db.setTransactionSuccessful();
+                    } finally {
+                        db.endTransaction();
+                    }
+                }
+            }
 
             JSObject result = new JSObject();
             result.put("value", value);
