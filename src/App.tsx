@@ -129,7 +129,7 @@ export function App() {
         const randomQ = db.randomQuestion();
         if (randomQ) {
           try {
-            new Notification('🎓 تذكير مراجعة الجمارك', {
+            new Notification(`🎓 تذكير مراجعة: ${db.activeDomain().name}`, {
               body: randomQ.question,
               icon: `${import.meta.env.BASE_URL}favicon.ico`,
             });
