@@ -469,6 +469,7 @@ export const ReferencesPage: React.FC = () => {
       )}
 
       {sourceTab === 'online' && (
+        <>
       <div data-tour="references-search" className="relative">
         <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث في المراجع..." className="w-full h-12 pr-11 pl-4 rounded-[16px] bg-white border border-gray-100 outline-none focus:border-[#5B3FD6]/40 text-sm shadow-xs" />
@@ -520,6 +521,7 @@ export const ReferencesPage: React.FC = () => {
         ))}
         {filtered.length === 0 && <div className="py-10 text-center text-sm text-gray-400">لا توجد مراجع مطابقة.</div>}
       </div>}
+        </>
       )}
     </div>
   );
