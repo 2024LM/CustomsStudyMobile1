@@ -56,7 +56,7 @@ export const ReminderSettings: React.FC<ReminderSettingsProps> = ({
       try {
         new Notification('🎓 سؤال مراجعة الجمارك', {
           body: randomQ.question,
-          icon: '/favicon.ico',
+          icon: `${import.meta.env.BASE_URL}favicon.ico`,
         });
       } catch {
         // ignore
