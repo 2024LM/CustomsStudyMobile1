@@ -287,7 +287,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
         {banks.map((bank) => {
           const isChosen = activeId === bank.id;
           const qCount = db.questionCount(bank.id);
-          const readyCount = db.qcmReadyCount(bank.id);
+          const readyCount = db.playableQuestionCount(bank.id);
 
           return (
             <div
