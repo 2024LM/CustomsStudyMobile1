@@ -6,6 +6,8 @@ import {
   Layers3,
   Bell,
   Wrench,
+  CalendarDays,
+  HardDrive,
   ChevronLeft,
 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -19,6 +21,8 @@ interface MorePageProps {
   onGoToDomains: () => void;
   onGoToSettings: () => void;
   onGoToTools: () => void;
+  onGoToPlan: () => void;
+  onGoToDownloads: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -32,6 +36,8 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToDomains,
   onGoToSettings,
   onGoToTools,
+  onGoToPlan,
+  onGoToDownloads,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -58,8 +64,20 @@ export const MorePage: React.FC<MorePageProps> = ({
     {
       icon: Wrench,
       title: 'أدوات الدراسة',
-      subtitle: 'بحث شامل، ملاحظات، سؤال يدوي، تنزيلات وخطة مراجعة',
+      subtitle: 'بحث شامل، ملاحظات وإضافة سؤال يدوي',
       action: onGoToTools,
+    },
+    {
+      icon: CalendarDays,
+      title: 'خطة المراجعة',
+      subtitle: 'موعد الامتحان، الهدف اليومي ومنبّه صوتي',
+      action: onGoToPlan,
+    },
+    {
+      icon: HardDrive,
+      title: 'إدارة التنزيلات',
+      subtitle: 'إدارة المراجع والملفات والبنوك المحلية',
+      action: onGoToDownloads,
     },
     {
       icon: Bell,
