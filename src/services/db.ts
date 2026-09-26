@@ -1081,6 +1081,31 @@ class StudyDatabaseService {
       .sort((a, b) => a.successRate - b.successRate || b.attempts - a.attempts);
   }
 
+  public smartSessionPlan(count: number = 20, bankId: string = this.activeBankId()): {
+    questions: QuizQuestion[];
+    mistakes: number;
+    due: number;
+    unseen: number;
+    other: number;
+  } {
+    const questions = this.smartQuestionPool(count, bankId);
+    const now = Date.now();
+    let mistakes = 0;
+    let due = 0;
+    let unseen = 0;
+    let other = 0;
+
+    for (const question of questions) {
+      const state = this.data.questionStates[question.rowId];
+      if ((state?.wrongCount || 0) > 0) mistakes += 1;
+      else if (state?.nextReviewAt && state.nextReviewAt <= now) due += 1;
+      else if (!state || state.timesSeen === 0) unseen += 1;
+      else other += 1;
+    }
+
+    return { questions, mistakes, due, unseen, other };
+  }
+
   public smartQuestionPool(count: number = 20, bankId: string = this.activeBankId()): QuizQuestion[] {
     const safe = Math.min(Math.max(count, 1), 200);
     const now = Date.now();
