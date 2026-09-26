@@ -485,7 +485,15 @@ export const ReferencesPage: React.FC = () => {
       {!loading && !error && <div className="flex flex-col gap-2.5">
         {filtered.map((item, index) => (
           <React.Fragment key={item.id}>
-            <button onClick={() => void openItem(item)} className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => void openItem(item)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') void openItem(item);
+              }}
+              className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div></div></div>
                 <div className="flex items-center gap-1 shrink-0 mt-1">
@@ -506,7 +514,7 @@ export const ReferencesPage: React.FC = () => {
                   <ChevronLeft className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-            </button>
+            </div>
             {(index + 1) % 4 === 0 && <ReferenceBannerAd slot={`list-${index + 1}`} />}
           </React.Fragment>
         ))}
