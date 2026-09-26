@@ -1,5 +1,6 @@
 import initialQuestionsRaw from '../data/questions.json';
 import { loadNativeSnapshot, saveNativeSnapshot } from './nativeStorage';
+import { appConfig } from '../config/appConfig';
 import {
   ActivityBucket,
   AppNotification,
@@ -10,6 +11,7 @@ import {
   QuizQuestion,
   RemoteState,
   StoredNotification,
+  StudyDomain,
   StudySession,
   StudyStats,
 } from '../types';
@@ -32,6 +34,7 @@ interface RawBuiltInQuestion {
 }
 
 interface DatabaseSchema {
+  domains: StudyDomain[];
   banks: QuestionBank[];
   questions: QuizQuestion[];
   attempts: Attempt[];
@@ -43,7 +46,16 @@ interface DatabaseSchema {
 
 function createInitialDatabase(): DatabaseSchema {
   const now = Date.now();
+  const defaultDomain: StudyDomain = {
+    id: appConfig.defaultDomainId,
+    name: 'الجمارك المغربية',
+    description: 'المجال الافتراضي المرفق مع التطبيق',
+    enabled: true,
+    builtIn: true,
+    createdAt: now,
+  };
   const builtInBank: QuestionBank = {
+    domainId: defaultDomain.id,
     id: BUILTIN_BANK,
     name: 'بنك الأسئلة الأساسي',
     description: 'البنك الأساسي المرفق مع التطبيق',
@@ -100,6 +112,7 @@ function createInitialDatabase(): DatabaseSchema {
   });
 
   const settings: Record<string, string> = {
+    active_domain_id: defaultDomain.id,
     active_bank_id: BUILTIN_BANK,
     daily_goal: '20',
     reminder_hours: '1',
@@ -117,6 +130,7 @@ function createInitialDatabase(): DatabaseSchema {
   };
 
   return {
+    domains: [defaultDomain],
     banks: [builtInBank],
     questions,
     attempts: [],
@@ -143,6 +157,21 @@ class StudyDatabaseService {
       try {
         const parsed = JSON.parse(nativeSnapshot) as DatabaseSchema;
         if (parsed.banks && parsed.questions && parsed.settings) {
+          parsed.domains = Array.isArray(parsed.domains) && parsed.domains.length > 0
+            ? parsed.domains
+            : [{
+                id: appConfig.defaultDomainId,
+                name: 'الجمارك المغربية',
+                description: 'المجال الافتراضي المرفق مع التطبيق',
+                enabled: true,
+                builtIn: true,
+                createdAt: Date.now(),
+              }];
+          parsed.banks = parsed.banks.map((bank) => ({
+            ...bank,
+            domainId: bank.domainId || appConfig.defaultDomainId,
+          }));
+          parsed.settings.active_domain_id = parsed.settings.active_domain_id || appConfig.defaultDomainId;
           parsed.attempts = Array.isArray(parsed.attempts) ? parsed.attempts : [];
           parsed.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
           parsed.notifications = Array.isArray(parsed.notifications) ? parsed.notifications : [];
@@ -177,6 +206,21 @@ class StudyDatabaseService {
       if (stored) {
         const parsed = JSON.parse(stored) as DatabaseSchema;
         if (parsed.banks && parsed.questions && parsed.settings) {
+          parsed.domains = Array.isArray(parsed.domains) && parsed.domains.length > 0
+            ? parsed.domains
+            : [{
+                id: appConfig.defaultDomainId,
+                name: 'الجمارك المغربية',
+                description: 'المجال الافتراضي المرفق مع التطبيق',
+                enabled: true,
+                builtIn: true,
+                createdAt: Date.now(),
+              }];
+          parsed.banks = parsed.banks.map((bank) => ({
+            ...bank,
+            domainId: bank.domainId || appConfig.defaultDomainId,
+          }));
+          parsed.settings.active_domain_id = parsed.settings.active_domain_id || appConfig.defaultDomainId;
           // If built-in questions need refreshing or were missing
           if (parsed.questions.length === 0) {
             return createInitialDatabase();
@@ -218,9 +262,50 @@ class StudyDatabaseService {
     return () => this.listeners.delete(listener);
   }
 
+  public domains(): StudyDomain[] {
+    return this.data.domains
+      .filter((domain) => domain.enabled)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  }
+
+  public activeDomainId(): string {
+    return this.data.settings['active_domain_id'] || appConfig.defaultDomainId;
+  }
+
+  public activeDomain(): StudyDomain {
+    const activeId = this.activeDomainId();
+    return this.data.domains.find((domain) => domain.id === activeId && domain.enabled)
+      || this.domains()[0]
+      || {
+        id: appConfig.defaultDomainId,
+        name: 'المجال الافتراضي',
+        description: '',
+        enabled: true,
+        builtIn: true,
+        createdAt: Date.now(),
+      };
+  }
+
+  public setActiveDomain(domainId: string) {
+    const domain = this.data.domains.find((item) => item.id === domainId && item.enabled);
+    if (!domain) throw new Error('Unknown or disabled study domain');
+
+    this.data.settings['active_domain_id'] = domainId;
+    const activeBank = this.data.banks.find(
+      (bank) => bank.id === this.activeBankId() && bank.enabled && bank.domainId === domainId
+    );
+    if (!activeBank) {
+      const fallback = this.data.banks.find((bank) => bank.enabled && bank.domainId === domainId);
+      if (fallback) this.data.settings['active_bank_id'] = fallback.id;
+    }
+    this.notify();
+  }
+
   public banks(): QuestionBank[] {
+    const domainId = this.activeDomainId();
     return this.data.banks
-      .filter((b) => b.enabled)
+      .filter((b) => b.enabled && b.domainId === domainId)
       .sort((a, b) => {
         if (a.builtIn && !b.builtIn) return -1;
         if (!a.builtIn && b.builtIn) return 1;
@@ -241,9 +326,10 @@ class StudyDatabaseService {
 
   public activeBank(): QuestionBank {
     const activeId = this.activeBankId();
-    const bank = this.data.banks.find((b) => b.id === activeId && b.enabled);
+    const domainId = this.activeDomainId();
+    const bank = this.data.banks.find((b) => b.id === activeId && b.enabled && b.domainId === domainId);
     if (bank) return bank;
-    const fallback = this.data.banks.find((b) => b.enabled);
+    const fallback = this.data.banks.find((b) => b.enabled && b.domainId === domainId);
     if (!fallback) throw new Error('No enabled question bank');
     return fallback;
   }
@@ -815,6 +901,7 @@ class StudyDatabaseService {
     const now = Date.now();
 
     const newBank: QuestionBank = {
+      domainId: this.activeDomainId(),
       id: bankId,
       name: cleanName,
       description: description.trim().slice(0, 300),
