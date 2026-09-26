@@ -30,6 +30,8 @@ import { ReminderSettings } from './views/ReminderSettings';
 import { MorePage } from './views/MorePage';
 import { ReferencesPage } from './views/ReferencesPage';
 import { StudyToolsPage } from './views/StudyToolsPage';
+import { StudyPlanPage } from './views/StudyPlanPage';
+import { DownloadsPage } from './views/DownloadsPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -337,6 +339,10 @@ export function App() {
 
           {page === 'TOOLS' && <StudyToolsPage />}
 
+          {page === 'PLAN' && <StudyPlanPage />}
+
+          {page === 'DOWNLOADS' && <DownloadsPage />}
+
           {page === 'SETTINGS' && (
             <ReminderSettings
               onTriggerDirectQuestion={() => {
@@ -354,6 +360,8 @@ export function App() {
               onGoToDomains={() => setPage('DOMAINS')}
               onGoToSettings={() => setPage('SETTINGS')}
               onGoToTools={() => setPage('TOOLS')}
+              onGoToPlan={() => setPage('PLAN')}
+              onGoToDownloads={() => setPage('DOWNLOADS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
               remote={remote}
@@ -369,7 +377,7 @@ export function App() {
             const isSelected =
               page === item.p ||
               (item.p === 'MORE' &&
-                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'SETTINGS', 'TOOLS'].includes(page));
+                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'SETTINGS', 'TOOLS', 'PLAN', 'DOWNLOADS'].includes(page));
 
             return (
               <button
