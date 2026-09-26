@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Clock3, Eye, Shuffle, Gauge, FastForward } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from '../services/db';
 import { QuizQuestion, StudyStats } from '../types';
@@ -30,6 +30,15 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [xp, setXp] = useState(0);
+  const [questionTimeLimit, setQuestionTimeLimit] = useState<number>(() => {
+    const value = Number(db.setting('session_question_time_limit', '0'));
+    return [0, 15, 30, 60].includes(value) ? value : 0;
+  });
+  const [autoAdvance, setAutoAdvance] = useState(() => db.setting('session_auto_advance', '0') === '1');
+  const [showExplanation, setShowExplanation] = useState(() => db.setting('session_show_explanation', '1') === '1');
+  const [shuffleOptions, setShuffleOptions] = useState(() => db.setting('session_shuffle_options', '1') === '1');
+  const [showProgress, setShowProgress] = useState(() => db.setting('session_show_progress', '1') === '1');
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const topics = useMemo(() => db.topics(), []);
   const playableCount = db.playableQuestionCount();
@@ -63,7 +72,16 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
     }
   }, []);
 
+  const persistSessionPreferences = () => {
+    db.setSetting('session_question_time_limit', String(questionTimeLimit));
+    db.setSetting('session_auto_advance', autoAdvance ? '1' : '0');
+    db.setSetting('session_show_explanation', showExplanation ? '1' : '0');
+    db.setSetting('session_shuffle_options', shuffleOptions ? '1' : '0');
+    db.setSetting('session_show_progress', showProgress ? '1' : '0');
+  };
+
   const handleStartSession = () => {
+    persistSessionPreferences();
     const topicFilter = selectedTopics.length > 0 ? selectedTopics : null;
     const qList = sessionMode === 'review'
       ? db.dueReviewQuestions(count, topicFilter)
@@ -104,6 +122,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
     setStreak(0);
     setBestStreak(0);
     setXp(0);
+    setRemainingSeconds(0);
   };
 
   const requestExit = () => setExitPrompt(true);
@@ -136,15 +155,55 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const currentQuestion = questions[index];
   const shuffledOptions = useMemo(() => {
     if (!currentQuestion) return [];
-    return [
+    const options = [
       currentQuestion.correctAnswer,
       currentQuestion.wrong1,
       currentQuestion.wrong2,
       currentQuestion.wrong3,
-    ]
-      .filter(Boolean)
-      .sort(() => 0.5 - Math.random());
-  }, [currentQuestion?.rowId]);
+    ].filter(Boolean);
+    return shuffleOptions ? options.sort(() => 0.5 - Math.random()) : options;
+  }, [currentQuestion?.rowId, shuffleOptions]);
+
+  useEffect(() => {
+    if (!sessionActive || !currentQuestion || questionTimeLimit <= 0 || selectedAnswer !== null) return;
+    setRemainingSeconds(questionTimeLimit);
+  }, [sessionActive, currentQuestion?.rowId, questionTimeLimit]);
+
+  useEffect(() => {
+    if (!sessionActive || questionTimeLimit <= 0 || selectedAnswer !== null || remainingSeconds <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setRemainingSeconds((value) => Math.max(0, value - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [sessionActive, questionTimeLimit, selectedAnswer, remainingSeconds]);
+
+  useEffect(() => {
+    if (
+      !sessionActive ||
+      !currentQuestion ||
+      questionTimeLimit <= 0 ||
+      selectedAnswer !== null ||
+      remainingSeconds !== 0
+    ) {
+      return;
+    }
+
+    setSelectedAnswer('__TIMEOUT__');
+    db.recordAnswer(currentQuestion.rowId, '__TIMEOUT__', sessionId);
+    setStreak(0);
+  }, [sessionActive, currentQuestion?.rowId, questionTimeLimit, remainingSeconds, selectedAnswer, sessionId]);
+
+  useEffect(() => {
+    if (!sessionActive || !autoAdvance || selectedAnswer === null) return;
+
+    const timer = window.setTimeout(() => {
+      void handleNext();
+    }, showExplanation ? 1800 : 900);
+
+    return () => window.clearTimeout(timer);
+  }, [sessionActive, autoAdvance, selectedAnswer, showExplanation, index, questions.length]);
 
   // 1. Session Result Screen
   if (done && sessionId !== null) {
@@ -238,19 +297,28 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             <div className="flex items-center gap-2 text-xs font-bold">
               <span className="bg-[#FFF4D6] text-[#8A5B00] px-2.5 py-1.5 rounded-full">🔥 {streak}</span>
               <span className="bg-[#F5F3FF] text-[#5B3FD6] px-2.5 py-1.5 rounded-full">{xp} XP</span>
+              {questionTimeLimit > 0 && (
+                <span className={`px-2.5 py-1.5 rounded-full ${
+                  remainingSeconds <= 5 ? 'bg-[#FFEEED] text-[#C62828]' : 'bg-white text-gray-700 border border-gray-200'
+                }`}>
+                  ⏱ {remainingSeconds}
+                </span>
+              )}
             </div>
-            <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>
+            {showProgress && <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-gray-500">{sessionMode === 'review' ? '🧠 مراجعة ذكية' : '📚 مراجعة كلاسيكية'}</span>
             <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-semibold px-2.5 py-1 rounded-[12px]">{currentQuestion.topic || 'عام'}</span>
           </div>
-          <div className="w-full bg-[#E7E2F8] h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-[#5B3FD6] h-full rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+          {showProgress && (
+            <div className="w-full bg-[#E7E2F8] h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-[#5B3FD6] h-full rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Question Card */}
@@ -312,13 +380,17 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             }`}
           >
             <span className="font-bold text-sm">
-              {isCorrect ? 'إجابة صحيحة ✓' : 'إجابة خاطئة ✕'}
+              {selectedAnswer === '__TIMEOUT__'
+                ? 'انتهى الوقت ⏱'
+                : isCorrect
+                  ? 'إجابة صحيحة ✓'
+                  : 'إجابة خاطئة ✕'}
             </span>
             <div className="text-xs sm:text-sm">
               <span className="font-semibold ml-1">الجواب الصحيح:</span>
               <ArabicText value={currentQuestion.correctAnswer} className="font-bold" />
             </div>
-            {currentQuestion.explanation && (
+            {showExplanation && currentQuestion.explanation && (
               <div className="mt-1 pt-2 border-t border-current/20 text-xs sm:text-sm">
                 <span className="font-bold block mb-1">💡 الشرح:</span>
                 <ArabicText value={currentQuestion.explanation} as="p" />
@@ -418,6 +490,95 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
             );
           })}
         </div>
+      </div>
+
+      {/* Comfortable question settings */}
+      <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-4">
+        <div>
+          <h3 className="font-bold text-sm text-[#2C2145]">إعدادات الأسئلة</h3>
+          <p className="text-[11px] text-gray-400 mt-1">تُحفظ اختياراتك تلقائيًا للجلسات القادمة</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#2C2145]">
+            <Clock3 className="w-4 h-4 text-[#5B3FD6]" />
+            الوقت لكل سؤال
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              [0, 'بدون'],
+              [15, '15ث'],
+              [30, '30ث'],
+              [60, '60ث'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setQuestionTimeLimit(Number(value))}
+                className={`py-2.5 rounded-[12px] text-xs font-bold border transition-all ${
+                  questionTimeLimit === Number(value)
+                    ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]'
+                    : 'bg-white text-gray-600 border-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {[
+          {
+            icon: FastForward,
+            title: 'الانتقال التلقائي',
+            description: 'ينتقل للسؤال التالي بعد ظهور النتيجة',
+            value: autoAdvance,
+            toggle: () => setAutoAdvance((value) => !value),
+          },
+          {
+            icon: Eye,
+            title: 'إظهار الشرح بعد الإجابة',
+            description: 'عرض تفسير السؤال إن كان متوفرًا',
+            value: showExplanation,
+            toggle: () => setShowExplanation((value) => !value),
+          },
+          {
+            icon: Shuffle,
+            title: 'خلط ترتيب الخيارات',
+            description: 'يغيّر موضع الإجابة الصحيحة في كل سؤال',
+            value: shuffleOptions,
+            toggle: () => setShuffleOptions((value) => !value),
+          },
+          {
+            icon: Gauge,
+            title: 'إظهار تقدم الجلسة',
+            description: 'إظهار رقم السؤال وشريط التقدم',
+            value: showProgress,
+            toggle: () => setShowProgress((value) => !value),
+          },
+        ].map(({ icon: Icon, title, description, value, toggle }) => (
+          <button
+            key={title}
+            onClick={toggle}
+            className="w-full flex items-center justify-between gap-3 text-right"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#2C2145]">{title}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">{description}</div>
+              </div>
+            </div>
+            <div className={`w-11 h-6 rounded-full p-1 transition-colors shrink-0 ${
+              value ? 'bg-[#5B3FD6]' : 'bg-gray-300'
+            }`}>
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                value ? '-translate-x-5' : 'translate-x-0'
+              }`} />
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Multi-topic Filter Setting */}
