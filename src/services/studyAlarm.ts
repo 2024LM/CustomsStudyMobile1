@@ -1,6 +1,7 @@
 import { registerPlugin } from '@capacitor/core';
 
 interface NexusStudyAlarmPlugin {
+  requestNotificationPermission(): Promise<{ granted: boolean }>;
   saveCustomSound(options: { base64: string; extension: string }): Promise<{ path: string }>;
   schedule(options: {
     triggerAt: number;
@@ -53,6 +54,14 @@ export async function saveAlarmAudio(file: File): Promise<string> {
   });
   if (!result.path) throw new Error('تعذر حفظ الصوت داخل التطبيق');
   return result.path;
+}
+
+export async function requestStudyAlarmPermission(): Promise<boolean> {
+  try {
+    return (await NexusStudyAlarm.requestNotificationPermission()).granted === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function scheduleStudyAlarm(options: {
