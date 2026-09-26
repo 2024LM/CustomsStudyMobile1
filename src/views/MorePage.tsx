@@ -8,6 +8,7 @@ import {
   Wrench,
   CalendarDays,
   HardDrive,
+  BrainCircuit,
   ChevronLeft,
 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -23,6 +24,7 @@ interface MorePageProps {
   onGoToTools: () => void;
   onGoToPlan: () => void;
   onGoToDownloads: () => void;
+  onGoToAdvanced: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -38,6 +40,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToTools,
   onGoToPlan,
   onGoToDownloads,
+  onGoToAdvanced,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -61,6 +64,12 @@ export const MorePage: React.FC<MorePageProps> = ({
     }
   };
   const menuItems = [
+    {
+      icon: BrainCircuit,
+      title: 'مركز المراجعة المتقدم',
+      subtitle: 'Flashcards، تحليل ذكي، Pomodoro، سجل الجلسات، البنوك والنسخ الاحتياطي',
+      action: onGoToAdvanced,
+    },
     {
       icon: Wrench,
       title: 'أدوات الدراسة',
