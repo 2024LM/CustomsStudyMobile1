@@ -11,6 +11,7 @@ export type Page =
   | 'TOOLS'
   | 'PLAN'
   | 'DOWNLOADS'
+  | 'ADVANCED'
   | 'MORE';
 
 export interface StudyDomain {
