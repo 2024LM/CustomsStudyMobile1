@@ -32,7 +32,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
   const [xp, setXp] = useState(0);
 
   const topics = useMemo(() => db.topics(), []);
-  const qcmCount = db.qcmReadyCount();
+  const playableCount = db.playableQuestionCount();
   const dueReviewCount = db.dueReviewQuestions(500).length;
   const sessionActive = questions.length > 0 && sessionId !== null && !done;
 
@@ -493,9 +493,9 @@ export const SessionPage: React.FC<SessionPageProps> = ({ initialTopic = null, o
       {/* Start Button */}
       <button data-tour="session-start"
         onClick={handleStartSession}
-        disabled={qcmCount === 0 || (sessionMode === 'review' && dueReviewCount === 0)}
+        disabled={playableCount === 0 || (sessionMode === 'review' && dueReviewCount === 0)}
         className={`w-full h-14 rounded-[18px] font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98 ${
-          qcmCount > 0 && (sessionMode === 'classic' || dueReviewCount > 0)
+          playableCount > 0 && (sessionMode === 'classic' || dueReviewCount > 0)
             ? 'bg-[#5B3FD6] hover:bg-[#4C33B8] text-white cursor-pointer'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
