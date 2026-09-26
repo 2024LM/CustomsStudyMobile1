@@ -759,6 +759,36 @@ class StudyDatabaseService {
     return newId;
   }
 
+  public dueReviewQuestions(
+    count: number,
+    topic: string | string[] | null = null,
+    bankId: string = this.activeBankId()
+  ): QuizQuestion[] {
+    const safe = Math.min(Math.max(count, 1), 500);
+    const now = Date.now();
+    let pool = this.questions(bankId, true).filter((question) => {
+      const state = this.data.questionStates[question.rowId];
+      return Boolean(state?.nextReviewAt && state.nextReviewAt <= now);
+    });
+
+    if (Array.isArray(topic)) {
+      const activeTopics = new Set(topic.map((item) => item.trim()).filter(Boolean));
+      if (activeTopics.size > 0) {
+        pool = pool.filter((question) => activeTopics.has(question.topic.trim()));
+      }
+    } else if (topic && topic.trim()) {
+      pool = pool.filter((question) => question.topic === topic.trim());
+    }
+
+    return pool
+      .sort((a, b) => {
+        const aDue = this.data.questionStates[a.rowId]?.nextReviewAt || 0;
+        const bDue = this.data.questionStates[b.rowId]?.nextReviewAt || 0;
+        return aDue - bDue;
+      })
+      .slice(0, safe);
+  }
+
   public sessionQuestions(
     count: number,
     topic: string | string[] | null = null,
@@ -870,9 +900,15 @@ class StudyDatabaseService {
     if (ok) {
       state.correctCount += 1;
       state.streak += 1;
+
+      const intervalsDays = [1, 3, 7, 14, 30, 60];
+      const intervalIndex = Math.min(Math.max(state.streak - 1, 0), intervalsDays.length - 1);
+      state.nextReviewAt = now + intervalsDays[intervalIndex] * 24 * 60 * 60 * 1000;
     } else {
       state.wrongCount += 1;
       state.streak = 0;
+      // Wrong answers return quickly while the memory is still fresh.
+      state.nextReviewAt = now + 10 * 60 * 1000;
     }
     state.lastAnsweredAt = now;
 
