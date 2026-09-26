@@ -880,6 +880,341 @@ class StudyDatabaseService {
     return rowId;
   }
 
+  public sessionHistory(limit: number = 100): Array<{
+    id: number;
+    startedAt: number;
+    finishedAt: number | null;
+    durationMinutes: number;
+    answered: number;
+    correct: number;
+    wrong: number;
+    successRate: number;
+    mode: string;
+    bankId: string;
+    bankName: string;
+  }> {
+    const bankNames = new Map(this.data.banks.map((bank) => [bank.id, bank.name] as const));
+    return this.data.sessions
+      .slice()
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .slice(0, Math.min(Math.max(limit, 1), 500))
+      .map((session) => {
+        const finishedAt = session.finishedAt;
+        const end = finishedAt || Date.now();
+        const durationMinutes = Math.max(0, Math.round((end - session.startedAt) / 60000));
+        const answered = session.answeredCount;
+        const correct = session.correctCount;
+        return {
+          id: session.id,
+          startedAt: session.startedAt,
+          finishedAt,
+          durationMinutes,
+          answered,
+          correct,
+          wrong: Math.max(0, answered - correct),
+          successRate: answered ? Math.round((correct * 100) / answered) : 0,
+          mode: session.mode,
+          bankId: session.bankId,
+          bankName: bankNames.get(session.bankId) || 'بنك محذوف',
+        };
+      });
+  }
+
+  public weakTopics(bankId: string = this.activeBankId()): Array<{
+    topic: string;
+    attempts: number;
+    correct: number;
+    wrong: number;
+    successRate: number;
+  }> {
+    const questions = this.data.questions.filter((q) => q.enabled && q.bankId === bankId);
+    const byId = new Map(questions.map((q) => [q.rowId, q] as const));
+    const stats = new Map<string, { attempts: number; correct: number; wrong: number }>();
+
+    for (const attempt of this.data.attempts) {
+      const question = byId.get(attempt.questionRowId);
+      if (!question) continue;
+      const topic = question.topic.trim() || 'عام';
+      const current = stats.get(topic) || { attempts: 0, correct: 0, wrong: 0 };
+      current.attempts += 1;
+      if (attempt.isCorrect) current.correct += 1;
+      else current.wrong += 1;
+      stats.set(topic, current);
+    }
+
+    return Array.from(stats.entries())
+      .map(([topic, value]) => ({
+        topic,
+        ...value,
+        successRate: value.attempts ? Math.round((value.correct * 100) / value.attempts) : 0,
+      }))
+      .sort((a, b) => a.successRate - b.successRate || b.attempts - a.attempts);
+  }
+
+  public smartQuestionPool(count: number = 20, bankId: string = this.activeBankId()): QuizQuestion[] {
+    const safe = Math.min(Math.max(count, 1), 200);
+    const now = Date.now();
+    const scored = this.playableQuestions(bankId).map((question) => {
+      const state = this.data.questionStates[question.rowId];
+      let score = 0;
+      if (!state || state.timesSeen === 0) score += 35;
+      if (state) {
+        score += Math.min(state.wrongCount * 12, 60);
+        score -= Math.min(state.correctCount * 2, 20);
+        if (state.nextReviewAt && state.nextReviewAt <= now) score += 30;
+        if (state.lastAnsweredAt) {
+          const days = Math.floor((now - state.lastAnsweredAt) / (24 * 60 * 60 * 1000));
+          score += Math.min(days, 30);
+        }
+      }
+      return { question, score: score + Math.random() * 5 };
+    });
+
+    return scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, safe)
+      .map((item) => item.question);
+  }
+
+  public questionTags(questionRowId: number): string[] {
+    try {
+      const all = JSON.parse(this.setting('question_tags_v1', '{}')) as Record<string, string[]>;
+      return Array.isArray(all[String(questionRowId)]) ? all[String(questionRowId)] : [];
+    } catch {
+      return [];
+    }
+  }
+
+  public setQuestionTags(questionRowId: number, tags: string[]) {
+    let all: Record<string, string[]> = {};
+    try { all = JSON.parse(this.setting('question_tags_v1', '{}')) || {}; } catch {}
+    const clean = Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean))).slice(0, 20);
+    if (clean.length) all[String(questionRowId)] = clean;
+    else delete all[String(questionRowId)];
+    this.data.settings['question_tags_v1'] = JSON.stringify(all);
+    this.notify();
+  }
+
+  public questionDifficulty(questionRowId: number): 'easy' | 'medium' | 'hard' | '' {
+    try {
+      const all = JSON.parse(this.setting('question_difficulty_v1', '{}')) as Record<string, string>;
+      const value = all[String(questionRowId)];
+      return value === 'easy' || value === 'medium' || value === 'hard' ? value : '';
+    } catch {
+      return '';
+    }
+  }
+
+  public setQuestionDifficulty(questionRowId: number, difficulty: 'easy' | 'medium' | 'hard' | '') {
+    let all: Record<string, string> = {};
+    try { all = JSON.parse(this.setting('question_difficulty_v1', '{}')) || {}; } catch {}
+    if (difficulty) all[String(questionRowId)] = difficulty;
+    else delete all[String(questionRowId)];
+    this.data.settings['question_difficulty_v1'] = JSON.stringify(all);
+    this.notify();
+  }
+
+  public updateQuestion(rowId: number, patch: Partial<Pick<QuizQuestion,
+    'question' | 'correctAnswer' | 'wrong1' | 'wrong2' | 'wrong3' | 'explanation' | 'topic'
+  >>) {
+    const question = this.data.questions.find((q) => q.rowId === rowId && q.enabled);
+    if (!question) throw new Error('Unknown question');
+
+    const next = { ...question, ...patch };
+    const required = [next.question, next.correctAnswer];
+    if (required.some((value) => !value.trim())) throw new Error('Question and answer are required');
+
+    if (next.questionType === 'QCM') {
+      const options = [next.correctAnswer, next.wrong1, next.wrong2, next.wrong3].map((value) => value.trim());
+      if (options.some((value) => !value)) throw new Error('QCM needs four answer options');
+      if (new Set(options.map((value) => value.toLocaleLowerCase('ar'))).size !== 4) {
+        throw new Error('Answer options must be different');
+      }
+    }
+
+    question.question = next.question.trim().slice(0, 2000);
+    question.correctAnswer = next.correctAnswer.trim().slice(0, 2000);
+    question.wrong1 = next.wrong1.trim().slice(0, 2000);
+    question.wrong2 = next.wrong2.trim().slice(0, 2000);
+    question.wrong3 = next.wrong3.trim().slice(0, 2000);
+    question.explanation = next.explanation.trim().slice(0, 2000);
+    question.topic = next.topic.trim().slice(0, 200);
+    this.notify();
+  }
+
+  public deleteQuestion(rowId: number) {
+    const question = this.data.questions.find((q) => q.rowId === rowId && q.enabled);
+    if (!question) throw new Error('Unknown question');
+    question.enabled = false;
+    this.notify();
+  }
+
+  public duplicateQuestion(rowId: number, targetBankId: string = this.activeBankId()): number {
+    const source = this.data.questions.find((q) => q.rowId === rowId && q.enabled);
+    const target = this.data.banks.find(
+      (bank) => bank.id === targetBankId && bank.enabled && bank.domainId === this.activeDomainId()
+    );
+    if (!source || !target) throw new Error('Unknown question or target bank');
+
+    const newRowId = this.data.questions.length
+      ? Math.max(...this.data.questions.map((q) => q.rowId)) + 1
+      : 1;
+
+    this.data.questions.push({
+      ...source,
+      rowId: newRowId,
+      bankId: targetBankId,
+      externalId: 'copy_' + Date.now().toString(36) + '_' + newRowId,
+    });
+    this.ensureQuestionState(newRowId);
+    this.notify();
+    return newRowId;
+  }
+
+  public mergeBanks(sourceBankIds: string[], name: string): string {
+    const ids = Array.from(new Set(sourceBankIds));
+    const domainId = this.activeDomainId();
+    const sources = this.data.banks.filter((bank) => ids.includes(bank.id) && bank.enabled && bank.domainId === domainId);
+    if (sources.length < 2) throw new Error('Select at least two banks');
+
+    const cleanName = name.trim().slice(0, 80);
+    if (cleanName.length < 2) throw new Error('Bank name is too short');
+
+    const newBankId = 'merged_' + Date.now().toString(36);
+    const now = Date.now();
+    this.data.banks.push({
+      domainId,
+      id: newBankId,
+      name: cleanName,
+      description: 'بنك مدمج داخل التطبيق',
+      version: 1,
+      formatVersion: 1,
+      builtIn: false,
+      enabled: true,
+      importedAt: now,
+      sourceName: 'merged',
+    });
+
+    const signatures = new Set<string>();
+    let nextRowId = this.data.questions.length
+      ? Math.max(...this.data.questions.map((q) => q.rowId)) + 1
+      : 1;
+
+    for (const question of this.data.questions.filter((q) => q.enabled && ids.includes(q.bankId))) {
+      const signature = (question.question.trim() + '|' + question.correctAnswer.trim()).toLocaleLowerCase('ar');
+      if (signatures.has(signature)) continue;
+      signatures.add(signature);
+      const rowId = nextRowId++;
+      this.data.questions.push({
+        ...question,
+        rowId,
+        bankId: newBankId,
+        externalId: 'merge_' + rowId,
+      });
+      this.ensureQuestionState(rowId);
+    }
+
+    this.notify();
+    return newBankId;
+  }
+
+  public bankValidation(bankId: string = this.activeBankId()): {
+    total: number;
+    duplicates: number;
+    incomplete: number;
+    duplicateIds: number;
+  } {
+    const questions = this.data.questions.filter((q) => q.enabled && q.bankId === bankId);
+    const signatures = new Set<string>();
+    const ids = new Set<string>();
+    let duplicates = 0;
+    let duplicateIds = 0;
+    let incomplete = 0;
+
+    for (const question of questions) {
+      const signature = (question.question.trim() + '|' + question.correctAnswer.trim()).toLocaleLowerCase('ar');
+      if (signatures.has(signature)) duplicates += 1;
+      else signatures.add(signature);
+
+      if (ids.has(question.externalId)) duplicateIds += 1;
+      else ids.add(question.externalId);
+
+      if (!question.question.trim() || !question.correctAnswer.trim()) incomplete += 1;
+      if (question.questionType === 'QCM' && (!question.wrong1 || !question.wrong2 || !question.wrong3)) incomplete += 1;
+    }
+
+    return { total: questions.length, duplicates, incomplete, duplicateIds };
+  }
+
+  public activityCalendar(days: number = 90): Array<{ date: string; total: number; correct: number }> {
+    const safeDays = Math.min(Math.max(days, 7), 365);
+    const map = new Map<string, { total: number; correct: number }>();
+    for (const attempt of this.data.attempts) {
+      const date = new Date(attempt.answeredAt);
+      const key = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+      const current = map.get(key) || { total: 0, correct: 0 };
+      current.total += 1;
+      if (attempt.isCorrect) current.correct += 1;
+      map.set(key, current);
+    }
+
+    const result: Array<{ date: string; total: number; correct: number }> = [];
+    for (let i = safeDays - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - i);
+      const key = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+      const value = map.get(key) || { total: 0, correct: 0 };
+      result.push({ date: key, ...value });
+    }
+    return result;
+  }
+
+  public studyStreak(): number {
+    const activeDays = new Set(
+      this.data.attempts.map((attempt) => {
+        const date = new Date(attempt.answeredAt);
+        return [date.getFullYear(), date.getMonth(), date.getDate()].join('-');
+      })
+    );
+    let streak = 0;
+    const cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    for (;;) {
+      const key = [cursor.getFullYear(), cursor.getMonth(), cursor.getDate()].join('-');
+      if (!activeDays.has(key)) break;
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  public exportBackup(): string {
+    return JSON.stringify({
+      schema: 'study_backup_v1',
+      exportedAt: Date.now(),
+      data: this.data,
+    });
+  }
+
+  public importBackup(raw: string) {
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.schema !== 'study_backup_v1' || !parsed.data) {
+      throw new Error('Invalid backup file');
+    }
+    const data = parsed.data as DatabaseSchema;
+    if (!Array.isArray(data.banks) || !Array.isArray(data.questions) || !data.settings) {
+      throw new Error('Backup data is incomplete');
+    }
+    data.domains = Array.isArray(data.domains) && data.domains.length ? data.domains : this.data.domains;
+    data.attempts = Array.isArray(data.attempts) ? data.attempts : [];
+    data.sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    data.notifications = Array.isArray(data.notifications) ? data.notifications : [];
+    data.questionStates = data.questionStates && typeof data.questionStates === 'object' ? data.questionStates : {};
+    this.data = data;
+    this.notify();
+  }
+
   public setting(key: string, defaultValue: string = ''): string {
     return this.data.settings[key] ?? defaultValue;
   }
