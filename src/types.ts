@@ -44,7 +44,7 @@ export interface QuizQuestion {
   explanation: string;
   topic: string;
   sourceDate: string;
-  questionType: 'QCM' | 'OPEN' | 'ORAL';
+  questionType: 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL';
   qcmStatus: 'NOT_READY' | 'DRAFT' | 'READY';
   enabled: boolean;
 }
@@ -100,6 +100,7 @@ export interface ActivityBucket {
 
 export interface ImportedQuestion {
   externalId: string;
+  questionType?: 'QCM' | 'TRUE_FALSE';
   question: string;
   answer: string;
   wrong1: string;
