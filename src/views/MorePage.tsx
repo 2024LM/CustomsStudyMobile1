@@ -117,7 +117,7 @@ export const MorePage: React.FC<MorePageProps> = ({
         subtitle={`أدوات وإعدادات ${appConfig.appName}`}
       />
 
-      <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {menuItems.map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -153,7 +153,7 @@ export const MorePage: React.FC<MorePageProps> = ({
       </div>
 
       {/* App branding */}
-      <div className="p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-1">
+      <div className="sm:col-span-2 p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-1">
         <span className="font-bold text-sm text-[#5B3FD6]">{appConfig.appName}</span>
         <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
       </div>
