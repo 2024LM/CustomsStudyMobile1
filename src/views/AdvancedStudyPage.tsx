@@ -41,8 +41,10 @@ import {
   saveGeneralNote,
 } from '../services/advancedStudyTools';
 import { QuizQuestion } from '../types';
+import { arabicTtsStatus, speakArabic, stopArabicTts } from '../services/arabicTts';
 
 type Section =
+  | 'tools'
   | 'smart'
   | 'flashcards'
   | 'history'
@@ -62,19 +64,23 @@ function downloadText(filename: string, text: string, type = 'application/json')
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function speak(text: string) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'ar-MA';
-  utterance.rate = 0.92;
-  window.speechSynthesis.speak(utterance);
-}
-
 export const AdvancedStudyPage: React.FC = () => {
   const [section, setSection] = useState<Section>('smart');
   const [status, setStatus] = useState('');
   const [, setRefresh] = useState(0);
+  const [toolQuery, setToolQuery] = useState('');
+  const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
+  const [manual, setManual] = useState({
+    bankId: db.activeBankId(),
+    question: '',
+    correctAnswer: '',
+    wrong1: '',
+    wrong2: '',
+    wrong3: '',
+    explanation: '',
+    topic: '',
+  });
+  const [ttsInfo, setTtsInfo] = useState<{ ready: boolean; arabic: boolean; locale: string; voice: string } | null>(null);
 
   const [cardFront, setCardFront] = useState('');
   const [cardBack, setCardBack] = useState('');
@@ -104,6 +110,7 @@ export const AdvancedStudyPage: React.FC = () => {
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   const sections = [
+    { id: 'tools' as const, label: 'بحث وإضافة', icon: Search },
     { id: 'smart' as const, label: 'مراجعة ذكية', icon: Brain },
     { id: 'flashcards' as const, label: 'Flashcards', icon: Layers3 },
     { id: 'history' as const, label: 'سجل الجلسات', icon: ListChecks },
@@ -124,6 +131,11 @@ export const AdvancedStudyPage: React.FC = () => {
   const activity = db.activityCalendar(84);
   const streak = db.studyStreak();
   const banks = db.banks();
+  const toolResults = useMemo(
+    () => toolQuery.trim().length >= 2 ? db.searchAcrossActiveDomain(toolQuery) : [],
+    [toolQuery, section]
+  );
+  const notedQuestions = db.notedQuestions();
 
   const bankQuestions = useMemo(() => {
     const query = bankSearch.trim().toLowerCase();
@@ -135,6 +147,11 @@ export const AdvancedStudyPage: React.FC = () => {
   const selectedCard = dueCards.length
     ? dueCards[Math.min(cardIndex, dueCards.length - 1)]
     : cards[Math.min(cardIndex, Math.max(cards.length - 1, 0))];
+
+  useEffect(() => {
+    void arabicTtsStatus().then(setTtsInfo);
+    return () => { void stopArabicTts(); };
+  }, []);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -216,42 +233,34 @@ export const AdvancedStudyPage: React.FC = () => {
     return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
   const stopListening = () => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    void stopArabicTts();
     setListening(false);
   };
 
-  const startListening = () => {
-    if (!('speechSynthesis' in window) || smartQuestions.length === 0) {
-      setStatus('ميزة القراءة الصوتية غير متاحة على هذا الجهاز أو لا توجد أسئلة جاهزة.');
+  const startListening = async () => {
+    if (smartQuestions.length === 0) {
+      setStatus('لا توجد أسئلة جاهزة لجلسة الاستماع.');
       return;
     }
-
-    window.speechSynthesis.cancel();
-    setListening(true);
-    const queue = smartQuestions.slice(0, 10);
-    let index = 0;
-
-    const playNext = () => {
-      if (index >= queue.length) {
-        setListening(false);
-        setStatus('اكتملت جلسة الاستماع.');
-        return;
-      }
-      const q = queue[index++];
-      const text = `السؤال. ${q.question}. الإجابة الصحيحة. ${q.correctAnswer}. ${q.explanation ? 'الشرح. ' + q.explanation : ''}`;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-MA';
-      utterance.rate = 0.9;
-      utterance.onend = playNext;
-      utterance.onerror = () => {
-        setListening(false);
-        setStatus('توقفت القراءة الصوتية.');
-      };
-      window.speechSynthesis.speak(utterance);
-    };
-
-    playNext();
+    try {
+      setListening(true);
+      const text = smartQuestions.slice(0, 10).map((q, index) =>
+        `السؤال رقم ${index + 1}. ${q.question}. الإجابة الصحيحة. ${q.correctAnswer}. ${q.explanation ? 'الشرح. ' + q.explanation : ''}`
+      ).join('. ');
+      const result = await speakArabic(text, 0.9);
+      setTtsInfo((current) => ({
+        ready: true,
+        arabic: true,
+        locale: result.locale,
+        voice: result.voice,
+      }));
+      setStatus(`بدأت القراءة العربية${result.locale ? ' • ' + result.locale : ''}.`);
+    } catch (error: any) {
+      setListening(false);
+      setStatus(error?.message || 'تعذر تشغيل الصوت العربي.');
+    }
   };
+
 
 
   return (
@@ -279,6 +288,102 @@ export const AdvancedStudyPage: React.FC = () => {
         <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>
       )}
 
+      {section === 'tools' && (
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={toolQuery}
+              onChange={(e) => setToolQuery(e.target.value)}
+              placeholder="ابحث في كل بنوك المجال..."
+              className="w-full h-12 rounded-[16px] bg-white border border-gray-100 pr-10 pl-4 text-sm"
+            />
+          </div>
+
+          {toolResults.map(({ question, bankName }) => {
+            const current = noteDrafts[question.rowId] ?? db.questionNote(question.rowId);
+            return (
+              <div key={question.rowId} className="bg-white rounded-[17px] p-4 border border-gray-100">
+                <div className="text-[10px] text-[#5B3FD6] font-bold">{bankName}</div>
+                <div className="text-xs font-bold leading-5 mt-1">{question.question}</div>
+                <textarea
+                  value={current}
+                  onChange={(e) => setNoteDrafts((prev) => ({ ...prev, [question.rowId]: e.target.value }))}
+                  placeholder="ملاحظة على السؤال..."
+                  rows={2}
+                  className="w-full mt-2 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-2.5 text-xs"
+                />
+                <button
+                  onClick={() => {
+                    db.setQuestionNote(question.rowId, noteDrafts[question.rowId] ?? current);
+                    setStatus('تم حفظ الملاحظة.');
+                  }}
+                  className="mt-2 px-3 py-2 rounded-[10px] bg-[#F5F3FF] text-[#5B3FD6] text-[11px] font-bold"
+                >
+                  حفظ الملاحظة
+                </button>
+              </div>
+            );
+          })}
+
+          <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+            <div className="font-bold text-sm mb-3">إضافة سؤال يدوي</div>
+            <select
+              value={manual.bankId}
+              onChange={(e) => setManual((v) => ({ ...v, bankId: e.target.value }))}
+              className="w-full rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
+            >
+              {banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+            </select>
+            {[
+              ['question', 'السؤال'],
+              ['correctAnswer', 'الإجابة الصحيحة'],
+              ['wrong1', 'خيار خاطئ 1'],
+              ['wrong2', 'خيار خاطئ 2'],
+              ['wrong3', 'خيار خاطئ 3'],
+              ['topic', 'المحور - اختياري'],
+              ['explanation', 'الشرح - اختياري'],
+            ].map(([key, label]) => (
+              <textarea
+                key={key}
+                value={(manual as any)[key]}
+                onChange={(e) => setManual((v) => ({ ...v, [key]: e.target.value }))}
+                placeholder={label}
+                rows={key === 'question' || key === 'explanation' ? 3 : 1}
+                className="w-full mt-2 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
+              />
+            ))}
+            <button
+              onClick={() => {
+                try {
+                  db.addManualQuestion(manual);
+                  setManual({ ...manual, question: '', correctAnswer: '', wrong1: '', wrong2: '', wrong3: '', explanation: '', topic: '' });
+                  setStatus('تمت إضافة السؤال.');
+                  setRefresh((v) => v + 1);
+                } catch (error: any) {
+                  setStatus(error?.message || 'تعذر إضافة السؤال.');
+                }
+              }}
+              className="w-full mt-3 py-3 rounded-[13px] bg-[#5B3FD6] text-white text-sm font-bold"
+            >
+              إضافة السؤال
+            </button>
+          </div>
+
+          {notedQuestions.length > 0 && (
+            <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+              <div className="font-bold text-sm mb-3">ملاحظات الأسئلة</div>
+              {notedQuestions.slice(0, 20).map(({ question, note }) => (
+                <div key={question.rowId} className="py-2 border-b border-gray-50 last:border-0">
+                  <div className="text-xs font-bold leading-5">{question.question}</div>
+                  <div className="text-[11px] text-gray-500 mt-1 whitespace-pre-wrap">{note}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {section === 'smart' && (
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2">
@@ -298,7 +403,10 @@ export const AdvancedStudyPage: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-sm">وضع الاستماع</h3>
-                <p className="text-[11px] text-gray-400 mt-1">يقرأ حتى 10 أسئلة مقترحة ثم الإجابة والشرح تلقائيًا.</p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  يقرأ حتى 10 أسئلة بالعربية عبر محرك Android.
+                  {ttsInfo?.arabic ? ` • ${ttsInfo.locale || 'ar'}` : ttsInfo ? ' • لا يوجد صوت عربي مثبت' : ''}
+                </p>
               </div>
               <button
                 onClick={listening ? stopListening : startListening}
@@ -394,7 +502,7 @@ export const AdvancedStudyPage: React.FC = () => {
                 {cardFlipped ? selectedCard.back : selectedCard.front}
               </button>
               <div className="flex justify-center gap-2 mt-4">
-                <button onClick={() => speak(cardFlipped ? selectedCard.back : selectedCard.front)}
+                <button onClick={() => void speakArabic(cardFlipped ? selectedCard.back : selectedCard.front).catch((error) => setStatus(error?.message || 'تعذر تشغيل الصوت العربي.'))}
                   className="w-10 h-10 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center">
                   <Volume2 className="w-4 h-4" />
                 </button>
@@ -515,7 +623,7 @@ export const AdvancedStudyPage: React.FC = () => {
                   <div className="text-xs text-gray-600 leading-6 mt-1">{item.definition}</div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => speak(`${item.term}. ${item.definition}`)} className="w-8 h-8 rounded-[9px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center"><Headphones className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => void speakArabic(`${item.term}. ${item.definition}`).catch((error) => setStatus(error?.message || 'تعذر تشغيل الصوت العربي.'))} className="w-8 h-8 rounded-[9px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center"><Headphones className="w-3.5 h-3.5" /></button>
                   <button onClick={() => { deleteGlossaryItem(item.id); setRefresh((v) => v + 1); }} className="w-8 h-8 rounded-[9px] bg-red-50 text-red-500 flex items-center justify-center"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
