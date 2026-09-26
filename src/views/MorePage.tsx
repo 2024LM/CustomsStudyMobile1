@@ -5,7 +5,6 @@ import {
   Library,
   Layers3,
   Bell,
-  Wrench,
   CalendarDays,
   HardDrive,
   BrainCircuit,
@@ -20,8 +19,6 @@ interface MorePageProps {
   onGoToFavorites: () => void;
   onGoToBanks: () => void;
   onGoToDomains: () => void;
-  onGoToSettings: () => void;
-  onGoToTools: () => void;
   onGoToPlan: () => void;
   onGoToDownloads: () => void;
   onGoToAdvanced: () => void;
@@ -36,8 +33,6 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToFavorites,
   onGoToBanks,
   onGoToDomains,
-  onGoToSettings,
-  onGoToTools,
   onGoToPlan,
   onGoToDownloads,
   onGoToAdvanced,
@@ -66,15 +61,9 @@ export const MorePage: React.FC<MorePageProps> = ({
   const menuItems = [
     {
       icon: BrainCircuit,
-      title: 'مركز المراجعة المتقدم',
-      subtitle: 'Flashcards، تحليل ذكي، Pomodoro، سجل الجلسات، البنوك والنسخ الاحتياطي',
+      title: 'مركز الدراسة',
+      subtitle: 'بحث، ملاحظات، Flashcards، مراجعة ذكية، Pomodoro، البنوك والتحليلات',
       action: onGoToAdvanced,
-    },
-    {
-      icon: Wrench,
-      title: 'أدوات الدراسة',
-      subtitle: 'بحث شامل، ملاحظات وإضافة سؤال يدوي',
-      action: onGoToTools,
     },
     {
       icon: CalendarDays,
@@ -118,12 +107,6 @@ export const MorePage: React.FC<MorePageProps> = ({
       title: 'مجالات الدراسة',
       subtitle: 'فصل التخصصات وإدارة البنوك لكل مجال',
       action: onGoToDomains,
-    },
-    {
-      icon: Bell,
-      title: 'الإعدادات والتذكيرات',
-      subtitle: 'تخصيص تذكيرات المراجعة',
-      action: onGoToSettings,
     },
   ];
 
