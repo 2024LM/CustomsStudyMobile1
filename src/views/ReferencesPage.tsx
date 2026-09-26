@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as mammoth from 'mammoth';
-import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X, Upload, Trash2 } from 'lucide-react';
+import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X, Upload, Trash2, Download, Cloud, HardDrive, UserRound } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { fetchReferenceContent, fetchReferenceDocx, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
+import { downloadableReferenceType, fetchReferenceContent, fetchReferenceDocx, fetchReferenceDownload, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
-import { addLocalReference, deleteLocalReference, listLocalReferences, LocalReference } from '../services/localReferences';
+import { addLocalReference, deleteLocalReference, listLocalReferences, LocalReference, saveDownloadedReference } from '../services/localReferences';
 import { db } from '../services/db';
 
 function sanitizeWordHtml(html: string): string {
@@ -104,6 +104,8 @@ export const ReferencesPage: React.FC = () => {
   const [localSelected, setLocalSelected] = useState<LocalReference | null>(null);
   const [localPdfUrl, setLocalPdfUrl] = useState('');
   const [localStatus, setLocalStatus] = useState('');
+  const [sourceTab, setSourceTab] = useState<'online' | 'downloaded' | 'uploaded'>('online');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const load = async (force = false) => {
     setLoading(true); setError('');
@@ -133,6 +135,10 @@ export const ReferencesPage: React.FC = () => {
       if (localPdfUrl) URL.revokeObjectURL(localPdfUrl);
     };
   }, [localPdfUrl]);
+
+  const uploadedItems = useMemo(() => localItems.filter((item) => item.source === 'upload'), [localItems]);
+  const downloadedItems = useMemo(() => localItems.filter((item) => item.source === 'download'), [localItems]);
+  const downloadedRemoteIds = useMemo(() => new Set(downloadedItems.map((item) => item.remoteId).filter(Boolean)), [downloadedItems]);
 
   const categories = useMemo(() => ['الكل', ...Array.from(new Set(items.flatMap((x) => x.categories)))], [items]);
   const filtered = useMemo(() => items.filter((x) => {
@@ -202,6 +208,39 @@ export const ReferencesPage: React.FC = () => {
       setLocalStatus('تم حذف المرجع.');
     } catch {
       setLocalStatus('تعذر حذف المرجع.');
+    }
+  };
+
+  const downloadOnlineItem = async (item: ReferenceItem, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (downloadingId) return;
+    const supportedType = downloadableReferenceType(item.type);
+    if (!supportedType) {
+      setLocalStatus('هذا النوع لا يدعم التنزيل داخل التطبيق حاليًا.');
+      return;
+    }
+
+    setDownloadingId(item.id);
+    setLocalStatus('');
+    try {
+      const downloaded = await fetchReferenceDownload(item);
+      await saveDownloadedReference({
+        remoteId: item.id,
+        title: item.title,
+        description: item.description,
+        categories: item.categories,
+        originalUrl: item.url,
+        type: downloaded.type,
+        mimeType: downloaded.mimeType,
+        data: downloaded.blob,
+        domainId: db.activeDomainId(),
+      });
+      await loadLocal();
+      setLocalStatus('تم تنزيل المرجع وأصبح متاحًا بدون إنترنت.');
+    } catch (error: any) {
+      setLocalStatus(error?.message || 'تعذر تنزيل المرجع.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -307,74 +346,129 @@ export const ReferencesPage: React.FC = () => {
       <ReferenceBannerAd slot="top" />
 
       <div data-tour="references-library" className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
-        <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} مرجع متاح</p></div></div>
+        <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} عبر الإنترنت • {downloadedItems.length} منزّل • {uploadedItems.length} خاص</p></div></div>
       </div>
 
-      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-sm text-[#2C2145]">مراجعي الخاصة</h3>
-            <p className="text-[11px] text-gray-400 mt-1">PDF و DOCX و Markdown و TXT • محفوظة على هذا الجهاز</p>
-          </div>
-          <label className="shrink-0 h-10 px-3 rounded-[13px] bg-[#5B3FD6] text-white text-xs font-bold flex items-center gap-2 justify-center cursor-pointer">
-            <Upload className="w-4 h-4" />
-            رفع مرجع
-            <input
-              type="file"
-              accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0] || null;
-                void handleLocalUpload(file);
-                event.currentTarget.value = '';
-              }}
-            />
-          </label>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { id: 'online', label: 'عبر الإنترنت', icon: Cloud, count: items.length },
+          { id: 'downloaded', label: 'تم تنزيلها', icon: HardDrive, count: downloadedItems.length },
+          { id: 'uploaded', label: 'رفعتها أنت', icon: UserRound, count: uploadedItems.length },
+        ].map(({ id, label, icon: Icon, count }) => (
+          <button
+            key={id}
+            onClick={() => setSourceTab(id as 'online' | 'downloaded' | 'uploaded')}
+            className={`rounded-[16px] border p-3 flex flex-col items-center gap-1.5 transition-all ${
+              sourceTab === id
+                ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]'
+                : 'bg-white border-gray-100 text-gray-500'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-[11px] font-bold">{label}</span>
+            <span className="text-[10px] opacity-70">{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {localStatus && (
+        <div className="text-[11px] rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2">
+          {localStatus}
         </div>
+      )}
 
-        {localStatus && <div className="text-[11px] rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2">{localStatus}</div>}
-
-        {localItems.length === 0 ? (
-          <div className="rounded-[14px] bg-[#F8F9FD] px-3 py-4 text-center text-xs text-gray-400">
-            لم تضف أي مرجع خاص بعد.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {localItems.map((item) => (
-              <div
-                key={item.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => void openLocalItem(item)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') void openLocalItem(item);
+      {sourceTab === 'uploaded' && (
+        <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-sm text-[#2C2145]">مراجع رفعتها أنت</h3>
+              <p className="text-[11px] text-gray-400 mt-1">ملفاتك الشخصية محفوظة على هذا الجهاز</p>
+            </div>
+            <label className="shrink-0 h-10 px-3 rounded-[13px] bg-[#5B3FD6] text-white text-xs font-bold flex items-center gap-2 justify-center cursor-pointer">
+              <Upload className="w-4 h-4" />
+              رفع مرجع
+              <input
+                type="file"
+                accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  void handleLocalUpload(file);
+                  event.currentTarget.value = '';
                 }}
-                className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">
-                    <FileText className="w-4.5 h-4.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-[#2C2145] truncate">{item.name}</div>
-                    <div className="text-[10px] text-gray-400 mt-1">
-                      {item.type.toUpperCase()} • {(item.size / 1024 / 1024).toFixed(item.size >= 1024 * 1024 ? 1 : 2)} MB
+              />
+            </label>
+          </div>
+
+          {uploadedItems.length === 0 ? (
+            <div className="rounded-[14px] bg-[#F8F9FD] px-3 py-5 text-center text-xs text-gray-400">
+              لم ترفع أي مرجع خاص بعد.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {uploadedItems.map((item) => (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void openLocalItem(item)}
+                  className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-[#5B3FD6] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[#2C2145] truncate">{item.name}</div>
+                      <div className="text-[10px] text-gray-400 mt-1">{item.type.toUpperCase()} • {(item.size / 1024 / 1024).toFixed(2)} MB</div>
                     </div>
                   </div>
+                  <button onClick={(event) => void removeLocalItem(item, event)} className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={(event) => void removeLocalItem(item, event)}
-                  className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0"
-                  aria-label="حذف المرجع"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
+      {sourceTab === 'downloaded' && (
+        <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-[#2C2145]">مراجع تم تنزيلها</h3>
+            <p className="text-[11px] text-gray-400 mt-1">تعمل بدون اتصال بالإنترنت</p>
+          </div>
+          {downloadedItems.length === 0 ? (
+            <div className="rounded-[14px] bg-[#F8F9FD] px-3 py-5 text-center text-xs text-gray-400">
+              لم تنزّل أي مرجع بعد. انتقل إلى «عبر الإنترنت» واضغط زر التنزيل.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {downloadedItems.map((item) => (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void openLocalItem(item)}
+                  className="w-full rounded-[15px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center justify-between gap-3 text-right cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <HardDrive className="w-5 h-5 text-[#5B3FD6] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[#2C2145] truncate">{item.name}</div>
+                      <div className="text-[10px] text-gray-400 mt-1">متاح Offline • {item.type.toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <button onClick={(event) => void removeLocalItem(item, event)} className="w-9 h-9 rounded-[11px] text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {sourceTab === 'online' && (
       <div data-tour="references-search" className="relative">
         <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث في المراجع..." className="w-full h-12 pr-11 pl-4 rounded-[16px] bg-white border border-gray-100 outline-none focus:border-[#5B3FD6]/40 text-sm shadow-xs" />
@@ -394,7 +488,23 @@ export const ReferencesPage: React.FC = () => {
             <button onClick={() => void openItem(item)} className="w-full bg-white rounded-[19px] p-4 text-right border border-gray-100 shadow-xs hover:border-[#5B3FD6]/30 transition-all active:scale-98 cursor-pointer">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3 min-w-0"><div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0">{item.type.toLowerCase().includes('google') ? <FileText className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}</div><div className="min-w-0"><h3 className="font-bold text-sm text-[#2C2145]">{item.title}</h3><p className="text-xs text-gray-500 mt-1 leading-5">{item.description}</p><div className="flex flex-wrap gap-1 mt-2">{item.categories.slice(0, 3).map((c) => <span key={c} className="px-2 py-0.5 rounded-full bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-semibold">{c}</span>)}</div></div></div>
-                <ChevronLeft className="w-4 h-4 text-gray-400 shrink-0 mt-3" />
+                <div className="flex items-center gap-1 shrink-0 mt-1">
+                  {downloadableReferenceType(item.type) && (
+                    <button
+                      onClick={(event) => void downloadOnlineItem(item, event)}
+                      disabled={downloadingId === item.id || downloadedRemoteIds.has(item.id)}
+                      className="w-9 h-9 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-45"
+                      aria-label="تنزيل المرجع"
+                    >
+                      {downloadingId === item.id
+                        ? <RefreshCw className="w-4 h-4 animate-spin" />
+                        : downloadedRemoteIds.has(item.id)
+                          ? <HardDrive className="w-4 h-4" />
+                          : <Download className="w-4 h-4" />}
+                    </button>
+                  )}
+                  <ChevronLeft className="w-4 h-4 text-gray-400" />
+                </div>
               </div>
             </button>
             {(index + 1) % 4 === 0 && <ReferenceBannerAd slot={`list-${index + 1}`} />}
@@ -402,6 +512,7 @@ export const ReferencesPage: React.FC = () => {
         ))}
         {filtered.length === 0 && <div className="py-10 text-center text-sm text-gray-400">لا توجد مراجع مطابقة.</div>}
       </div>}
+      )}
     </div>
   );
 };
