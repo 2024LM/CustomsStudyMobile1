@@ -554,6 +554,136 @@ class StudyDatabaseService {
     return { answered, correct, wrong, favorites, successRate };
   }
 
+  public dashboardAnalytics(bankId: string | null = null): {
+    stats: StudyStats;
+    totalQuestions: number;
+    playableQuestions: number;
+    dueReview: number;
+    unseen: number;
+    currentWeek: { total: number; correct: number; rate: number };
+    previousWeek: { total: number; correct: number; rate: number };
+    weeklyDelta: number;
+    weakTopics: Array<{ topic: string; attempts: number; correct: number; wrong: number; successRate: number }>;
+    strongTopics: Array<{ topic: string; attempts: number; correct: number; wrong: number; successRate: number }>;
+    topMistakes: Array<{ question: QuizQuestion; wrongCount: number; correctCount: number }>;
+    heatmap: Array<{ date: string; total: number; correct: number }>;
+  } {
+    const targetBankIds = new Set(
+      this.data.banks
+        .filter((bank) => bank.enabled && bank.domainId === this.activeDomainId() && (!bankId || bank.id === bankId))
+        .map((bank) => bank.id)
+    );
+    const questions = this.data.questions.filter((q) => q.enabled && targetBankIds.has(q.bankId));
+    const questionIds = new Set(questions.map((q) => q.rowId));
+    const attempts = this.data.attempts.filter((a) => questionIds.has(a.questionRowId));
+
+    const totalQuestions = questions.length;
+    const playableQuestions = questions.filter((q) => {
+      if (q.qcmStatus !== 'READY') return false;
+      if (q.questionType === 'TRUE_FALSE') {
+        return ['صحيح', 'خطأ', 'true', 'false'].includes(q.correctAnswer.trim().toLowerCase());
+      }
+      return q.questionType === 'QCM' && Boolean(q.wrong1 && q.wrong2 && q.wrong3);
+    }).length;
+
+    let correct = 0;
+    for (const a of attempts) if (a.isCorrect) correct += 1;
+    const wrong = attempts.length - correct;
+    let favorites = 0;
+    let dueReview = 0;
+    let unseen = 0;
+    const now = Date.now();
+
+    for (const q of questions) {
+      const state = this.data.questionStates[q.rowId];
+      if (state?.favorite) favorites += 1;
+      if (!state || state.timesSeen === 0) unseen += 1;
+      if (state?.nextReviewAt && state.nextReviewAt <= now) dueReview += 1;
+    }
+
+    const stats: StudyStats = {
+      answered: attempts.length,
+      correct,
+      wrong,
+      favorites,
+      successRate: attempts.length ? Math.round((correct * 100) / attempts.length) : 0,
+    };
+
+    const dayMs = 24 * 60 * 60 * 1000;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const currentStart = todayStart.getTime() - 6 * dayMs;
+    const previousStart = currentStart - 7 * dayMs;
+
+    const summarize = (start: number, end: number) => {
+      const list = attempts.filter((a) => a.answeredAt >= start && a.answeredAt < end);
+      const c = list.filter((a) => a.isCorrect).length;
+      return { total: list.length, correct: c, rate: list.length ? Math.round((c * 100) / list.length) : 0 };
+    };
+    const currentWeek = summarize(currentStart, now + 1);
+    const previousWeek = summarize(previousStart, currentStart);
+    const weeklyDelta = currentWeek.rate - previousWeek.rate;
+
+    const topicMap = new Map<string, { attempts: number; correct: number; wrong: number }>();
+    const questionMap = new Map(questions.map((q) => [q.rowId, q] as const));
+    for (const a of attempts) {
+      const q = questionMap.get(a.questionRowId);
+      if (!q) continue;
+      const topic = q.topic.trim() || 'عام';
+      const item = topicMap.get(topic) || { attempts: 0, correct: 0, wrong: 0 };
+      item.attempts += 1;
+      if (a.isCorrect) item.correct += 1;
+      else item.wrong += 1;
+      topicMap.set(topic, item);
+    }
+    const topicStats = Array.from(topicMap.entries()).map(([topic, value]) => ({
+      topic,
+      ...value,
+      successRate: value.attempts ? Math.round((value.correct * 100) / value.attempts) : 0,
+    }));
+    const weakTopics = topicStats.slice().sort((a, b) => a.successRate - b.successRate || b.attempts - a.attempts).slice(0, 5);
+    const strongTopics = topicStats.slice().sort((a, b) => b.successRate - a.successRate || b.attempts - a.attempts).slice(0, 5);
+
+    const topMistakes = questions
+      .map((question) => {
+        const state = this.data.questionStates[question.rowId];
+        return { question, wrongCount: state?.wrongCount || 0, correctCount: state?.correctCount || 0 };
+      })
+      .filter((item) => item.wrongCount > 0)
+      .sort((a, b) => b.wrongCount - a.wrongCount || a.correctCount - b.correctCount)
+      .slice(0, 5);
+
+    const heatmap: Array<{ date: string; total: number; correct: number }> = [];
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      const start = d.getTime();
+      const end = start + dayMs;
+      const list = attempts.filter((a) => a.answeredAt >= start && a.answeredAt < end);
+      heatmap.push({
+        date: [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'),
+        total: list.length,
+        correct: list.filter((a) => a.isCorrect).length,
+      });
+    }
+
+    return {
+      stats,
+      totalQuestions,
+      playableQuestions,
+      dueReview,
+      unseen,
+      currentWeek,
+      previousWeek,
+      weeklyDelta,
+      weakTopics,
+      strongTopics,
+      topMistakes,
+      heatmap,
+    };
+  }
+
   public getActivityStats(
     period: 'daily' | 'weekly' | 'monthly',
     bankId: string | null = null
