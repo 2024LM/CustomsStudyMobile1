@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   Brain,
-  Cards,
+  Layers3,
   ChartNoAxesCombined,
   Clock3,
   Database,
@@ -102,7 +102,7 @@ export const AdvancedStudyPage: React.FC = () => {
 
   const sections = [
     { id: 'smart' as const, label: 'مراجعة ذكية', icon: Brain },
-    { id: 'flashcards' as const, label: 'Flashcards', icon: Cards },
+    { id: 'flashcards' as const, label: 'Flashcards', icon: Layers3 },
     { id: 'history' as const, label: 'سجل الجلسات', icon: ListChecks },
     { id: 'pomodoro' as const, label: 'Pomodoro', icon: Clock3 },
     { id: 'knowledge' as const, label: 'المعرفة', icon: NotebookPen },
