@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Heart,
   Library,
+  Layers3,
   Bell,
   ChevronLeft,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ interface MorePageProps {
   onGoToMistakes: () => void;
   onGoToFavorites: () => void;
   onGoToBanks: () => void;
+  onGoToDomains: () => void;
   onGoToSettings: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
@@ -24,6 +26,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToMistakes,
   onGoToFavorites,
   onGoToBanks,
+  onGoToDomains,
   onGoToSettings,
   onOpenNotifications,
   unreadNotificationsCount = 0,
@@ -72,6 +75,12 @@ export const MorePage: React.FC<MorePageProps> = ({
       title: 'بنوك الأسئلة',
       subtitle: 'إدارة واختيار بنك المراجعة',
       action: onGoToBanks,
+    },
+    {
+      icon: Layers3,
+      title: 'مجالات الدراسة',
+      subtitle: 'فصل التخصصات وإدارة البنوك لكل مجال',
+      action: onGoToDomains,
     },
     {
       icon: Bell,
