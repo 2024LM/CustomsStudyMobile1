@@ -1118,6 +1118,43 @@ class StudyDatabaseService {
     return newBankId;
   }
 
+  public compareBanks(bankAId: string, bankBId: string): {
+    bankAName: string;
+    bankBName: string;
+    bankACount: number;
+    bankBCount: number;
+    shared: number;
+    onlyA: number;
+    onlyB: number;
+  } {
+    const bankA = this.data.banks.find((bank) => bank.id === bankAId && bank.enabled);
+    const bankB = this.data.banks.find((bank) => bank.id === bankBId && bank.enabled);
+    if (!bankA || !bankB) throw new Error('Unknown bank');
+
+    const sig = (q: QuizQuestion) =>
+      (q.question.trim() + '|' + q.correctAnswer.trim()).toLocaleLowerCase('ar');
+
+    const setA = new Set(
+      this.data.questions.filter((q) => q.enabled && q.bankId === bankAId).map(sig)
+    );
+    const setB = new Set(
+      this.data.questions.filter((q) => q.enabled && q.bankId === bankBId).map(sig)
+    );
+
+    let shared = 0;
+    for (const item of setA) if (setB.has(item)) shared += 1;
+
+    return {
+      bankAName: bankA.name,
+      bankBName: bankB.name,
+      bankACount: setA.size,
+      bankBCount: setB.size,
+      shared,
+      onlyA: setA.size - shared,
+      onlyB: setB.size - shared,
+    };
+  }
+
   public bankValidation(bankId: string = this.activeBankId()): {
     total: number;
     duplicates: number;
