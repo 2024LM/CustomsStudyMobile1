@@ -419,43 +419,34 @@ function responseText(payload: any): string {
 }
 
 async function generateCloud(prompt: string, maxOutputTokens = 700): Promise<string> {
-  const key = await getGeminiKey();
-  if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
   const model = geminiModel();
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': key,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens,
+  const { response, payload } = await geminiFetchWithFailover((key) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
         },
-      }),
-    }
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.35,
+            maxOutputTokens,
+          },
+        }),
+      }
+    )
   );
-
-  let payload: any = null;
-  try { payload = await response.json(); } catch {}
 
   if (!response.ok) {
     const apiMessage = payload?.error?.message || '';
-    if (response.status === 400 || response.status === 401 || response.status === 403) {
-      throw new Error(apiMessage || 'مفتاح Gemini أو إعداداته غير صالحة.');
-    }
-    if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
+    if (response.status === 400) throw new Error(apiMessage || 'طلب Gemini أو النموذج غير صالح.');
     throw new Error(apiMessage || 'تعذر الاتصال بخدمة Gemini.');
   }
-
   return responseText(payload);
 }
-
 
 async function generate(prompt: string, maxOutputTokens = 700): Promise<string> {
   const mode = aiProviderMode();
@@ -495,11 +486,11 @@ export async function aiReady(): Promise<boolean> {
   }
 
   if (mode === 'api') {
-    return aiVerified() && Boolean(await getGeminiKey());
+    return (await listGeminiKeys()).some((key) => key.verifiedAt > 0);
   }
 
   if ((await nanoStatus()).available) return true;
-  return aiVerified() && Boolean(await getGeminiKey());
+  return (await listGeminiKeys()).some((key) => key.verifiedAt > 0);
 }
 
 function questionContext(question: QuizQuestion, selectedAnswer?: string | null): string {
@@ -599,8 +590,8 @@ async function assertCloudAiReady(feature: string): Promise<void> {
   if (mode === 'nano') {
     throw new Error(`${feature} يحتاج Gemini API السحابي ولا يعمل في وضع Nano المحلي.`);
   }
-  if (!aiVerified() || !(await getGeminiKey())) {
-    throw new Error(`${feature} يحتاج Gemini API Key صالحًا ومتحققًا.`);
+  if (!(await listGeminiKeys()).some((key) => key.verifiedAt > 0)) {
+    throw new Error(`${feature} يحتاج مفتاح Gemini API واحدًا على الأقل صالحًا ومتحققًا.`);
   }
 }
 
@@ -723,39 +714,35 @@ async function generateWithTools(
   maxOutputTokens = 1400
 ): Promise<any> {
   await assertCloudAiReady('أدوات البحث والروابط');
-  const key = await getGeminiKey();
-  if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
   const model = geminiModel();
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': key,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        tools,
-        generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens,
+  const { response, payload } = await geminiFetchWithFailover((key) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
         },
-      }),
-    }
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          tools,
+          generationConfig: {
+            temperature: 0.25,
+            maxOutputTokens,
+          },
+        }),
+      }
+    )
   );
 
-  let payload: any = null;
-  try { payload = await response.json(); } catch {}
   if (!response.ok) {
     const apiMessage = payload?.error?.message || '';
-    if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
     throw new Error(apiMessage || 'تعذر استخدام أدوات Gemini.');
   }
   return payload;
 }
-
 function safeDomain(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
   catch { return ''; }
