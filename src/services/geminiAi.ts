@@ -439,7 +439,9 @@ export async function runStudyAssistant(context: StudyAssistantContext): Promise
 6) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
 7) إذا طلب المستخدم مراجع أو كان إنشاء البنك يحتاج مصادر، اطلب من التطبيق البحث عن مراجع ويب عبر requestSources=true. لا تخترع روابط بنفسك.
 8) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
-9) أعد JSON صالحًا فقط بدون Markdown بالشكل:
+9) ممنوع أن تقول للمستخدم «اطلب من التطبيق» أو «استخدم زر البحث» أو تطلب منه تنفيذ أداة يستطيع التطبيق تنفيذها. إذا احتجت بحث ويب اجعل requestSources=true، والتطبيق سينفذه تلقائيًا.
+10) عندما يقول المستخدم «ابحث عنه» أو «ابحث في الويب» أو «هات مصادر/روابط» وكان موضوع المحادثة معروفًا، اجعل requestSources=true واحتفظ بالموضوع في topic.
+11) أعد JSON صالحًا فقط بدون Markdown بالشكل:
 {"reply":"...","intent":"chat|progress|bank|topic|references","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"requestSources":false,"requestConfirmation":false,"shouldGenerateBank":false}
 
 السياق الحالي:
