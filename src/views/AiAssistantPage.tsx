@@ -462,7 +462,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           <div className="grid grid-cols-2 gap-2 mt-3 text-[10px]">
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">البنك</span><div className="font-bold mt-1 truncate">{workspace.task.bankName || 'غير محدد'}</div></div>
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">الموضوع</span><div className="font-bold mt-1 truncate">{workspace.task.topic || 'غير محدد'}</div></div>
-            <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">المصادر</span><div className="font-bold mt-1">{workspace.task.sourceUrls.length}</div></div>
+            <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">المصادر</span><div className="font-bold mt-1">{workspace.task.sourceUrls.length + localSources.length}</div></div>
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">الأسئلة</span><div className="font-bold mt-1">{workspace.task.expectedQuestions}</div></div>
           </div>
 
