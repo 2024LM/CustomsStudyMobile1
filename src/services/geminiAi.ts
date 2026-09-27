@@ -370,12 +370,14 @@ async function geminiFetchWithFailover(
 
   let lastPayload: any = null;
   let lastStatus = 0;
+  const attempts: Array<{ number: number; status: number | 'network' }> = [];
 
   for (const key of ordered) {
     let response: Response;
     try {
       response = await makeRequest(key.value);
     } catch {
+      attempts.push({ number: key.number, status: 'network' });
       continue;
     }
 
@@ -383,6 +385,7 @@ async function geminiFetchWithFailover(
     try { payload = await response.json(); } catch {}
     lastPayload = payload;
     lastStatus = response.status;
+    attempts.push({ number: key.number, status: response.status });
 
     if (response.ok) {
       if (pool.activeId !== key.id) {
@@ -392,17 +395,28 @@ async function geminiFetchWithFailover(
       return { response, payload, keyNumber: key.number };
     }
 
-    // Invalid/forbidden key or quota exhausted: automatically rotate.
     if ([401, 403, 429].includes(response.status)) continue;
 
-    // Request/model errors are not key-specific; do not waste all keys.
     return { response, payload, keyNumber: key.number };
   }
 
+  const summary = attempts
+    .map((attempt) => `مفتاح ${attempt.number}: ${attempt.status === 'network' ? 'خطأ شبكة' : attempt.status}`)
+    .join('، ');
+
   const apiMessage = lastPayload?.error?.message || '';
-  if (lastStatus === 429) throw new Error('جميع مفاتيح Gemini المتحققة بلغت حد الطلبات حاليًا.');
-  if (lastStatus === 401 || lastStatus === 403) throw new Error('جميع مفاتيح Gemini المتحققة فشلت في المصادقة.');
-  throw new Error(apiMessage || 'تعذر الاتصال بـ Gemini باستخدام المفاتيح المحفوظة.');
+  if (lastStatus === 429) {
+    throw new Error(
+      `فشلت جميع مفاتيح Gemini المتحققة بسبب حد الاستخدام (429). جُرّبت: ${summary}. إذا كانت المفاتيح من نفس Google Project فقد تشترك في نفس الحصة.`
+    );
+  }
+  if (lastStatus === 401 || lastStatus === 403) {
+    throw new Error(`فشلت مصادقة جميع مفاتيح Gemini. جُرّبت: ${summary}.`);
+  }
+  if (attempts.length && attempts.every((attempt) => attempt.status === 'network')) {
+    throw new Error(`تعذر الوصول إلى Gemini عبر الشبكة. جُرّبت: ${summary}.`);
+  }
+  throw new Error(apiMessage || `تعذر الاتصال بـ Gemini. جُرّبت: ${summary || 'لا توجد محاولة مكتملة'}.`);
 }
 
 function responseText(payload: any): string {
