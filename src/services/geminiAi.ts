@@ -350,6 +350,112 @@ export interface WebReferenceCandidate {
   note: string;
 }
 
+export interface RichSearchItem {
+  type: 'youtube' | 'image' | 'link';
+  title: string;
+  url: string;
+  subtitle?: string;
+  thumbnailUrl?: string;
+}
+
+function youtubeVideoId(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('youtu.be')) return parsed.pathname.replace(/^\//, '').split('/')[0] || '';
+    if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || '';
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      const marker = parts.findIndex((part) => ['shorts', 'embed', 'live'].includes(part));
+      if (marker >= 0) return parts[marker + 1] || '';
+    }
+  } catch {}
+  return '';
+}
+
+function isDirectImageUrl(url: string): boolean {
+  return /\.(?:png|jpe?g|webp|gif)(?:$|[?#])/i.test(url)
+    || /(?:googleusercontent|gstatic|ytimg)\.com/i.test(url);
+}
+
+export async function searchRichWebContent(
+  query: string,
+  kind: 'youtube' | 'images' | 'links' = 'links'
+): Promise<RichSearchItem[]> {
+  const clean = query.trim().slice(0, 300);
+  if (!clean) throw new Error('اكتب موضوعًا واضحًا للبحث.');
+
+  const searchInstruction = kind === 'youtube'
+    ? `ابحث فعليًا عن أفضل فيديوهات YouTube التعليمية المتعلقة بهذا الطلب: "${clean}". أعط أولوية للفيديوهات المباشرة على youtube.com أو youtu.be، وتجنب صفحات التجميع.`
+    : kind === 'images'
+      ? `ابحث فعليًا عن صور مفيدة وموثوقة مرتبطة بهذا الطلب: "${clean}". أعط أولوية لروابط الصور المباشرة من مصادر موثوقة مثل Wikimedia Commons أو مواقع المؤسسات الرسمية، وتجنب الصفحات التي لا تحتوي رابط صورة مباشر.`
+      : `ابحث فعليًا عن روابط مفيدة وموثوقة مرتبطة بهذا الطلب: "${clean}".`;
+
+  const payload = await generateWithTools(
+    `${searchInstruction}
+نفّذ Google Search فعليًا. لا تخترع روابط. استخدم فقط النتائج التي تظهر لك من البحث.`,
+    [{ google_search: {} }],
+    1200
+  );
+
+  const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  const seen = new Set<string>();
+  const items: RichSearchItem[] = [];
+
+  for (const chunk of chunks) {
+    const web = chunk?.web;
+    const url = String(web?.uri || '').trim();
+    if (!/^https:\/\//i.test(url) || seen.has(url)) continue;
+
+    const domain = safeDomain(url);
+    const title = String(web?.title || domain || 'رابط').trim().slice(0, 180);
+
+    if (kind === 'youtube') {
+      const id = youtubeVideoId(url);
+      if (!id) continue;
+      seen.add(url);
+      items.push({
+        type: 'youtube',
+        title,
+        url,
+        subtitle: domain,
+        thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      });
+    } else if (kind === 'images') {
+      if (!isDirectImageUrl(url)) continue;
+      seen.add(url);
+      items.push({
+        type: 'image',
+        title,
+        url,
+        subtitle: domain,
+        thumbnailUrl: url,
+      });
+    } else {
+      seen.add(url);
+      items.push({
+        type: 'link',
+        title,
+        url,
+        subtitle: domain,
+      });
+    }
+
+    if (items.length >= 8) break;
+  }
+
+  if (!items.length) {
+    if (kind === 'images') {
+      throw new Error('لم أجد روابط صور مباشرة موثوقة لهذا الطلب. جرّب وصفًا أكثر تحديدًا.');
+    }
+    if (kind === 'youtube') {
+      throw new Error('لم أجد روابط YouTube مباشرة لهذا الطلب. جرّب صياغة أكثر تحديدًا.');
+    }
+    throw new Error('لم أجد روابط مناسبة لهذا الطلب.');
+  }
+
+  return items;
+}
+
 async function generateWithTools(
   prompt: string,
   tools: Array<Record<string, unknown>>,
