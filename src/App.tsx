@@ -229,6 +229,7 @@ export function App() {
   const navItems = [
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
+    { p: 'AI_ASSISTANT' as Page, title: 'AI', icon: Sparkles },
     { p: 'SESSION' as Page, title: 'جلسة', icon: PlayCircle },
     { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
     { p: 'MORE' as Page, title: 'المزيد', icon: MoreHorizontal },
@@ -369,63 +370,43 @@ export function App() {
 
         {/* Bottom Navigation Bar */}
         {!sessionFocus && (
-          <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-2 z-40 shadow-sm">
+          <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-1 z-40 shadow-sm">
             <div className="flex items-center justify-around">
-              {navItems.map((item, index) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isSelected =
                   page === item.p ||
                   (item.p === 'MORE' &&
                     ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS'].includes(page));
-                const addCenterGap = index === 2;
 
                 return (
-                  <React.Fragment key={item.p}>
-                    {addCenterGap && <div className="w-[66px] shrink-0" aria-hidden="true" />}
-                    <button
-                      onClick={() => {
-                        if (item.p === 'SESSION') {
-                          setSessionTopic(null);
-                          setSessionCount(null);
-                          setSessionMode('classic');
-                          setSessionAutoStart(false);
-                        }
-                        setPage(item.p);
-                      }}
-                      className="flex-1 flex flex-col items-center justify-center py-1.5 px-1 relative transition-colors cursor-pointer min-w-0"
-                    >
-                      <div className={`w-11 h-8 rounded-full flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-[#F5F3FF] text-[#5B3FD6]' : 'text-gray-400 hover:text-gray-600'
-                      }`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <span className={`text-[10px] sm:text-[11px] font-semibold tracking-tight mt-0.5 truncate max-w-full ${
-                        isSelected ? 'text-[#5B3FD6] font-bold' : 'text-gray-400'
-                      }`}>
-                        {item.title}
-                      </span>
-                    </button>
-                  </React.Fragment>
+                  <button
+                    key={item.p}
+                    onClick={() => {
+                      if (item.p === 'SESSION') {
+                        setSessionTopic(null);
+                        setSessionCount(null);
+                        setSessionMode('classic');
+                        setSessionAutoStart(false);
+                      }
+                      setPage(item.p);
+                    }}
+                    className="flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 relative transition-colors cursor-pointer"
+                  >
+                    <div className={`w-10 h-8 rounded-full flex items-center justify-center transition-colors ${
+                      isSelected ? 'bg-[#F5F3FF] text-[#5B3FD6]' : 'text-gray-400 hover:text-gray-600'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${item.p === 'AI_ASSISTANT' ? 'stroke-[2.3]' : ''}`} />
+                    </div>
+                    <span className={`text-[9px] sm:text-[10px] font-semibold tracking-tight mt-0.5 truncate max-w-full ${
+                      isSelected ? 'text-[#5B3FD6] font-bold' : 'text-gray-400'
+                    }`}>
+                      {item.title}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-
-            <button
-              onClick={() => setPage('AI_ASSISTANT')}
-              aria-label="مساعد الدراسة بالذكاء الاصطناعي"
-              className="absolute left-1/2 -translate-x-1/2 -top-7 flex flex-col items-center justify-center"
-            >
-              <div className={`w-15 h-15 rounded-[20px] border-[5px] border-[#F8F9FD] dark:border-[#17141F] shadow-lg flex items-center justify-center transition-all ${
-                page === 'AI_ASSISTANT'
-                  ? 'bg-[#392080] text-white scale-105'
-                  : 'bg-gradient-to-br from-[#6841E8] to-[#392080] text-white'
-              }`}>
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <span className={`text-[10px] font-black mt-0.5 ${
-                page === 'AI_ASSISTANT' ? 'text-[#5B3FD6]' : 'text-gray-500'
-              }`}>AI</span>
-            </button>
           </nav>
         )}
       </div>
