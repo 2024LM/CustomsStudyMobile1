@@ -9,6 +9,7 @@ const VERIFIED_KEY = 'ai_gemini_verified';
 const MODEL_KEY = 'ai_gemini_model';
 const WEB_KEY = 'ai_gemini_web_key';
 const PROVIDER_KEY = 'ai_provider_mode';
+const KEY_POOL_VERSION = 1;
 
 interface SecureSecretsPlugin {
   setGeminiKey(options: { value: string }): Promise<void>;
@@ -107,18 +108,38 @@ export function setGeminiModel(model: GeminiModel): void {
   setAiVerified(false);
 }
 
-export async function saveGeminiKey(value: string): Promise<void> {
-  const clean = value.trim();
-  if (!clean) throw new Error('أدخل مفتاح Gemini API أولًا.');
-  if (Capacitor.getPlatform() === 'android') {
-    await SecureSecrets.setGeminiKey({ value: clean });
-  } else {
-    localStorage.setItem(WEB_KEY, clean);
-  }
-  setAiVerified(false);
+export interface GeminiKeyMeta {
+  id: string;
+  number: number;
+  active: boolean;
+  verifiedAt: number;
+  masked: string;
 }
 
-export async function getGeminiKey(): Promise<string> {
+interface GeminiStoredKey {
+  id: string;
+  number: number;
+  value: string;
+  verifiedAt: number;
+}
+
+interface GeminiKeyPool {
+  version: number;
+  activeId: string;
+  nextNumber: number;
+  keys: GeminiStoredKey[];
+}
+
+function emptyKeyPool(): GeminiKeyPool {
+  return { version: KEY_POOL_VERSION, activeId: '', nextNumber: 1, keys: [] };
+}
+
+function maskGeminiKey(value: string): string {
+  if (value.length <= 10) return '••••••••';
+  return `${value.slice(0, 5)}••••${value.slice(-4)}`;
+}
+
+async function readSecretPayload(): Promise<string> {
   try {
     if (Capacitor.getPlatform() === 'android') {
       return (await SecureSecrets.getGeminiKey()).value || '';
@@ -129,14 +150,259 @@ export async function getGeminiKey(): Promise<string> {
   }
 }
 
-export async function deleteGeminiKey(): Promise<void> {
+async function writeSecretPayload(value: string): Promise<void> {
   if (Capacitor.getPlatform() === 'android') {
-    try { await SecureSecrets.deleteGeminiKey(); } catch {}
+    await SecureSecrets.setGeminiKey({ value });
   } else {
-    localStorage.removeItem(WEB_KEY);
+    localStorage.setItem(WEB_KEY, value);
+  }
+}
+
+async function readKeyPool(): Promise<GeminiKeyPool> {
+  const raw = await readSecretPayload();
+  if (!raw) return emptyKeyPool();
+
+  try {
+    const parsed = JSON.parse(raw) as GeminiKeyPool;
+    if (
+      parsed?.version === KEY_POOL_VERSION &&
+      Array.isArray(parsed.keys) &&
+      parsed.keys.every((key) => typeof key?.value === 'string' && typeof key?.number === 'number')
+    ) {
+      return {
+        version: KEY_POOL_VERSION,
+        activeId: String(parsed.activeId || ''),
+        nextNumber: Math.max(Number(parsed.nextNumber) || 1, 1),
+        keys: parsed.keys
+          .map((key) => ({
+            id: String(key.id || ''),
+            number: Number(key.number),
+            value: String(key.value || '').trim(),
+            verifiedAt: Number(key.verifiedAt) || 0,
+          }))
+          .filter((key) => key.id && key.value),
+      };
+    }
+  } catch {}
+
+  // Migration from the previous single-key format.
+  const migrated: GeminiKeyPool = {
+    version: KEY_POOL_VERSION,
+    activeId: 'gk_1',
+    nextNumber: 2,
+    keys: [{
+      id: 'gk_1',
+      number: 1,
+      value: raw.trim(),
+      verifiedAt: aiVerified() ? Date.now() : 0,
+    }],
+  };
+  await writeSecretPayload(JSON.stringify(migrated));
+  return migrated;
+}
+
+async function writeKeyPool(pool: GeminiKeyPool): Promise<void> {
+  if (!pool.keys.length) {
+    if (Capacitor.getPlatform() === 'android') {
+      try { await SecureSecrets.deleteGeminiKey(); } catch {}
+    } else {
+      localStorage.removeItem(WEB_KEY);
+    }
+    setAiVerified(false);
+    return;
+  }
+  await writeSecretPayload(JSON.stringify(pool));
+  setAiVerified(pool.keys.some((key) => key.verifiedAt > 0));
+}
+
+function orderedPoolKeys(pool: GeminiKeyPool): GeminiStoredKey[] {
+  const active = pool.keys.find((key) => key.id === pool.activeId);
+  const rest = pool.keys.filter((key) => key.id !== pool.activeId);
+  return active ? [active, ...rest] : [...pool.keys];
+}
+
+export async function listGeminiKeys(): Promise<GeminiKeyMeta[]> {
+  const pool = await readKeyPool();
+  return pool.keys
+    .slice()
+    .sort((a, b) => a.number - b.number)
+    .map((key) => ({
+      id: key.id,
+      number: key.number,
+      active: key.id === pool.activeId,
+      verifiedAt: key.verifiedAt,
+      masked: maskGeminiKey(key.value),
+    }));
+}
+
+export async function findGeminiKeyNumber(value: string): Promise<number | null> {
+  const clean = value.trim();
+  if (!clean) return null;
+  const pool = await readKeyPool();
+  return pool.keys.find((key) => key.value === clean)?.number || null;
+}
+
+async function testGeminiKeyValue(value: string): Promise<void> {
+  const model = geminiModel();
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': value,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'أجب بكلمة واحدة فقط: متصل' }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 20 },
+      }),
+    }
+  );
+
+  let payload: any = null;
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const apiMessage = payload?.error?.message || '';
+    if ([400, 401, 403].includes(response.status)) {
+      throw new Error(apiMessage || 'مفتاح Gemini غير صالح أو غير مخوّل.');
+    }
+    if (response.status === 429) throw new Error('هذا المفتاح بلغ حد الطلبات حاليًا.');
+    throw new Error(apiMessage || 'تعذر اختبار مفتاح Gemini.');
+  }
+  responseText(payload);
+}
+
+export async function addVerifiedGeminiKey(value: string): Promise<GeminiKeyMeta> {
+  const clean = value.trim();
+  if (!clean) throw new Error('أدخل مفتاح Gemini API أولًا.');
+
+  const existingNumber = await findGeminiKeyNumber(clean);
+  if (existingNumber) throw new Error(`هذا المفتاح محفوظ مسبقًا باسم «مفتاح ${existingNumber}».`);
+
+  await testGeminiKeyValue(clean);
+
+  const pool = await readKeyPool();
+  const number = pool.nextNumber;
+  const key: GeminiStoredKey = {
+    id: `gk_${Date.now().toString(36)}_${number}`,
+    number,
+    value: clean,
+    verifiedAt: Date.now(),
+  };
+  pool.keys.push(key);
+  pool.nextNumber = number + 1;
+  if (!pool.activeId) pool.activeId = key.id;
+  await writeKeyPool(pool);
+  setAiEnabled(true);
+
+  return {
+    id: key.id,
+    number: key.number,
+    active: key.id === pool.activeId,
+    verifiedAt: key.verifiedAt,
+    masked: maskGeminiKey(key.value),
+  };
+}
+
+// Backward-compatible helper: verified key is added rather than replacing existing keys.
+export async function saveGeminiKey(value: string): Promise<void> {
+  await addVerifiedGeminiKey(value);
+}
+
+export async function getGeminiKey(): Promise<string> {
+  const pool = await readKeyPool();
+  return orderedPoolKeys(pool).find((key) => key.verifiedAt > 0)?.value || '';
+}
+
+export async function selectGeminiKey(id: string): Promise<void> {
+  const pool = await readKeyPool();
+  if (!pool.keys.some((key) => key.id === id)) throw new Error('المفتاح غير موجود.');
+  pool.activeId = id;
+  await writeKeyPool(pool);
+}
+
+export async function deleteGeminiKeyById(id: string): Promise<void> {
+  const pool = await readKeyPool();
+  const removed = pool.keys.find((key) => key.id === id);
+  if (!removed) return;
+  pool.keys = pool.keys.filter((key) => key.id !== id);
+  if (pool.activeId === id) {
+    pool.activeId = pool.keys.find((key) => key.verifiedAt > 0)?.id || pool.keys[0]?.id || '';
+  }
+  await writeKeyPool(pool);
+  if (!pool.keys.length) setAiEnabled(false);
+}
+
+export async function deleteGeminiKey(): Promise<void> {
+  const pool = emptyKeyPool();
+  await writeKeyPool(pool);
+  setAiEnabled(false);
+}
+
+export async function verifyGeminiConnection(): Promise<void> {
+  const pool = await readKeyPool();
+  const ordered = orderedPoolKeys(pool);
+  if (!ordered.length) throw new Error('لا يوجد مفتاح Gemini محفوظ.');
+
+  let lastError = 'فشل اختبار جميع المفاتيح.';
+  for (const key of ordered) {
+    try {
+      await testGeminiKeyValue(key.value);
+      key.verifiedAt = Date.now();
+      pool.activeId = key.id;
+      await writeKeyPool(pool);
+      setAiVerified(true);
+      return;
+    } catch (error: any) {
+      lastError = error?.message || lastError;
+    }
   }
   setAiVerified(false);
-  setAiEnabled(false);
+  throw new Error(lastError);
+}
+
+async function geminiFetchWithFailover(
+  makeRequest: (key: string) => Promise<Response>
+): Promise<{ response: Response; payload: any; keyNumber: number }> {
+  const pool = await readKeyPool();
+  const ordered = orderedPoolKeys(pool).filter((key) => key.verifiedAt > 0);
+  if (!ordered.length) throw new Error('لا يوجد مفتاح Gemini متحقق وصالح.');
+
+  let lastPayload: any = null;
+  let lastStatus = 0;
+
+  for (const key of ordered) {
+    let response: Response;
+    try {
+      response = await makeRequest(key.value);
+    } catch {
+      continue;
+    }
+
+    let payload: any = null;
+    try { payload = await response.json(); } catch {}
+    lastPayload = payload;
+    lastStatus = response.status;
+
+    if (response.ok) {
+      if (pool.activeId !== key.id) {
+        pool.activeId = key.id;
+        await writeKeyPool(pool);
+      }
+      return { response, payload, keyNumber: key.number };
+    }
+
+    // Invalid/forbidden key or quota exhausted: automatically rotate.
+    if ([401, 403, 429].includes(response.status)) continue;
+
+    // Request/model errors are not key-specific; do not waste all keys.
+    return { response, payload, keyNumber: key.number };
+  }
+
+  const apiMessage = lastPayload?.error?.message || '';
+  if (lastStatus === 429) throw new Error('جميع مفاتيح Gemini المتحققة بلغت حد الطلبات حاليًا.');
+  if (lastStatus === 401 || lastStatus === 403) throw new Error('جميع مفاتيح Gemini المتحققة فشلت في المصادقة.');
+  throw new Error(apiMessage || 'تعذر الاتصال بـ Gemini باستخدام المفاتيح المحفوظة.');
 }
 
 function responseText(payload: any): string {
@@ -218,11 +484,6 @@ async function generate(prompt: string, maxOutputTokens = 700): Promise<string> 
   }
 
   return generateCloud(prompt, maxOutputTokens);
-}
-
-export async function verifyGeminiConnection(): Promise<void> {
-  await generateCloud('أجب بكلمة واحدة فقط: متصل', 20);
-  setAiVerified(true);
 }
 
 export async function aiReady(): Promise<boolean> {
