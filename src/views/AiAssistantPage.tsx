@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bot,
   CheckCircle2,
@@ -80,11 +80,6 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const analytics = db.dashboardAnalytics(null);
   const banks = db.banks();
 
-  const selectedSources = useMemo(
-    () => candidates.filter((item) => workspace.task.sourceUrls.includes(item.url)),
-    [candidates, workspace.task.sourceUrls]
-  );
-
   const updateWorkspace = (next: AiWorkspaceState) => {
     setWorkspace(saveAiWorkspace(next));
   };
@@ -112,8 +107,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setSelectedUrls(next);
   };
 
-  const searchSources = async (topicOverride?: string) => {
-    const topic = (topicOverride || workspace.task.topic).trim();
+  const searchSources = async (topicOverride?: string, baseState: AiWorkspaceState = workspace) => {
+    const topic = (topicOverride || baseState.task.topic).trim();
     if (!topic) {
       setStatus('حدد الموضوع أولًا حتى أبحث عن مراجع مناسبة.');
       return;
@@ -126,9 +121,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       const result = await searchWebReferences(topic);
       setCandidates(result.candidates);
       const cleared = {
-        ...workspace,
+        ...baseState,
         task: {
-          ...workspace.task,
+          ...baseState.task,
           sourceIds: [],
           sourceUrls: [],
           sourceTitles: [],
@@ -245,7 +240,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       setWorkspace(state);
 
       if (decision.requestSources && nextTask.topic && nextTask.sourceUrls.length === 0) {
-        await searchSources(nextTask.topic);
+        await searchSources(nextTask.topic, state);
       }
 
       if (decision.shouldGenerateBank && nextTask.sourceUrls.length > 0) {
