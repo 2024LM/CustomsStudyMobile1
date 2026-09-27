@@ -949,8 +949,6 @@ ${JSON.stringify(sourceSummary)}`;
 
     if (!raw) {
       await assertCloudAiReady('المرفقات متعددة الوسائط أو الروابط');
-      const key = await getGeminiKey();
-      if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
       const model = geminiModel();
     const parts: any[] = [{ text: prompt }];
     let needsUrlContext = false;
@@ -987,24 +985,22 @@ ${JSON.stringify(sourceSummary)}`;
     };
     if (needsUrlContext) body.tools = [{ url_context: {} }];
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': key,
-        },
-        body: JSON.stringify(body),
-      }
+    const { response, payload } = await geminiFetchWithFailover((activeKey) =>
+      fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': activeKey,
+          },
+          body: JSON.stringify(body),
+        }
+      )
     );
-
-    let payload: any = null;
-    try { payload = await response.json(); } catch {}
 
     if (!response.ok) {
       const apiMessage = payload?.error?.message || '';
-      if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
       throw new Error(apiMessage || 'تعذر إرسال المرفقات إلى Gemini.');
     }
 
@@ -1127,8 +1123,6 @@ export async function generateBankFromMixedSources(input: {
   assertMixedSourcePayload(sources);
   await assertCloudAiReady('إنشاء بنك من ملفات/صور/روابط');
 
-  const key = await getGeminiKey();
-  if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
   const model = geminiModel();
 
   const parts: any[] = [{
@@ -1177,23 +1171,22 @@ export async function generateBankFromMixedSources(input: {
   };
   if (urlSources.length) body.tools = [{ url_context: {} }];
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': key,
-      },
-      body: JSON.stringify(body),
-    }
+  const { response, payload } = await geminiFetchWithFailover((activeKey) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': activeKey,
+        },
+        body: JSON.stringify(body),
+      }
+    )
   );
 
-  let payload: any = null;
-  try { payload = await response.json(); } catch {}
   if (!response.ok) {
     const apiMessage = payload?.error?.message || '';
-    if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
     throw new Error(apiMessage || 'تعذر إنشاء البنك من المصادر المختارة.');
   }
 
