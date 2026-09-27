@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Database, FileText, HardDrive, Trash2 } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
   deleteLocalReference,
@@ -15,7 +15,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export const DownloadsPage: React.FC = () => {
+export const DownloadsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [items, setItems] = useState<LocalReference[]>([]);
   const [summary, setSummary] = useState({
     totalBytes: 0,
@@ -55,7 +55,7 @@ export const DownloadsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader title="إدارة التنزيلات" subtitle="الملفات والبنوك المخزنة على الجهاز" />
+      <PurpleSubpageHeader title="إدارة التنزيلات" subtitle="الملفات والبنوك المخزنة على الجهاز" onBack={onBack} />
 
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-white rounded-[18px] p-4 border border-gray-100">
