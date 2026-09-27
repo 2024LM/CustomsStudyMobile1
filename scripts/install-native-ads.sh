@@ -9,6 +9,7 @@ cp native-android/NexusStudyAlarmPlugin.java "$JAVA_DIR/NexusStudyAlarmPlugin.ja
 cp native-android/StudyAlarmReceiver.java "$JAVA_DIR/StudyAlarmReceiver.java"
 cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
+cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
 
 python3 - <<'PY'
 from pathlib import Path
