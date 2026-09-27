@@ -19,11 +19,11 @@ s=p.read_text()
 needle="dependencies {"
 deps = []
 if "com.unity3d.ads:unity-ads" not in s:
-    deps.append("    implementation 'com.unity3d.ads:unity-ads:4.19.0'\\n")
+    deps.append("    implementation 'com.unity3d.ads:unity-ads:4.19.0'\n")
 if "com.google.mlkit:genai-prompt" not in s:
-    deps.append("    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'\\n")
+    deps.append("    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'\n")
 if deps:
-    s=s.replace(needle, needle+"\\n"+"".join(deps), 1)
+    s=s.replace(needle, needle+"\n"+"".join(deps), 1)
 p.write_text(s)
 PY
 
