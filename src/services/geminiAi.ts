@@ -231,6 +231,150 @@ export async function flashcardsFromReference(title: string, text: string): Prom
 }
 
 
+
+export interface WebReferenceCandidate {
+  title: string;
+  url: string;
+  domain: string;
+  note: string;
+}
+
+async function generateWithTools(
+  prompt: string,
+  tools: Array<Record<string, unknown>>,
+  maxOutputTokens = 1400
+): Promise<any> {
+  const key = await getGeminiKey();
+  if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
+  const model = geminiModel();
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        tools,
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens,
+        },
+      }),
+    }
+  );
+
+  let payload: any = null;
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const apiMessage = payload?.error?.message || '';
+    if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
+    throw new Error(apiMessage || 'تعذر استخدام أدوات Gemini.');
+  }
+  return payload;
+}
+
+function safeDomain(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch { return ''; }
+}
+
+export async function searchWebReferences(topic: string): Promise<{
+  candidates: WebReferenceCandidate[];
+  searchHtml: string;
+}> {
+  const cleanTopic = topic.trim().slice(0, 300);
+  if (!cleanTopic) throw new Error('حدد موضوعًا واضحًا قبل البحث عن المراجع.');
+
+  const payload = await generateWithTools(
+    `ابحث في الويب عن مصادر موثوقة ومفيدة لطالب يدرس الموضوع التالي: "${cleanTopic}".
+أعط أولوية للمصادر الرسمية، المؤسسات التعليمية، القوانين/الوثائق الأصلية، الجامعات، والمنظمات المعروفة.
+تجنب الصفحات التجارية الضعيفة والمحتوى المكرر. نحتاج مصادر يمكن استخدامها لبناء بنك أسئلة ومراجعة دراسية.
+اكتب في الرد وصفًا موجزًا لأفضل المصادر التي وجدتها، لكن الأهم أن تنفذ بحث Google فعليًا.`,
+    [{ google_search: {} }],
+    1200
+  );
+
+  const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  const seen = new Set<string>();
+  const candidates: WebReferenceCandidate[] = [];
+
+  for (const chunk of chunks) {
+    const web = chunk?.web;
+    const url = String(web?.uri || '').trim();
+    if (!/^https:\/\//i.test(url) || seen.has(url)) continue;
+    seen.add(url);
+    const title = String(web?.title || safeDomain(url) || 'مرجع ويب').trim();
+    candidates.push({
+      title: title.slice(0, 180),
+      url,
+      domain: safeDomain(url),
+      note: 'مصدر عثر عليه Gemini عبر Google Search',
+    });
+    if (candidates.length >= 10) break;
+  }
+
+  if (!candidates.length) {
+    throw new Error('لم يعثر Gemini على روابط قابلة للاستخدام لهذا الموضوع. جرّب صياغة أكثر تحديدًا.');
+  }
+
+  const searchHtml = String(payload?.candidates?.[0]?.groundingMetadata?.searchEntryPoint?.renderedContent || '');
+  return { candidates, searchHtml };
+}
+
+export async function generateBankFromUrls(input: {
+  bankName: string;
+  topic: string;
+  count: number;
+  urls: string[];
+}): Promise<GeneratedBankQuestion[]> {
+  const urls = Array.from(new Set(input.urls.filter((url) => /^https:\/\//i.test(url)))).slice(0, 5);
+  if (!urls.length) throw new Error('اختر رابطًا واحدًا على الأقل.');
+
+  const rawPayload = await generateWithTools(
+    `اقرأ الروابط التالية باستخدام URL Context ثم أنشئ بنك أسئلة QCM عربيًا اعتمادًا حصريًا على محتواها.
+
+اسم البنك: ${input.bankName}
+الموضوع: ${input.topic}
+العدد المطلوب: ${Math.min(Math.max(input.count, 5), 100)}
+الروابط:
+${urls.map((url, index) => `${index + 1}. ${url}`).join('\n')}
+
+أعد JSON صالحًا فقط بدون Markdown، وهو مصفوفة عناصر بالشكل:
+[{"question":"...","correctAnswer":"...","wrong1":"...","wrong2":"...","wrong3":"...","explanation":"...","topic":"..."}]
+
+الشروط:
+- لا تستخدم معلومة غير موجودة في الروابط المختارة.
+- كل سؤال له إجابة صحيحة وثلاث إجابات خاطئة مختلفة.
+- لا تكرر الأسئلة.
+- إذا تعذر الوصول إلى بعض الروابط أو لم تكفِ المادة، أنشئ عددًا أقل بدل الاختراع.
+- الشرح قصير ومفيد.`,
+    [{ url_context: {} }],
+    5200
+  );
+
+  const raw = responseText(rawPayload);
+  const parsed = parseJsonObject(raw);
+  if (!Array.isArray(parsed)) throw new Error('صيغة بنك الأسئلة المولّد غير صالحة.');
+
+  return parsed.map((item: any) => ({
+    question: String(item?.question || '').trim().slice(0, 2000),
+    correctAnswer: String(item?.correctAnswer || '').trim().slice(0, 2000),
+    wrong1: String(item?.wrong1 || '').trim().slice(0, 2000),
+    wrong2: String(item?.wrong2 || '').trim().slice(0, 2000),
+    wrong3: String(item?.wrong3 || '').trim().slice(0, 2000),
+    explanation: String(item?.explanation || '').trim().slice(0, 2000),
+    topic: String(item?.topic || input.topic).trim().slice(0, 200),
+  })).filter((item: GeneratedBankQuestion) => {
+    const values = [item.correctAnswer, item.wrong1, item.wrong2, item.wrong3];
+    return item.question.length >= 3 && values.every(Boolean)
+      && new Set(values.map((value) => value.toLocaleLowerCase('ar'))).size === 4;
+  }).slice(0, Math.min(Math.max(input.count, 5), 100));
+}
+
 export interface StudyAssistantContext {
   message: string;
   task: {
@@ -289,11 +433,11 @@ export async function runStudyAssistant(context: StudyAssistantContext): Promise
 قواعدك:
 1) أجب بالعربية وباختصار عملي.
 2) لا تدّعي تنفيذ شيء. أنت تقترح القرار فقط، والتطبيق ينفذ.
-3) عند طلب إنشاء بنك أسئلة: لا تطلب من التطبيق التوليد قبل توفر اسم بنك واضح وموضوع واضح ومصدر مرجعي واحد على الأقل. المصادر يجب أن تأتي من app.references أو sourceUrls الموجودة في task.
+3) عند طلب إنشاء بنك أسئلة: لا تطلب من التطبيق التوليد قبل توفر اسم بنك واضح وموضوع واضح ومصدر واحد على الأقل في sourceUrls. إذا لا توجد مصادر بعد لكن الموضوع واضح، اجعل requestSources=true حتى يبحث التطبيق على الويب ويعرض الروابط للمستخدم.
 4) إذا كانت المعلومات ناقصة، اجعل taskStatus="collecting" واشرح بالضبط ما ينقص.
 5) إذا كانت جميع معلومات البنك مكتملة والمستخدم طلب المتابعة/الإنشاء، اجعل shouldGenerateBank=true وtaskStatus="ready".
 6) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
-7) إذا طلب المستخدم اقتراح مراجع، استخدم فقط app.references المرسلة.
+7) إذا طلب المستخدم مراجع أو كان إنشاء البنك يحتاج مصادر، اطلب من التطبيق البحث عن مراجع ويب عبر requestSources=true. لا تخترع روابط بنفسك.
 8) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
 9) أعد JSON صالحًا فقط بدون Markdown بالشكل:
 {"reply":"...","intent":"chat|progress|bank|topic|references","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"requestSources":false,"requestConfirmation":false,"shouldGenerateBank":false}
