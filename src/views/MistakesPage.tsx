@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { db } from '../services/db';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { ArabicText } from '../components/ArabicText';
 
-export const MistakesPage: React.FC = () => {
+export const MistakesPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [refresh, setRefresh] = useState(0);
   const mistakes = db.mistakes();
 
@@ -15,10 +15,7 @@ export const MistakesPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <ScreenHeader
-        title="الأخطاء"
-        subtitle="راجع النقاط التي تحتاج إلى تركيز"
-      />
+      <PurpleSubpageHeader title="الأخطاء" subtitle="راجع النقاط التي تحتاج إلى تركيز" onBack={onBack} />
 
       {mistakes.length === 0 ? (
         <div className="bg-white rounded-[22px] p-10 text-center flex flex-col items-center gap-3 border border-gray-100 shadow-xs mt-4">
