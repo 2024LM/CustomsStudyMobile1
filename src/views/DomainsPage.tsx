@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, FolderPlus, Layers3, Trash2 } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 
 interface DomainsPageProps {
   onDomainSelected?: () => void;
+  onBack: () => void;
 }
 
-export const DomainsPage: React.FC<DomainsPageProps> = ({ onDomainSelected }) => {
+export const DomainsPage: React.FC<DomainsPageProps> = ({ onDomainSelected, onBack }) => {
   const [, setRefresh] = useState(0);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -66,10 +67,7 @@ export const DomainsPage: React.FC<DomainsPageProps> = ({ onDomainSelected }) =>
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader
-        title="مجالات الدراسة"
-        subtitle="افصل كل تخصص في مجال مستقل مع بنوكه وإحصائياته"
-      />
+      <PurpleSubpageHeader title="مجالات الدراسة" subtitle="افصل كل تخصص في مجال مستقل مع بنوكه وإحصائياته" onBack={onBack} />
 
       <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
         <div className="flex items-center gap-2">
