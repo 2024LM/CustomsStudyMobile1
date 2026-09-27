@@ -42,6 +42,8 @@ interface AiAssistantPageProps {
   onOpenSettings: () => void;
 }
 
+const BUILD_SHA = (import.meta.env.VITE_BUILD_SHA || 'local').slice(0, 7);
+
 function sourceDomain(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
   catch { return url; }
@@ -658,9 +660,28 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
               <p className="text-xs text-[#E4DEFF] mt-0.5">التطبيق يدير الخطة • Gemini ينفذ الخطوة الحالية</p>
             </div>
           </div>
-          <button onClick={clearWorkspace} className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center shrink-0" aria-label="مهمة جديدة">
-            <RefreshCcw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.location.protocol.startsWith('http')) {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('refresh', Date.now().toString());
+                  window.location.replace(url.toString());
+                } else {
+                  window.location.reload();
+                }
+              }}
+              className="h-10 px-2.5 rounded-[12px] bg-white/15 text-[9px] font-bold flex items-center gap-1.5"
+              title="تحديث النسخة"
+            >
+              <RefreshCcw className="w-3.5 h-3.5" />
+              {BUILD_SHA}
+            </button>
+            <button onClick={clearWorkspace} className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center" aria-label="مهمة جديدة">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
