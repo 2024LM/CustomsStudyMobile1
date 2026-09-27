@@ -10,12 +10,28 @@ export interface AiMessageAttachment {
   mimeType?: string;
 }
 
+export interface AiRichContentItem {
+  id: string;
+  type: 'youtube' | 'image' | 'link';
+  title: string;
+  url: string;
+  subtitle?: string;
+  thumbnailUrl?: string;
+}
+
+export interface AiRichContentBlock {
+  type: 'rich_content';
+  title: string;
+  items: AiRichContentItem[];
+}
+
 export interface AiChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
   at: number;
   attachments?: AiMessageAttachment[];
+  blocks?: AiRichContentBlock[];
 }
 
 export interface AiTaskState {
@@ -92,7 +108,8 @@ export function addAiMessage(
   state: AiWorkspaceState,
   role: AiChatMessage['role'],
   text: string,
-  attachments: AiMessageAttachment[] = []
+  attachments: AiMessageAttachment[] = [],
+  blocks: AiRichContentBlock[] = []
 ): AiWorkspaceState {
   const message: AiChatMessage = {
     id: 'aim_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
@@ -100,6 +117,7 @@ export function addAiMessage(
     text: text.trim().slice(0, 12000),
     at: Date.now(),
     attachments: attachments.length ? attachments.slice(0, 8) : undefined,
+    blocks: blocks.length ? blocks.slice(0, 6) : undefined,
   };
   return saveAiWorkspace({ ...state, messages: [...state.messages, message] });
 }
