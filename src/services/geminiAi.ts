@@ -169,3 +169,63 @@ export async function similarQuestion(question: QuizQuestion): Promise<string> {
     900
   );
 }
+
+
+const REFERENCE_CHAR_LIMIT = 24000;
+
+function cleanReferenceText(text: string): string {
+  const clean = text.replace(/\u0000/g, '').replace(/\r\n/g, '\n').trim();
+  if (!clean) throw new Error('لا يوجد نص قابل للإرسال إلى Gemini في هذا المرجع.');
+  return clean.length > REFERENCE_CHAR_LIMIT
+    ? clean.slice(0, REFERENCE_CHAR_LIMIT) + '\n\n[تم اقتطاع بقية المرجع لتقليل حجم الطلب]'
+    : clean;
+}
+
+export async function summarizeReference(title: string, text: string): Promise<string> {
+  const source = cleanReferenceText(text);
+  return generate(
+    `لخّص المرجع التالي بالعربية لأغراض الدراسة. أخرج: ملخصًا مركزًا، أهم النقاط، المصطلحات أو التواريخ المهمة، وما ينبغي حفظه للامتحان. لا تضف حقائق غير موجودة في المرجع.\n\nالعنوان: ${title}\n\nالمحتوى:\n${source}`,
+    1400
+  );
+}
+
+export async function questionsFromReference(title: string, text: string): Promise<string> {
+  const source = cleanReferenceText(text);
+  return generate(
+    `أنشئ 10 أسئلة مراجعة من المرجع التالي فقط. اجعلها مناسبة للاختبارات، وامزج بين QCM وصح/خطأ عندما يكون ذلك منطقيًا. لكل سؤال اكتب: السؤال، الإجابة الصحيحة، ثلاثة خيارات خاطئة عند QCM، وشرحًا قصيرًا. لا تستخدم معلومات من خارج النص.\n\nالعنوان: ${title}\n\nالمحتوى:\n${source}`,
+    2200
+  );
+}
+
+export interface GeneratedFlashcard {
+  front: string;
+  back: string;
+}
+
+export async function flashcardsFromReference(title: string, text: string): Promise<GeneratedFlashcard[]> {
+  const source = cleanReferenceText(text);
+  const raw = await generate(
+    `أنشئ من 6 إلى 12 بطاقة مراجعة من المرجع التالي فقط. أعد JSON صالحًا فقط بدون Markdown وبدون أي شرح خارجي بهذه البنية: [{"front":"سؤال أو مصطلح","back":"جواب واضح ومختصر"}]. لا تضف معلومات غير موجودة في المرجع.\n\nالعنوان: ${title}\n\nالمحتوى:\n${source}`,
+    1800
+  );
+
+  const cleaned = raw.replace(/^\`\`\`json\s*/i, '').replace(/^\`\`\`\s*/i, '').replace(/\s*\`\`\`$/i, '').trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error('أعاد Gemini بطاقات بصيغة غير صالحة. أعد المحاولة.');
+  }
+
+  if (!Array.isArray(parsed)) throw new Error('صيغة البطاقات غير صالحة.');
+  const cards = parsed
+    .map((item: any) => ({
+      front: String(item?.front || '').trim().slice(0, 3000),
+      back: String(item?.back || '').trim().slice(0, 3000),
+    }))
+    .filter((item) => item.front && item.back)
+    .slice(0, 12);
+
+  if (!cards.length) throw new Error('لم يتم توليد بطاقات صالحة من هذا المرجع.');
+  return cards;
+}
