@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ArrowRight, Clock3, Eye, Shuffle, Gauge, FastForward } from 'lucide-react';
+import { ArrowRight, Clock3, Eye, Shuffle, Gauge, FastForward, PlayCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from '../services/db';
 import { QuizQuestion, StudyStats } from '../types';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
@@ -466,10 +465,17 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   // 3. Setup Screen
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader
-        title="إعداد الجلسة"
-        subtitle="اختر معايير المراجعة حسب احتياجاتك"
-      />
+      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+            <PlayCircle className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-bold text-lg">جلسة المراجعة</h1>
+            <p className="text-xs text-[#DDD5FF] mt-0.5">اختر نوع الجلسة وعدد الأسئلة والمحاور</p>
+          </div>
+        </div>
+      </div>
 
       {/* Session Mode */}
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
