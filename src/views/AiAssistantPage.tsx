@@ -75,23 +75,23 @@ function asksForWebSearch(text: string): boolean {
   ].some((token) => value.includes(token.toLocaleLowerCase('ar')));
 }
 
-function richContentIntent(text: string): 'youtube' | 'images' | 'links' | null {
+function richContentIntents(text: string): Array<'youtube' | 'images' | 'links'> {
   const value = text.trim().toLocaleLowerCase('ar');
+  const intents: Array<'youtube' | 'images' | 'links'> = [];
+
   const wantsYoutube =
     value.includes('يوتيوب') ||
     value.includes('youtube') ||
     value.includes('فيديوهات') ||
+    value.includes('فيديو تعليمي') ||
     value.includes('فيديوهات تعليم') ||
     (value.includes('دروس') && value.includes('فيديو'));
-
-  if (wantsYoutube) return 'youtube';
 
   const wantsImages =
     value.includes('صور') ||
     value.includes('صورة') ||
     value.includes('خرائط') ||
     value.includes('خريطة');
-  if (wantsImages) return 'images';
 
   const bankLanguage =
     value.includes('بنك') ||
@@ -100,11 +100,16 @@ function richContentIntent(text: string): 'youtube' | 'images' | 'links' | null 
     value.includes('إنشاء بنك') ||
     value.includes('اعتماد مصادر');
 
-  if (!bankLanguage && (value.includes('روابط') || value.includes('مواقع مفيدة') || value.includes('مراجع مفيدة'))) {
-    return 'links';
-  }
+  const wantsLinks = !bankLanguage && (
+    value.includes('روابط') ||
+    value.includes('مواقع مفيدة') ||
+    value.includes('مراجع مفيدة')
+  );
 
-  return null;
+  if (wantsYoutube) intents.push('youtube');
+  if (wantsImages) intents.push('images');
+  if (wantsLinks) intents.push('links');
+  return intents;
 }
 
 function shouldUseSourcePicker(text: string, taskKind: string): boolean {
@@ -341,38 +346,62 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   };
 
   const runRichSearch = async (
-    kind: 'youtube' | 'images' | 'links',
+    kinds: Array<'youtube' | 'images' | 'links'>,
     query: string,
     baseState: AiWorkspaceState
   ) => {
-    const label = kind === 'youtube' ? 'فيديوهات YouTube' : kind === 'images' ? 'صور' : 'روابط';
-    setStatus(`جارٍ البحث عن ${label}…`);
+    const uniqueKinds = Array.from(new Set(kinds));
+    const labels = uniqueKinds.map((kind) =>
+      kind === 'youtube' ? 'فيديوهات YouTube' : kind === 'images' ? 'صور' : 'روابط'
+    );
+    setStatus(`جارٍ البحث عن ${labels.join(' و')}…`);
 
-    const results = await searchRichWebContent(query, kind);
-    const block: AiRichContentBlock = {
+    const resultGroups = [];
+    for (const kind of uniqueKinds) {
+      const results = await searchRichWebContent(query, kind);
+      resultGroups.push({ kind, results });
+    }
+
+    const blocks: AiRichContentBlock[] = resultGroups.map(({ kind, results }, groupIndex) => ({
       type: 'rich_content',
       title: kind === 'youtube'
         ? 'فيديوهات مقترحة'
         : kind === 'images'
           ? 'صور مرتبطة بالموضوع'
           : 'روابط مفيدة',
+      beforeText: groupIndex === 0
+        ? (kind === 'youtube'
+            ? 'ابدأ بهذه الفيديوهات، ثم افتح ما يناسب مستواك.'
+            : kind === 'images'
+              ? 'هذه صور تساعد على فهم الموضوع بصريًا.'
+              : 'هذه روابط مفيدة للمتابعة.')
+        : (kind === 'images'
+            ? 'وللتوضيح البصري، هذه صور مرتبطة بالموضوع.'
+            : kind === 'youtube'
+              ? 'وللتعلم بالمشاهدة، هذه فيديوهات مناسبة.'
+              : 'وهذه روابط إضافية مفيدة.'),
+      afterText: groupIndex === resultGroups.length - 1
+        ? 'إذا أردت، يمكنني بعد ذلك ترتيب هذه المواد كخطة دراسة أو تحويلها إلى بنك أسئلة.'
+        : undefined,
       items: results.map((item, index) => ({
-        id: `${kind}_${Date.now().toString(36)}_${index}`,
+        id: `${kind}_${Date.now().toString(36)}_${groupIndex}_${index}`,
         type: item.type,
         title: item.title,
         url: item.url,
         subtitle: item.subtitle,
         thumbnailUrl: item.thumbnailUrl,
       })),
-    };
+    }));
 
-    const reply = kind === 'youtube'
-      ? 'هذه فيديوهات YouTube مرتبطة بطلبك، مرتبة لسهولة الاختيار.'
-      : kind === 'images'
-        ? 'هذه صور مرتبطة بالموضوع من روابط مباشرة عثر عليها البحث.'
-        : 'هذه روابط مفيدة مرتبطة بطلبك.';
+    const reply = uniqueKinds.length > 1
+      ? 'جمعت لك المحتوى في أقسام مرتبة بدل تحويله إلى مصادر لإنشاء بنك.'
+      : uniqueKinds[0] === 'youtube'
+        ? 'هذه فيديوهات YouTube مرتبطة بطلبك، مرتبة لسهولة الاختيار.'
+        : uniqueKinds[0] === 'images'
+          ? 'هذه صور مرتبطة بالموضوع من روابط مباشرة عثر عليها البحث.'
+          : 'هذه روابط مفيدة مرتبطة بطلبك.';
 
-    const next = addAiMessage(baseState, 'assistant', reply, [], [block]);
+    const next = addAiMessage(baseState, 'assistant', reply, [], blocks);
     setWorkspace(next);
     setStatus('');
     return next;
@@ -407,8 +436,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(state);
 
     try {
-      const directRichIntent = richContentIntent(userText);
-      if (directRichIntent) {
+      const directRichIntents = richContentIntents(userText);
+      if (directRichIntents.length > 0) {
         const freshState: AiWorkspaceState = {
           ...state,
           task: freshChatTask(state.task),
@@ -418,7 +447,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         setShowSources(false);
         setGenerated([]);
         setTaskLocalSources([]);
-        await runRichSearch(directRichIntent, userText, freshState);
+        await runRichSearch(directRichIntents, userText, freshState);
         return;
       }
 
@@ -750,6 +779,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
               {item.blocks?.map((block, blockIndex) => (
                 <div key={`${item.id}_block_${blockIndex}`} className="mt-2 mb-2">
+                  {block.beforeText && (
+                    <div className={`text-[10px] leading-5 mb-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B5367] dark:text-[#C9C1D3]'}`}>
+                      {block.beforeText}
+                    </div>
+                  )}
                   <div className={`text-[10px] font-black mb-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B3FD6] dark:text-[#C8BAFF]'}`}>
                     {block.title}
                   </div>
@@ -855,6 +889,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                       )
                     ))}
                   </div>
+                  {block.afterText && (
+                    <div className={`text-[10px] leading-5 mt-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B5367] dark:text-[#C9C1D3]'}`}>
+                      {block.afterText}
+                    </div>
+                  )}
                 </div>
               ))}
 
