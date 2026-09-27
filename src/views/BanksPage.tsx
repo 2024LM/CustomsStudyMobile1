@@ -15,15 +15,16 @@ import {
 import { db } from '../services/db';
 import { ExcelPreview } from '../types';
 import { parseExcelFile } from '../services/excelImporter';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { fetchRemoteBankFile, fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
 import { showInterstitial } from '../services/ads';
 
 interface BanksPageProps {
   onBankSelected: () => void;
+  onBack: () => void;
 }
 
-export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
+export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected, onBack }) => {
   const [activeId, setActiveId] = useState(() => db.activeBankId());
   const [refresh, setRefresh] = useState(0);
   const [preview, setPreview] = useState<ExcelPreview | null>(null);
@@ -144,10 +145,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected }) => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader
-        title="بنوك الأسئلة"
-        subtitle="اختر المحتوى الذي تريد المراجعة منه"
-      />
+      <PurpleSubpageHeader title="بنوك الأسئلة" subtitle="اختر المحتوى الذي تريد المراجعة منه" onBack={onBack} />
 
       {/* Hidden File Input */}
       <input
