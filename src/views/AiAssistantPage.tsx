@@ -4,7 +4,9 @@ import {
   CheckCircle2,
   Database,
   ExternalLink,
+  FileText,
   Globe2,
+  Image as ImageIcon,
   Link2,
   LoaderCircle,
   RefreshCcw,
@@ -113,7 +115,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const addLocalSource = (source: MixedAiSource) => {
     setLocalSources((current) => {
       if (current.some((item) => item.id === source.id)) return current;
-      return [...current, source].slice(0, 8);
+      if (current.length >= 8) {
+        setStatus('يمكن إضافة 8 مصادر محلية كحد أقصى للمهمة الواحدة.');
+        return current;
+      }
+      return [...current, source];
     });
   };
 
@@ -493,23 +499,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         <div ref={endRef} />
       </div>
 
-      {localSources.length > 0 && (
-        <div className="bg-white dark:bg-[#211D2C] rounded-[18px] border border-gray-100 dark:border-[#373043] p-3">
-          <div className="text-xs font-black mb-2">مصادر أضفتها أنت</div>
-          <div className="flex flex-wrap gap-2">
-            {localSources.map((source) => (
-              <div key={source.id} className="max-w-full flex items-center gap-2 rounded-full bg-[#F5F3FF] dark:bg-[#302844] px-3 py-2 text-[10px] font-bold">
-                <span className="truncate max-w-[220px]">{source.title}</span>
-                <button onClick={() => removeLocalSource(source.id)} className="text-gray-400" aria-label="إزالة المصدر">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showSources && (
+            {showSources && (
         <div className="bg-white dark:bg-[#211D2C] rounded-[20px] border border-[#DDD5FF] dark:border-[#493B66] overflow-hidden">
           <div className="p-4 border-b border-[#EEEAF8] dark:border-[#352D43] flex items-center justify-between gap-3">
             <div>
@@ -603,37 +593,86 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         <div className="rounded-[12px] bg-[#F5F3FF] dark:bg-[#302844] text-[#5B3FD6] dark:text-[#C8BAFF] px-3 py-2.5 text-[11px] leading-5">{status}</div>
       )}
 
-      <div className="fixed bottom-[92px] left-0 right-0 z-30 px-3 pointer-events-none">
-        <div className="max-w-md sm:max-w-2xl mx-auto flex items-end gap-2 pointer-events-auto">
-          <AiSourcePicker
-            disabled={busy || sourceBusy}
-            onAdd={addLocalSource}
-            onSearchWeb={() => {
-              if (workspace.task.topic) void searchSources();
-              else setStatus('حدد الموضوع أولًا حتى يقترح Gemini مصادر ويب مناسبة.');
-            }}
-            onStatus={setStatus}
-          />
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, 3000))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            rows={1}
-            placeholder="اكتب طلبك للمساعد…"
-            className="flex-1 max-h-28 resize-none rounded-[18px] bg-white dark:bg-[#211D2C] border border-[#DCD5EC] dark:border-[#4A4057] shadow-xl px-4 py-3.5 text-sm text-[#2C2145] dark:text-white placeholder:text-gray-400 outline-none focus:border-[#6E50DD]"
-          />
-          <button
-            onClick={() => void send()}
-            disabled={busy || !message.trim()}
-            className="w-12 h-12 rounded-[16px] bg-[#5B3FD6] text-white flex items-center justify-center shadow-xl disabled:opacity-40 shrink-0"
-          >
-            {busy ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
-          </button>
+      <div className="fixed bottom-[72px] left-0 right-0 z-30 px-3 pointer-events-none">
+        <div className="max-w-md sm:max-w-2xl mx-auto pointer-events-auto">
+          <div className="rounded-[22px] bg-white dark:bg-[#211D2C] border border-[#DCD5EC] dark:border-[#4A4057] shadow-2xl p-2.5">
+            {localSources.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-1">
+                {localSources.map((source) => {
+                  const isImage = source.kind === 'inline' && Boolean(source.mimeType?.startsWith('image/')) && Boolean(source.base64);
+                  const isPdf = source.kind === 'inline' && source.mimeType === 'application/pdf';
+                  return (
+                    <div key={source.id} className="relative shrink-0">
+                      {isImage ? (
+                        <div className="w-16 h-16 rounded-[14px] overflow-hidden border border-gray-100 dark:border-[#40384D] bg-[#F8F9FD] dark:bg-[#191621]">
+                          <img
+                            src={`data:${source.mimeType};base64,${source.base64}`}
+                            alt={source.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 max-w-[190px] rounded-[14px] border border-gray-100 dark:border-[#40384D] bg-[#F8F9FD] dark:bg-[#191621] px-3 flex items-center gap-2">
+                          <div className="w-9 h-9 rounded-[10px] bg-[#F0ECFF] dark:bg-[#302844] text-[#5B3FD6] dark:text-[#C8BAFF] flex items-center justify-center shrink-0">
+                            {isPdf ? <FileText className="w-4.5 h-4.5" /> : source.title.startsWith('بنك:') ? <Database className="w-4.5 h-4.5" /> : <FileText className="w-4.5 h-4.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-bold truncate">{source.title}</div>
+                            <div className="text-[9px] text-gray-400 dark:text-[#9D95AC] mt-0.5">
+                              {isPdf ? 'PDF' : source.title.startsWith('بنك:') ? 'بنك أسئلة' : source.title.startsWith('مرجع:') ? 'مرجع' : 'ملف'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeLocalSource(source.id)}
+                        className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-[#2C2145] dark:bg-white text-white dark:text-[#2C2145] flex items-center justify-center shadow"
+                        aria-label="إزالة المرفق"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <AiSourcePicker
+                disabled={busy || sourceBusy}
+                attachmentCount={localSources.length}
+                maxAttachments={8}
+                onAdd={addLocalSource}
+                onSearchWeb={() => {
+                  if (workspace.task.topic) void searchSources();
+                  else setStatus('حدد الموضوع أولًا حتى يقترح Gemini مصادر ويب مناسبة.');
+                }}
+                onStatus={setStatus}
+              />
+
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value.slice(0, 3000))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+                rows={1}
+                placeholder="اكتب طلبك للمساعد…"
+                className="flex-1 max-h-28 resize-none bg-transparent border-0 px-2 py-3 text-sm text-[#2C2145] dark:text-white placeholder:text-gray-400 outline-none"
+              />
+
+              <button
+                onClick={() => void send()}
+                disabled={busy || !message.trim()}
+                className="w-11 h-11 rounded-[14px] bg-[#5B3FD6] text-white flex items-center justify-center disabled:opacity-40 shrink-0"
+              >
+                {busy ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
