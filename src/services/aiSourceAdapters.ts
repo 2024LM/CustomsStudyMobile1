@@ -29,13 +29,22 @@ export async function sourceFromFile(file: File): Promise<MixedAiSource> {
   const name = file.name || 'ملف مرفق';
   const ext = name.toLowerCase().split('.').pop() || '';
 
-  if (mime.startsWith('image/')) {
+  const allowedImageMimes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+  const allowedImageExts = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+
+  if (allowedImageMimes.has(mime) || allowedImageExts.has(ext)) {
     if (file.size > MAX_INLINE_BYTES) throw new Error('حجم الصورة كبير جدًا. الحد الحالي 12 MB.');
+    const imageMime = allowedImageMimes.has(mime)
+      ? mime
+      : ext === 'png' ? 'image/png'
+        : ext === 'webp' ? 'image/webp'
+          : ext === 'gif' ? 'image/gif'
+            : 'image/jpeg';
     return {
       id: 'file_' + Date.now().toString(36),
       title: name,
       kind: 'inline',
-      mimeType: mime || 'image/jpeg',
+      mimeType: imageMime,
       base64: await base64FromBlob(file),
     };
   }
@@ -63,7 +72,7 @@ export async function sourceFromFile(file: File): Promise<MixedAiSource> {
     };
   }
 
-  if (ext === 'txt' || ext === 'md' || mime.startsWith('text/')) {
+  if (ext === 'txt' || ext === 'md') {
     const text = cleanText(await file.text());
     if (!text) throw new Error('الملف لا يحتوي نصًا قابلًا للاستخدام.');
     return {
@@ -74,7 +83,7 @@ export async function sourceFromFile(file: File): Promise<MixedAiSource> {
     };
   }
 
-  throw new Error('الأنواع المدعومة هنا: صورة، PDF، DOCX، TXT وMD.');
+  throw new Error('نوع الملف غير مدعوم. المسموح فقط: JPG/JPEG/PNG/WEBP/GIF وPDF وDOCX وTXT وMD. لا يمكن إرسال ZIP أو RAR أو APK أو EXE.');
 }
 
 export function sourceFromBank(bankId: string): MixedAiSource {
