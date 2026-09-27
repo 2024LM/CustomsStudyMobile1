@@ -19,6 +19,7 @@ import {
 import { db } from '../services/db';
 import {
   addAiMessage,
+  AiRichContentBlock,
   AiWorkspaceState,
   loadAiWorkspace,
   resetAiWorkspace,
@@ -30,6 +31,7 @@ import {
   GeneratedBankQuestion,
   MixedAiSource,
   runStudyAssistant,
+  searchRichWebContent,
   searchWebReferences,
   WebReferenceCandidate,
 } from '../services/geminiAi';
@@ -51,6 +53,72 @@ function asksForWebSearch(text: string): boolean {
     'ابحث', 'إبحث', 'بحث عنه', 'ابحث عنه', 'ابحث عنها', 'فتش',
     'مصادر', 'مراجع', 'روابط', 'تحقق من', 'تأكد من'
   ].some((token) => value.includes(token.toLocaleLowerCase('ar')));
+}
+
+function richContentIntent(text: string): 'youtube' | 'images' | 'links' | null {
+  const value = text.trim().toLocaleLowerCase('ar');
+  const wantsYoutube =
+    value.includes('يوتيوب') ||
+    value.includes('youtube') ||
+    value.includes('فيديوهات') ||
+    value.includes('فيديوهات تعليم') ||
+    (value.includes('دروس') && value.includes('فيديو'));
+
+  if (wantsYoutube) return 'youtube';
+
+  const wantsImages =
+    value.includes('صور') ||
+    value.includes('صورة') ||
+    value.includes('خرائط') ||
+    value.includes('خريطة');
+  if (wantsImages) return 'images';
+
+  const bankLanguage =
+    value.includes('بنك') ||
+    value.includes('أسئلة') ||
+    value.includes('انشاء بنك') ||
+    value.includes('إنشاء بنك') ||
+    value.includes('اعتماد مصادر');
+
+  if (!bankLanguage && (value.includes('روابط') || value.includes('مواقع مفيدة') || value.includes('مراجع مفيدة'))) {
+    return 'links';
+  }
+
+  return null;
+}
+
+function shouldUseSourcePicker(text: string, taskKind: string): boolean {
+  const value = text.trim().toLocaleLowerCase('ar');
+  const bankLanguage =
+    taskKind === 'bank' ||
+    value.includes('بنك') ||
+    value.includes('أسئلة') ||
+    value.includes('اعتماد مصادر') ||
+    value.includes('اختر مصادر');
+
+  return bankLanguage && (
+    value.includes('مصادر') ||
+    value.includes('مراجع') ||
+    value.includes('ابحث') ||
+    value.includes('روابط')
+  );
+}
+
+function freshChatTask(task: AiWorkspaceState['task']): AiWorkspaceState['task'] {
+  return {
+    ...task,
+    kind: 'chat',
+    status: 'idle',
+    title: '',
+    bankName: '',
+    topic: '',
+    sourceIds: [],
+    sourceUrls: [],
+    sourceTitles: [],
+    generatedBankId: undefined,
+    lastError: undefined,
+    updatedAt: Date.now(),
+  };
 }
 
 function previousUserTopic(messages: AiWorkspaceState['messages'], currentText: string): string {
@@ -251,6 +319,44 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setStatus('');
   };
 
+  const runRichSearch = async (
+    kind: 'youtube' | 'images' | 'links',
+    query: string,
+    baseState: AiWorkspaceState
+  ) => {
+    const label = kind === 'youtube' ? 'فيديوهات YouTube' : kind === 'images' ? 'صور' : 'روابط';
+    setStatus(`جارٍ البحث عن ${label}…`);
+
+    const results = await searchRichWebContent(query, kind);
+    const block: AiRichContentBlock = {
+      type: 'rich_content',
+      title: kind === 'youtube'
+        ? 'فيديوهات مقترحة'
+        : kind === 'images'
+          ? 'صور مرتبطة بالموضوع'
+          : 'روابط مفيدة',
+      items: results.map((item, index) => ({
+        id: `${kind}_${Date.now().toString(36)}_${index}`,
+        type: item.type,
+        title: item.title,
+        url: item.url,
+        subtitle: item.subtitle,
+        thumbnailUrl: item.thumbnailUrl,
+      })),
+    };
+
+    const reply = kind === 'youtube'
+      ? 'هذه فيديوهات YouTube مرتبطة بطلبك، مرتبة لسهولة الاختيار.'
+      : kind === 'images'
+        ? 'هذه صور مرتبطة بالموضوع من روابط مباشرة عثر عليها البحث.'
+        : 'هذه روابط مفيدة مرتبطة بطلبك.';
+
+    const next = addAiMessage(baseState, 'assistant', reply, [], [block]);
+    setWorkspace(next);
+    setStatus('');
+    return next;
+  };
+
   const send = async (preset?: string) => {
     const text = (preset ?? message).trim();
     const hasAttachments = localSources.length > 0 || workspace.task.sourceUrls.length > 0;
@@ -280,6 +386,21 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(state);
 
     try {
+      const directRichIntent = richContentIntent(userText);
+      if (directRichIntent) {
+        const freshState: AiWorkspaceState = {
+          ...state,
+          task: freshChatTask(state.task),
+        };
+        setWorkspace(freshState);
+        setCandidates([]);
+        setShowSources(false);
+        setGenerated([]);
+        setTaskLocalSources([]);
+        await runRichSearch(directRichIntent, userText, freshState);
+        return;
+      }
+
       const activeSources: MixedAiSource[] = [
         ...state.task.sourceUrls.map((url, index) => ({
           id: 'web_chat_' + index,
@@ -336,13 +457,14 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       state = addAiMessage({ ...state, task: nextTask }, 'assistant', decision.reply);
       setWorkspace(state);
 
-      const explicitSearch = asksForWebSearch(userText);
+      const explicitSourceSearch = shouldUseSourcePicker(userText, nextTask.kind);
       const fallbackTopic = previousUserTopic(state.messages, userText);
       const searchTopic = (nextTask.topic || state.task.topic || fallbackTopic || '').trim();
+      const sourcePickerRequested = decision.requestSources && nextTask.kind === 'bank';
 
-      if ((decision.requestSources || explicitSearch) && searchTopic && nextTask.sourceUrls.length === 0) {
+      if ((sourcePickerRequested || explicitSourceSearch) && searchTopic && nextTask.sourceUrls.length === 0) {
         await searchSources(searchTopic, state);
-      } else if ((decision.requestSources || explicitSearch) && !searchTopic) {
+      } else if ((sourcePickerRequested || explicitSourceSearch) && !searchTopic) {
         const asking = addAiMessage(
           state,
           'assistant',
@@ -604,6 +726,85 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                   })}
                 </div>
               ) : null}
+
+              {item.blocks?.map((block, blockIndex) => (
+                <div key={`${item.id}_block_${blockIndex}`} className="mt-2 mb-2">
+                  <div className={`text-[10px] font-black mb-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B3FD6] dark:text-[#C8BAFF]'}`}>
+                    {block.title}
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
+                    {block.items.map((richItem, index) => (
+                      richItem.type === 'youtube' ? (
+                        <a
+                          key={richItem.id}
+                          href={richItem.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-56 shrink-0 snap-start rounded-[14px] overflow-hidden bg-white dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348] text-[#2C2145] dark:text-white no-underline"
+                        >
+                          <div className="relative aspect-video bg-gray-100 dark:bg-[#111] overflow-hidden">
+                            {richItem.thumbnailUrl ? (
+                              <img src={richItem.thumbnailUrl} alt={richItem.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center"><Globe2 className="w-6 h-6 text-gray-400" /></div>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center">
+                                <span className="text-sm pr-0.5">▶</span>
+                              </div>
+                            </div>
+                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-black">YT</div>
+                          </div>
+                          <div className="p-3">
+                            <div className="text-[11px] font-bold leading-5 line-clamp-2">{index + 1}. {richItem.title}</div>
+                            {richItem.subtitle && <div className="text-[9px] text-gray-400 mt-1 truncate">{richItem.subtitle}</div>}
+                          </div>
+                        </a>
+                      ) : richItem.type === 'image' ? (
+                        <a
+                          key={richItem.id}
+                          href={richItem.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-44 shrink-0 snap-start rounded-[14px] overflow-hidden bg-white dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348] no-underline"
+                        >
+                          <div className="aspect-square bg-gray-100 dark:bg-[#111]">
+                            <img
+                              src={richItem.thumbnailUrl || richItem.url}
+                              alt={richItem.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="p-2.5 text-[#2C2145] dark:text-white">
+                            <div className="text-[10px] font-bold line-clamp-2">{richItem.title}</div>
+                            {richItem.subtitle && <div className="text-[9px] text-gray-400 mt-1 truncate">{richItem.subtitle}</div>}
+                          </div>
+                        </a>
+                      ) : (
+                        <a
+                          key={richItem.id}
+                          href={richItem.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-64 shrink-0 snap-start rounded-[14px] bg-white dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348] p-3 text-[#2C2145] dark:text-white no-underline"
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="w-9 h-9 rounded-[10px] bg-[#F0ECFF] dark:bg-[#302844] text-[#5B3FD6] flex items-center justify-center shrink-0">
+                              <ExternalLink className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-bold leading-5 line-clamp-2">{richItem.title}</div>
+                              {richItem.subtitle && <div className="text-[9px] text-gray-400 mt-1 truncate">{richItem.subtitle}</div>}
+                            </div>
+                          </div>
+                        </a>
+                      )
+                    ))}
+                  </div>
+                </div>
+              ))}
+
               <div className="whitespace-pre-wrap">{item.text}</div>
             </div>
           );
