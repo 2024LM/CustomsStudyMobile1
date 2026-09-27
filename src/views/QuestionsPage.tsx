@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, BookOpen } from 'lucide-react';
 import { db } from '../services/db';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { QuestionCard } from '../components/QuestionCard';
 
 export const QuestionsPage: React.FC = () => {
@@ -46,7 +45,17 @@ export const QuestionsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <ScreenHeader title="الأسئلة" subtitle="ابحث وراجع بنك الأسئلة" />
+      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-bold text-lg">الأسئلة</h1>
+            <p className="text-xs text-[#DDD5FF] mt-0.5">ابحث وراجع محتوى بنك الأسئلة بسهولة</p>
+          </div>
+        </div>
+      </div>
 
       {/* Search Bar */}
       <div data-tour="questions-search" className="relative w-full">
