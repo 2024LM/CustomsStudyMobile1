@@ -23,7 +23,7 @@ import {
   Trash2,
   Volume2,
 } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
   addFlashcard,
@@ -66,7 +66,7 @@ function downloadText(filename: string, text: string, type = 'application/json')
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export const AdvancedStudyPage: React.FC = () => {
+export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [section, setSection] = useState<Section>('smart');
   const [status, setStatus] = useState('');
   const [, setRefresh] = useState(0);
@@ -288,7 +288,7 @@ export const AdvancedStudyPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader title="مركز المراجعة المتقدم" subtitle="أدوات التعلم والتحليل وإدارة المحتوى" />
+      <PurpleSubpageHeader title="مركز الدراسة" subtitle="أدوات التعلم والتحليل وإدارة المحتوى" onBack={onBack} />
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {groups.map(({ id, label, icon: Icon, defaultSection }) => (
