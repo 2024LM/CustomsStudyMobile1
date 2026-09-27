@@ -402,45 +402,37 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                 key={i}
                 disabled={isAnswered}
                 onClick={() => handleSelectOption(opt)}
-                className={`w-full p-4 rounded-[18px] border transition-all flex items-center justify-between gap-3 text-right ${cardBg} active:scale-98 cursor-pointer`}
+                className={`w-full p-4 rounded-[18px] border transition-all text-right ${cardBg} active:scale-98 cursor-pointer`}
               >
-                <ArabicText value={opt} className="flex-1 text-sm sm:text-base" />
-                <span className={`text-lg font-bold shrink-0 ${markColor}`}>
-                  {markText}
-                </span>
+                <div className="flex items-center justify-between gap-3">
+                  <ArabicText value={opt} className="flex-1 text-sm sm:text-base" />
+                  <span className={`text-lg font-bold shrink-0 ${markColor}`}>
+                    {markText}
+                  </span>
+                </div>
+
+                {isAnswered && correct && (
+                  <div className="mt-3 pt-3 border-t border-[#31A866]/20">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#16864B]">
+                      <span className="w-5 h-5 rounded-full bg-[#31A866] text-white flex items-center justify-center text-[10px]">✓</span>
+                      <span>الإجابة الصحيحة</span>
+                    </div>
+                    {showExplanation && currentQuestion.explanation && (
+                      <div className="mt-2 rounded-[12px] bg-white/65 px-3 py-2.5 text-[#315F43]">
+                        <div className="text-[10px] font-bold mb-1">الشرح</div>
+                        <ArabicText
+                          value={currentQuestion.explanation}
+                          as="p"
+                          className="text-xs sm:text-sm leading-6 font-medium"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </button>
             );
           })}
         </div>
-
-        {/* Feedback card */}
-        {isAnswered && (
-          <div
-            className={`p-4 rounded-[20px] border flex flex-col gap-2 animate-in fade-in duration-200 ${
-              isCorrect
-                ? 'bg-[#EAF8F0] text-[#16864B] border-[#B7E5C8]'
-                : 'bg-[#FFEEED] text-[#C62828] border-[#FFCDD2]'
-            }`}
-          >
-            <span className="font-bold text-sm">
-              {selectedAnswer === '__TIMEOUT__'
-                ? 'انتهى الوقت ⏱'
-                : isCorrect
-                  ? 'إجابة صحيحة ✓'
-                  : 'إجابة خاطئة ✕'}
-            </span>
-            <div className="text-xs sm:text-sm">
-              <span className="font-semibold ml-1">الجواب الصحيح:</span>
-              <ArabicText value={currentQuestion.correctAnswer} className="font-bold" />
-            </div>
-            {showExplanation && currentQuestion.explanation && (
-              <div className="mt-1 pt-2 border-t border-current/20 text-xs sm:text-sm">
-                <span className="font-bold block mb-1">💡 الشرح:</span>
-                <ArabicText value={currentQuestion.explanation} as="p" />
-              </div>
-            )}
-          </div>
-        )}
 
         {exitPrompt && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-5" onClick={() => setExitPrompt(false)}>
