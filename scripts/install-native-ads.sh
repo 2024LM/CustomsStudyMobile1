@@ -12,6 +12,17 @@ cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
 cp native-android/NexusNanoAiPlugin.java "$JAVA_DIR/NexusNanoAiPlugin.java"
 
+
+python3 - <<'PY'
+from pathlib import Path
+p = Path("android/variables.gradle")
+if p.exists():
+    s = p.read_text()
+    s = s.replace("minSdkVersion = 23", "minSdkVersion = 26")
+    s = s.replace("minSdkVersion=23", "minSdkVersion=26")
+    p.write_text(s)
+PY
+
 python3 - <<'PY'
 from pathlib import Path
 p=Path("android/app/build.gradle")
