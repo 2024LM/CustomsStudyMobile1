@@ -70,7 +70,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8 text-right">
-      <div data-tour="home-hero" className="sm:col-span-2 w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[28px] p-6 text-white shadow-sm">
+      <div data-tour="home-hero" className="sm:col-span-2 -mx-4 -mt-4 px-6 pt-6 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-white">الرئيسية</h2>
