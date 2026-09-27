@@ -24,13 +24,15 @@ import {
 } from '../services/aiOrchestrator';
 import {
   aiReady,
-  generateBankFromUrls,
+  generateBankFromMixedSources,
   GeneratedBankQuestion,
+  MixedAiSource,
   runStudyAssistant,
   searchWebReferences,
   WebReferenceCandidate,
 } from '../services/geminiAi';
 import { ExcelPreview } from '../types';
+import { AiSourcePicker } from '../components/AiSourcePicker';
 
 interface AiAssistantPageProps {
   onOpenSettings: () => void;
@@ -59,6 +61,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     }));
   });
   const [generated, setGenerated] = useState<GeneratedBankQuestion[]>([]);
+  const [localSources, setLocalSources] = useState<MixedAiSource[]>([]);
   const [status, setStatus] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +110,17 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setSelectedUrls(next);
   };
 
+  const addLocalSource = (source: MixedAiSource) => {
+    setLocalSources((current) => {
+      if (current.some((item) => item.id === source.id)) return current;
+      return [...current, source].slice(0, 8);
+    });
+  };
+
+  const removeLocalSource = (id: string) => {
+    setLocalSources((current) => current.filter((item) => item.id !== id));
+  };
+
   const searchSources = async (topicOverride?: string, baseState: AiWorkspaceState = workspace) => {
     const topic = (topicOverride || baseState.task.topic).trim();
     if (!topic) {
@@ -149,8 +163,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     if (!state.task.bankName.trim() || !state.task.topic.trim()) {
       throw new Error('اسم البنك والموضوع مطلوبان قبل التوليد.');
     }
-    if (!state.task.sourceUrls.length) {
-      throw new Error('اختر مرجعًا واحدًا على الأقل قبل إنشاء البنك.');
+    if (!state.task.sourceUrls.length && !localSources.length) {
+      throw new Error('أضف مصدرًا واحدًا على الأقل قبل إنشاء البنك.');
     }
 
     const generatingState = saveAiWorkspace({
@@ -160,11 +174,19 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(generatingState);
     setStatus('Gemini يقرأ الروابط المختارة وينشئ الأسئلة منها…');
 
-    const questions = await generateBankFromUrls({
+    const questions = await generateBankFromMixedSources({
       bankName: state.task.bankName,
       topic: state.task.topic,
       count: state.task.expectedQuestions,
-      urls: state.task.sourceUrls,
+      sources: [
+        ...state.task.sourceUrls.map((url, index) => ({
+          id: 'web_' + index,
+          title: state.task.sourceTitles[index] || sourceDomain(url),
+          kind: 'url' as const,
+          url,
+        })),
+        ...localSources,
+      ],
     });
 
     if (!questions.length) throw new Error('لم يتم إنشاء أسئلة صالحة من الروابط المختارة.');
@@ -176,7 +198,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         task: { ...generatingState.task, status: 'review', updatedAt: Date.now() },
       },
       'assistant',
-      `أنشأت ${questions.length} سؤالًا من ${state.task.sourceUrls.length} مصدر محدد. راجع المعاينة قبل الحفظ.`
+      `أنشأت ${questions.length} سؤالًا من ${state.task.sourceUrls.length + localSources.length} مصدر محدد. راجع المعاينة قبل الحفظ.`
     );
     setWorkspace(reviewState);
     setStatus('');
@@ -243,7 +265,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         await searchSources(nextTask.topic, state);
       }
 
-      if (decision.shouldGenerateBank && nextTask.sourceUrls.length > 0) {
+      if (decision.shouldGenerateBank && (nextTask.sourceUrls.length > 0 || localSources.length > 0)) {
         await generateBank({ ...state, task: nextTask });
       }
     } catch (error: any) {
@@ -261,8 +283,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   };
 
   const acceptSources = async () => {
-    if (!workspace.task.sourceUrls.length) {
-      setStatus('اختر مرجعًا واحدًا على الأقل.');
+    if (!workspace.task.sourceUrls.length && !localSources.length) {
+      setStatus('اختر أو أضف مصدرًا واحدًا على الأقل.');
       return;
     }
     const next = addAiMessage(
@@ -271,7 +293,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         task: { ...workspace.task, status: 'ready', updatedAt: Date.now() },
       },
       'assistant',
-      `تم اعتماد ${workspace.task.sourceUrls.length} مراجع. سأستخدم هذه الروابط فقط في إنشاء البنك.`
+      `تم اعتماد ${workspace.task.sourceUrls.length + localSources.length} مصادر للمهمة. سأستخدم هذه المصادر فقط في إنشاء البنك.`
     );
     setWorkspace(next);
 
@@ -307,7 +329,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
       const bankId = db.importQuestionBank(
         workspace.task.bankName || 'بنك AI',
-        `بنك أنشئ بمساعدة Gemini من ${workspace.task.sourceUrls.length} مراجع ويب اختارها المستخدم.`,
+        `بنك أنشئ بمساعدة Gemini من ${workspace.task.sourceUrls.length + localSources.length} مصادر اختارها المستخدم.`,
         preview
       );
       db.setActiveBank(bankId);
@@ -333,6 +355,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(resetAiWorkspace());
     setCandidates([]);
     setGenerated([]);
+    setLocalSources([]);
     setStatus('');
     setShowSources(false);
   };
@@ -429,6 +452,63 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          'حلل تقدمي واقترح ما أراجعه',
+          'أريد إنشاء بنك أسئلة جديد',
+          'ابحث عن مراجع لموضوع أدرسه',
+          'لخص نقاط ضعفي الحالية',
+        ].map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => void send(prompt)}
+            disabled={busy}
+            className="min-h-11 px-3 py-2.5 rounded-[14px] bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[10px] leading-4 font-bold text-[#5B3FD6] dark:text-[#C8BAFF] disabled:opacity-50"
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-2 min-h-[260px]">
+        {workspace.messages.length === 0 && (
+          <div className="py-10 text-center">
+            <Bot className="w-10 h-10 text-[#8B6FE8] mx-auto" />
+            <h2 className="font-bold text-sm mt-3">ماذا تريد أن تنجز؟</h2>
+            <p className="text-[11px] text-gray-500 dark:text-[#B1A9BD] mt-2 leading-6">يمكنني إدارة مهمة كاملة: تحديد المطلوب، البحث عن مراجع ويب، انتظار اختيارك، ثم إنشاء بنك أو تحليل تقدمك.</p>
+          </div>
+        )}
+
+        {workspace.messages.map((item) => (
+          <div key={item.id} className={`max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 whitespace-pre-wrap ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
+            {item.text}
+          </div>
+        ))}
+
+        {busy && (
+          <div className="self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] rounded-[17px] px-4 py-3 flex items-center gap-2 text-[11px] text-gray-500 dark:text-[#B1A9BD]">
+            <LoaderCircle className="w-4 h-4 animate-spin" /> {status || 'جاري تحديد الخطوة التالية…'}
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {localSources.length > 0 && (
+        <div className="bg-white dark:bg-[#211D2C] rounded-[18px] border border-gray-100 dark:border-[#373043] p-3">
+          <div className="text-xs font-black mb-2">مصادر أضفتها أنت</div>
+          <div className="flex flex-wrap gap-2">
+            {localSources.map((source) => (
+              <div key={source.id} className="max-w-full flex items-center gap-2 rounded-full bg-[#F5F3FF] dark:bg-[#302844] px-3 py-2 text-[10px] font-bold">
+                <span className="truncate max-w-[220px]">{source.title}</span>
+                <button onClick={() => removeLocalSource(source.id)} className="text-gray-400" aria-label="إزالة المصدر">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showSources && (
         <div className="bg-white dark:bg-[#211D2C] rounded-[20px] border border-[#DDD5FF] dark:border-[#493B66] overflow-hidden">
           <div className="p-4 border-b border-[#EEEAF8] dark:border-[#352D43] flex items-center justify-between gap-3">
@@ -497,47 +577,6 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          'حلل تقدمي واقترح ما أراجعه',
-          'أريد إنشاء بنك أسئلة جديد',
-          'ابحث عن مراجع لموضوع أدرسه',
-          'لخص نقاط ضعفي الحالية',
-        ].map((prompt) => (
-          <button
-            key={prompt}
-            onClick={() => void send(prompt)}
-            disabled={busy}
-            className="min-h-11 px-3 py-2.5 rounded-[14px] bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[10px] leading-4 font-bold text-[#5B3FD6] dark:text-[#C8BAFF] disabled:opacity-50"
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-2 min-h-[260px]">
-        {workspace.messages.length === 0 && (
-          <div className="py-10 text-center">
-            <Bot className="w-10 h-10 text-[#8B6FE8] mx-auto" />
-            <h2 className="font-bold text-sm mt-3">ماذا تريد أن تنجز؟</h2>
-            <p className="text-[11px] text-gray-500 dark:text-[#B1A9BD] mt-2 leading-6">يمكنني إدارة مهمة كاملة: تحديد المطلوب، البحث عن مراجع ويب، انتظار اختيارك، ثم إنشاء بنك أو تحليل تقدمك.</p>
-          </div>
-        )}
-
-        {workspace.messages.map((item) => (
-          <div key={item.id} className={`max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 whitespace-pre-wrap ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
-            {item.text}
-          </div>
-        ))}
-
-        {busy && (
-          <div className="self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] rounded-[17px] px-4 py-3 flex items-center gap-2 text-[11px] text-gray-500 dark:text-[#B1A9BD]">
-            <LoaderCircle className="w-4 h-4 animate-spin" /> {status || 'جاري تحديد الخطوة التالية…'}
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-
       {generated.length > 0 && (
         <div className="bg-white dark:bg-[#211D2C] rounded-[20px] border border-[#DDD5FF] dark:border-[#493B66] p-4">
           <div className="flex items-center justify-between gap-3">
@@ -566,6 +605,15 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
       <div className="fixed bottom-[92px] left-0 right-0 z-30 px-3 pointer-events-none">
         <div className="max-w-md sm:max-w-2xl mx-auto flex items-end gap-2 pointer-events-auto">
+          <AiSourcePicker
+            disabled={busy || sourceBusy}
+            onAdd={addLocalSource}
+            onSearchWeb={() => {
+              if (workspace.task.topic) void searchSources();
+              else setStatus('حدد الموضوع أولًا حتى يقترح Gemini مصادر ويب مناسبة.');
+            }}
+            onStatus={setStatus}
+          />
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 3000))}
