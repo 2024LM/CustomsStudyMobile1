@@ -572,7 +572,7 @@ ${JSON.stringify(context)}
 المصادر المرفقة بهذا الطلب:
 ${JSON.stringify(sourceSummary)}`;
 
-  let raw: string;
+  let raw = '';
 
   if (sources.length === 0) {
     raw = await generate(prompt, 1200);
