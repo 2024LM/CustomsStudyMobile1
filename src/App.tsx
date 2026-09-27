@@ -415,7 +415,7 @@ export function App() {
               aria-label="مساعد الدراسة بالذكاء الاصطناعي"
               className="absolute left-1/2 -translate-x-1/2 -top-7 flex flex-col items-center justify-center"
             >
-              <div className={`w-15 h-15 rounded-[20px] border-[5px] border-[#F8F9FD] shadow-lg flex items-center justify-center transition-all ${
+              <div className={`w-15 h-15 rounded-[20px] border-[5px] border-[#F8F9FD] dark:border-[#17141F] shadow-lg flex items-center justify-center transition-all ${
                 page === 'AI_ASSISTANT'
                   ? 'bg-[#392080] text-white scale-105'
                   : 'bg-gradient-to-br from-[#6841E8] to-[#392080] text-white'
