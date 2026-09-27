@@ -10,6 +10,7 @@ export type Page =
   | 'PLAN'
   | 'DOWNLOADS'
   | 'ADVANCED'
+  | 'AI_SETTINGS'
   | 'MORE';
 
 export interface StudyDomain {
