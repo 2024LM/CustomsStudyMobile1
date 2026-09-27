@@ -10,11 +10,20 @@ interface Props {
   onAdd: (source: MixedAiSource) => void;
   onSearchWeb: () => void;
   onStatus: (message: string) => void;
+  attachmentCount?: number;
+  maxAttachments?: number;
 }
 
 type Panel = null | 'menu' | 'banks' | 'refs';
 
-export const AiSourcePicker: React.FC<Props> = ({ disabled, onAdd, onSearchWeb, onStatus }) => {
+export const AiSourcePicker: React.FC<Props> = ({
+  disabled,
+  onAdd,
+  onSearchWeb,
+  onStatus,
+  attachmentCount = 0,
+  maxAttachments = 8,
+}) => {
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState(false);
   const [refs, setRefs] = useState<LocalReference[]>([]);
@@ -28,6 +37,10 @@ export const AiSourcePicker: React.FC<Props> = ({ disabled, onAdd, onSearchWeb, 
 
   const addFile = async (file: File | null) => {
     if (!file) return;
+    if (attachmentCount >= maxAttachments) {
+      onStatus(`يمكن إضافة ${maxAttachments} مصادر كحد أقصى للمهمة الواحدة.`);
+      return;
+    }
     setBusy(true);
     try {
       const source = await sourceFromFile(file);
@@ -44,6 +57,10 @@ export const AiSourcePicker: React.FC<Props> = ({ disabled, onAdd, onSearchWeb, 
   };
 
   const addBank = (bankId: string) => {
+    if (attachmentCount >= maxAttachments) {
+      onStatus(`يمكن إضافة ${maxAttachments} مصادر كحد أقصى للمهمة الواحدة.`);
+      return;
+    }
     try {
       const source = sourceFromBank(bankId);
       onAdd(source);
@@ -55,6 +72,10 @@ export const AiSourcePicker: React.FC<Props> = ({ disabled, onAdd, onSearchWeb, 
   };
 
   const addRef = async (item: LocalReference) => {
+    if (attachmentCount >= maxAttachments) {
+      onStatus(`يمكن إضافة ${maxAttachments} مصادر كحد أقصى للمهمة الواحدة.`);
+      return;
+    }
     setBusy(true);
     try {
       const source = await sourceFromLocalReference(item);
@@ -70,8 +91,8 @@ export const AiSourcePicker: React.FC<Props> = ({ disabled, onAdd, onSearchWeb, 
 
   return (
     <div className="relative shrink-0">
-      <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.md,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => void addFile(e.target.files?.[0] || null)} />
-      <input ref={imageRef} type="file" className="hidden" accept="image/*" onChange={(e) => void addFile(e.target.files?.[0] || null)} />
+      <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown" onChange={(e) => void addFile(e.target.files?.[0] || null)} />
+      <input ref={imageRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" onChange={(e) => void addFile(e.target.files?.[0] || null)} />
 
       <button
         onClick={() => setPanel(panel ? null : 'menu')}
