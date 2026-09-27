@@ -426,28 +426,107 @@ function parseJsonObject(raw: string): any {
   catch { throw new Error('تعذر فهم استجابة المساعد. أعد المحاولة.'); }
 }
 
-export async function runStudyAssistant(context: StudyAssistantContext): Promise<StudyAssistantDecision> {
-  const raw = await generate(
-    `أنت عقل مساعد دراسة داخل تطبيق، لكن التطبيق نفسه يدير الذاكرة والتنفيذ. لا تفترض أنك تتذكر أي شيء خارج JSON المرسل لك الآن.
+export async function runStudyAssistant(
+  context: StudyAssistantContext,
+  sources: MixedAiSource[] = []
+): Promise<StudyAssistantDecision> {
+  const sourceSummary = sources.map((source) => ({
+    title: source.title,
+    kind: source.kind,
+    mimeType: source.mimeType || '',
+    url: source.url || '',
+  }));
+
+  const prompt = `أنت عقل مساعد دراسة داخل تطبيق، لكن التطبيق نفسه يدير الذاكرة والتنفيذ. لا تفترض أنك تتذكر أي شيء خارج ما أرسله التطبيق في هذا الطلب.
 
 قواعدك:
 1) أجب بالعربية وباختصار عملي.
 2) لا تدّعي تنفيذ شيء. أنت تقترح القرار فقط، والتطبيق ينفذ.
-3) عند طلب إنشاء بنك أسئلة: لا تطلب من التطبيق التوليد قبل توفر اسم بنك واضح وموضوع واضح ومصدر واحد على الأقل في sourceUrls. إذا لا توجد مصادر بعد لكن الموضوع واضح، اجعل requestSources=true حتى يبحث التطبيق على الويب ويعرض الروابط للمستخدم.
-4) إذا كانت المعلومات ناقصة، اجعل taskStatus="collecting" واشرح بالضبط ما ينقص.
-5) إذا كانت جميع معلومات البنك مكتملة والمستخدم طلب المتابعة/الإنشاء، اجعل shouldGenerateBank=true وtaskStatus="ready".
-6) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
-7) إذا طلب المستخدم مراجع أو كان إنشاء البنك يحتاج مصادر، اطلب من التطبيق البحث عن مراجع ويب عبر requestSources=true. لا تخترع روابط بنفسك.
-8) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
-9) ممنوع أن تقول للمستخدم «اطلب من التطبيق» أو «استخدم زر البحث» أو تطلب منه تنفيذ أداة يستطيع التطبيق تنفيذها. إذا احتجت بحث ويب اجعل requestSources=true، والتطبيق سينفذه تلقائيًا.
-10) عندما يقول المستخدم «ابحث عنه» أو «ابحث في الويب» أو «هات مصادر/روابط» وكان موضوع المحادثة معروفًا، اجعل requestSources=true واحتفظ بالموضوع في topic.
-11) أعد JSON صالحًا فقط بدون Markdown بالشكل:
+3) إذا أرسل التطبيق مرفقات أو مصادر مع الطلب، اقرأها فعليًا واستخدم محتواها للإجابة عن سؤال المستخدم. لا تقل إنك لا ترى الصورة أو الملف إذا كان مرفقًا في هذا الطلب.
+4) عند طلب إنشاء بنك أسئلة: يكفي وجود اسم بنك واضح وموضوع واضح ومصدر واحد على الأقل، سواء كان رابطًا في sourceUrls أو مرفقًا ضمن attachedSources.
+5) إذا كانت المعلومات ناقصة، اجعل taskStatus="collecting" واشرح بالضبط ما ينقص.
+6) إذا كانت معلومات البنك مكتملة والمستخدم طلب المتابعة/الإنشاء، اجعل shouldGenerateBank=true وtaskStatus="ready".
+7) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
+8) إذا طلب المستخدم مراجع ويب أو كان إنشاء البنك يحتاج مصادر ولم توجد مرفقات أو روابط، اجعل requestSources=true. لا تخترع روابط بنفسك.
+9) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
+10) ممنوع أن تقول للمستخدم «اطلب من التطبيق» أو «استخدم زر البحث». إذا احتجت أداة يملكها التطبيق فعبّر عنها في حقول القرار.
+11) عندما يقول المستخدم «ابحث عنه» أو «ابحث في الويب» أو «هات مصادر/روابط» وكان موضوع المحادثة معروفًا، اجعل requestSources=true واحتفظ بالموضوع في topic.
+12) أعد JSON صالحًا فقط بدون Markdown بالشكل:
 {"reply":"...","intent":"chat|progress|bank|topic|references","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"requestSources":false,"requestConfirmation":false,"shouldGenerateBank":false}
 
 السياق الحالي:
-${JSON.stringify(context)}`,
-    1000
-  );
+${JSON.stringify(context)}
+
+المصادر المرفقة بهذا الطلب:
+${JSON.stringify(sourceSummary)}`;
+
+  let raw: string;
+
+  if (sources.length === 0) {
+    raw = await generate(prompt, 1200);
+  } else {
+    const key = await getGeminiKey();
+    if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
+    const model = geminiModel();
+    const parts: any[] = [{ text: prompt }];
+    let needsUrlContext = false;
+
+    for (const source of sources.slice(0, 8)) {
+      if (source.kind === 'text' && source.text?.trim()) {
+        parts.push({
+          text: `\n\n[مصدر مرفق: ${source.title}]\n${cleanReferenceText(source.text)}`,
+        });
+      } else if (source.kind === 'url' && source.url) {
+        needsUrlContext = true;
+        parts.push({
+          text: `\n[رابط مصدر مرفق: ${source.title}] ${source.url}`,
+        });
+      } else if (source.kind === 'inline' && source.base64 && source.mimeType) {
+        parts.push({
+          inlineData: {
+            mimeType: source.mimeType,
+            data: source.base64,
+          },
+        });
+        parts.push({
+          text: `[المرفق السابق مصدر بعنوان: ${source.title}. اقرأه للإجابة عن طلب المستخدم.]`,
+        });
+      }
+    }
+
+    const body: any = {
+      contents: [{ role: 'user', parts }],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 1200,
+      },
+    };
+    if (needsUrlContext) body.tools = [{ url_context: {} }];
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    let payload: any = null;
+    try { payload = await response.json(); } catch {}
+
+    if (!response.ok) {
+      const apiMessage = payload?.error?.message || '';
+      if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
+      throw new Error(apiMessage || 'تعذر إرسال المرفقات إلى Gemini.');
+    }
+
+    raw = responseText(payload);
+  }
+
   const parsed = parseJsonObject(raw);
   return {
     reply: String(parsed.reply || '').trim() || 'تم فهم الطلب.',
