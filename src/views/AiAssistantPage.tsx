@@ -47,6 +47,26 @@ function sourceDomain(url: string): string {
   catch { return url; }
 }
 
+function youtubeEmbedUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    let id = '';
+    if (parsed.hostname.includes('youtu.be')) {
+      id = parsed.pathname.replace(/^\//, '').split('/')[0] || '';
+    } else if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') id = parsed.searchParams.get('v') || '';
+      if (!id) {
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        const marker = parts.findIndex((part) => ['shorts', 'embed', 'live'].includes(part));
+        if (marker >= 0) id = parts[marker + 1] || '';
+      }
+    }
+    return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}?rel=0` : '';
+  } catch {
+    return '';
+  }
+}
+
 function asksForWebSearch(text: string): boolean {
   const value = text.trim().toLocaleLowerCase('ar');
   return [
@@ -173,6 +193,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const [localSources, setLocalSources] = useState<MixedAiSource[]>([]);
   const [taskLocalSources, setTaskLocalSources] = useState<MixedAiSource[]>([]);
   const [sentAttachmentPayloads, setSentAttachmentPayloads] = useState<Record<string, MixedAiSource[]>>({});
+  const [playingYoutubeId, setPlayingYoutubeId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -735,31 +756,63 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                   <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
                     {block.items.map((richItem, index) => (
                       richItem.type === 'youtube' ? (
-                        <a
+                        <div
                           key={richItem.id}
-                          href={richItem.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-56 shrink-0 snap-start rounded-[14px] overflow-hidden bg-white dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348] text-[#2C2145] dark:text-white no-underline"
+                          className="w-64 shrink-0 snap-start rounded-[14px] overflow-hidden bg-white dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348] text-[#2C2145] dark:text-white"
                         >
                           <div className="relative aspect-video bg-gray-100 dark:bg-[#111] overflow-hidden">
-                            {richItem.thumbnailUrl ? (
-                              <img src={richItem.thumbnailUrl} alt={richItem.title} className="w-full h-full object-cover" />
+                            {playingYoutubeId === richItem.id && youtubeEmbedUrl(richItem.url) ? (
+                              <iframe
+                                src={youtubeEmbedUrl(richItem.url)}
+                                title={richItem.title}
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                              />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center"><Globe2 className="w-6 h-6 text-gray-400" /></div>
+                              <button
+                                type="button"
+                                onClick={() => setPlayingYoutubeId(richItem.id)}
+                                className="relative w-full h-full"
+                                aria-label="تشغيل الفيديو داخل التطبيق"
+                              >
+                                {richItem.thumbnailUrl ? (
+                                  <img src={richItem.thumbnailUrl} alt={richItem.title} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center"><Globe2 className="w-6 h-6 text-gray-400" /></div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-11 h-11 rounded-full bg-black/75 text-white flex items-center justify-center shadow-lg">
+                                    <span className="text-base pr-0.5">▶</span>
+                                  </div>
+                                </div>
+                                <div className="absolute top-2 right-2 h-6 px-2 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-black">YouTube</div>
+                              </button>
                             )}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center">
-                                <span className="text-sm pr-0.5">▶</span>
-                              </div>
-                            </div>
-                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-black">YT</div>
                           </div>
                           <div className="p-3">
                             <div className="text-[11px] font-bold leading-5 line-clamp-2">{index + 1}. {richItem.title}</div>
                             {richItem.subtitle && <div className="text-[9px] text-gray-400 mt-1 truncate">{richItem.subtitle}</div>}
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => setPlayingYoutubeId(playingYoutubeId === richItem.id ? null : richItem.id)}
+                                className="flex-1 h-8 rounded-[9px] bg-[#F5F3FF] dark:bg-[#302844] text-[#5B3FD6] dark:text-[#C8BAFF] text-[9px] font-bold"
+                              >
+                                {playingYoutubeId === richItem.id ? 'إغلاق المشغل' : 'تشغيل هنا'}
+                              </button>
+                              <a
+                                href={richItem.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="h-8 px-3 rounded-[9px] border border-gray-100 dark:border-[#3A3348] text-[9px] font-bold flex items-center justify-center gap-1 no-underline text-[#5B3FD6] dark:text-[#C8BAFF]"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                YouTube
+                              </a>
+                            </div>
                           </div>
-                        </a>
+                        </div>
                       ) : richItem.type === 'image' ? (
                         <a
                           key={richItem.id}
