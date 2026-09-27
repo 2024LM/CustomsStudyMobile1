@@ -6,6 +6,18 @@ import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
 import { addLocalReference, deleteLocalReference, listLocalReferences, LocalReference, saveDownloadedReference } from '../services/localReferences';
 import { db } from '../services/db';
+import { AiReferenceTools } from '../components/AiReferenceTools';
+
+
+function htmlToPlainText(html: string): string {
+  if (!html.trim()) return '';
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  } catch {
+    return '';
+  }
+}
 
 function sanitizeWordHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -303,6 +315,13 @@ export const ReferencesPage: React.FC = () => {
           </div>
         </div>
 
+        {!contentLoading && !contentError && (
+          <AiReferenceTools
+            title={localSelected.name}
+            text={content || htmlToPlainText(wordHtml)}
+          />
+        )}
+
         <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري فتح المرجع...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
@@ -336,6 +355,13 @@ export const ReferencesPage: React.FC = () => {
             <button onClick={() => setSelected(null)} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
           </div>
         </div>
+        {!contentLoading && !contentError && (
+          <AiReferenceTools
+            title={selected.title}
+            text={content || htmlToPlainText(wordHtml)}
+          />
+        )}
+
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
