@@ -10,15 +10,20 @@ cp native-android/StudyAlarmReceiver.java "$JAVA_DIR/StudyAlarmReceiver.java"
 cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
+cp native-android/NexusNanoAiPlugin.java "$JAVA_DIR/NexusNanoAiPlugin.java"
 
 python3 - <<'PY'
 from pathlib import Path
 p=Path("android/app/build.gradle")
 s=p.read_text()
 needle="dependencies {"
-dep="    implementation 'com.unity3d.ads:unity-ads:4.19.0'\n"
+deps = []
 if "com.unity3d.ads:unity-ads" not in s:
-    s=s.replace(needle, needle+"\n"+dep, 1)
+    deps.append("    implementation 'com.unity3d.ads:unity-ads:4.19.0'\\n")
+if "com.google.mlkit:genai-prompt" not in s:
+    deps.append("    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'\\n")
+if deps:
+    s=s.replace(needle, needle+"\\n"+"".join(deps), 1)
 p.write_text(s)
 PY
 
