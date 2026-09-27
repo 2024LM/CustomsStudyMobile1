@@ -65,6 +65,25 @@ function previousUserTopic(messages: AiWorkspaceState['messages'], currentText: 
   return '';
 }
 
+function attachmentKind(source: MixedAiSource): 'image' | 'pdf' | 'file' | 'bank' | 'reference' | 'url' {
+  if (source.kind === 'url') return 'url';
+  if (source.kind === 'inline' && source.mimeType?.startsWith('image/')) return 'image';
+  if (source.kind === 'inline' && source.mimeType === 'application/pdf') return 'pdf';
+  if (source.title.startsWith('بنك:')) return 'bank';
+  if (source.title.startsWith('مرجع:')) return 'reference';
+  return 'file';
+}
+
+function dedupeSources(sources: MixedAiSource[]): MixedAiSource[] {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    const key = source.id || source.url || source.title;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 8);
+}
+
 export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings }) => {
   const [workspace, setWorkspace] = useState<AiWorkspaceState>(() => loadAiWorkspace());
   const [ready, setReady] = useState(false);
@@ -84,6 +103,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   });
   const [generated, setGenerated] = useState<GeneratedBankQuestion[]>([]);
   const [localSources, setLocalSources] = useState<MixedAiSource[]>([]);
+  const [taskLocalSources, setTaskLocalSources] = useState<MixedAiSource[]>([]);
+  const [sentAttachmentPayloads, setSentAttachmentPayloads] = useState<Record<string, MixedAiSource[]>>({});
   const [status, setStatus] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -185,11 +206,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     }
   };
 
-  const generateBank = async (state: AiWorkspaceState) => {
+  const generateBank = async (state: AiWorkspaceState, localTaskSources: MixedAiSource[] = taskLocalSources) => {
     if (!state.task.bankName.trim() || !state.task.topic.trim()) {
       throw new Error('اسم البنك والموضوع مطلوبان قبل التوليد.');
     }
-    if (!state.task.sourceUrls.length && !localSources.length) {
+    if (!state.task.sourceUrls.length && !localTaskSources.length) {
       throw new Error('أضف مصدرًا واحدًا على الأقل قبل إنشاء البنك.');
     }
 
@@ -211,7 +232,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           kind: 'url' as const,
           url,
         })),
-        ...localSources,
+        ...localTaskSources,
       ],
     });
 
@@ -224,7 +245,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         task: { ...generatingState.task, status: 'review', updatedAt: Date.now() },
       },
       'assistant',
-      `أنشأت ${questions.length} سؤالًا من ${state.task.sourceUrls.length + localSources.length} مصدر محدد. راجع المعاينة قبل الحفظ.`
+      `أنشأت ${questions.length} سؤالًا من ${state.task.sourceUrls.length + localTaskSources.length} مصدر محدد. راجع المعاينة قبل الحفظ.`
     );
     setWorkspace(reviewState);
     setStatus('');
@@ -235,11 +256,27 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     const hasAttachments = localSources.length > 0 || workspace.task.sourceUrls.length > 0;
     if ((!text && !hasAttachments) || busy || !ready) return;
 
+    const pendingSources = [...localSources];
+    const nextTaskLocalSources = dedupeSources([...taskLocalSources, ...pendingSources]);
+    const attachments = pendingSources.map((source) => ({
+      id: source.id,
+      title: source.title,
+      kind: attachmentKind(source),
+      mimeType: source.mimeType,
+    }));
+
     setMessage('');
+    setLocalSources([]);
+    setTaskLocalSources(nextTaskLocalSources);
     setBusy(true);
     setStatus('');
+
     const userText = text || 'حلّل المصادر المرفقة.';
-    let state = addAiMessage(workspace, 'user', userText);
+    let state = addAiMessage(workspace, 'user', userText, attachments);
+    const sentMessage = state.messages[state.messages.length - 1];
+    if (sentMessage && pendingSources.length) {
+      setSentAttachmentPayloads((current) => ({ ...current, [sentMessage.id]: pendingSources }));
+    }
     setWorkspace(state);
 
     try {
@@ -250,7 +287,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           kind: 'url' as const,
           url,
         })),
-        ...localSources,
+        ...nextTaskLocalSources,
       ];
 
       const decision = await runStudyAssistant({
@@ -314,8 +351,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         setWorkspace(asking);
       }
 
-      if (decision.shouldGenerateBank && (nextTask.sourceUrls.length > 0 || localSources.length > 0)) {
-        await generateBank({ ...state, task: nextTask });
+      if (decision.shouldGenerateBank && (nextTask.sourceUrls.length > 0 || nextTaskLocalSources.length > 0)) {
+        await generateBank({ ...state, task: nextTask }, nextTaskLocalSources);
       }
     } catch (error: any) {
       const textError = error?.message || 'حدث خطأ أثناء تنفيذ طلب المساعد.';
@@ -332,7 +369,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   };
 
   const acceptSources = async () => {
-    if (!workspace.task.sourceUrls.length && !localSources.length) {
+    const availableLocalSources = dedupeSources([...taskLocalSources, ...localSources]);
+    if (!workspace.task.sourceUrls.length && !availableLocalSources.length) {
       setStatus('اختر أو أضف مصدرًا واحدًا على الأقل.');
       return;
     }
@@ -342,13 +380,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         task: { ...workspace.task, status: 'ready', updatedAt: Date.now() },
       },
       'assistant',
-      `تم اعتماد ${workspace.task.sourceUrls.length + localSources.length} مصادر للمهمة. سأستخدم هذه المصادر فقط في إنشاء البنك.`
+      `تم اعتماد ${workspace.task.sourceUrls.length + availableLocalSources.length} مصادر للمهمة. سأستخدم هذه المصادر فقط في إنشاء البنك.`
     );
     setWorkspace(next);
 
     if (next.task.bankName && next.task.topic) {
       setBusy(true);
-      try { await generateBank(next); }
+      try { await generateBank(next, availableLocalSources); }
       catch (error: any) { setStatus(error?.message || 'تعذر إنشاء البنك.'); }
       finally { setBusy(false); }
     } else {
@@ -378,7 +416,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
       const bankId = db.importQuestionBank(
         workspace.task.bankName || 'بنك AI',
-        `بنك أنشئ بمساعدة Gemini من ${workspace.task.sourceUrls.length + localSources.length} مصادر اختارها المستخدم.`,
+        `بنك أنشئ بمساعدة Gemini من ${workspace.task.sourceUrls.length + taskLocalSources.length} مصادر اختارها المستخدم.`,
         preview
       );
       db.setActiveBank(bankId);
@@ -405,6 +443,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setCandidates([]);
     setGenerated([]);
     setLocalSources([]);
+    setTaskLocalSources([]);
+    setSentAttachmentPayloads({});
     setStatus('');
     setShowSources(false);
   };
@@ -462,7 +502,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           <div className="grid grid-cols-2 gap-2 mt-3 text-[10px]">
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">البنك</span><div className="font-bold mt-1 truncate">{workspace.task.bankName || 'غير محدد'}</div></div>
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">الموضوع</span><div className="font-bold mt-1 truncate">{workspace.task.topic || 'غير محدد'}</div></div>
-            <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">المصادر</span><div className="font-bold mt-1">{workspace.task.sourceUrls.length + localSources.length}</div></div>
+            <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">المصادر</span><div className="font-bold mt-1">{workspace.task.sourceUrls.length + taskLocalSources.length + localSources.length}</div></div>
             <div className="bg-[#F8F9FD] dark:bg-[#191621] rounded-[10px] p-2"><span className="text-gray-400 dark:text-[#9D95AC]">الأسئلة</span><div className="font-bold mt-1">{workspace.task.expectedQuestions}</div></div>
           </div>
 
@@ -528,11 +568,46 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           </div>
         )}
 
-        {workspace.messages.map((item) => (
-          <div key={item.id} className={`max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 whitespace-pre-wrap ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
-            {item.text}
-          </div>
-        ))}
+        {workspace.messages.map((item) => {
+          const payloads = sentAttachmentPayloads[item.id] || [];
+          return (
+            <div key={item.id} className={`max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
+              {item.attachments?.length ? (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {item.attachments.map((attachment) => {
+                    const payload = payloads.find((source) => source.id === attachment.id);
+                    const imageSource = attachment.kind === 'image' && payload?.base64 && payload.mimeType
+                      ? `data:${payload.mimeType};base64,${payload.base64}`
+                      : '';
+
+                    if (imageSource) {
+                      return (
+                        <div key={attachment.id} className="w-28 h-28 rounded-[14px] overflow-hidden bg-black/10 border border-white/20">
+                          <img src={imageSource} alt={attachment.title} className="w-full h-full object-cover" />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={attachment.id} className={`max-w-[210px] rounded-[12px] px-3 py-2 flex items-center gap-2 ${item.role === 'user' ? 'bg-white/15 border border-white/15' : 'bg-[#F8F9FD] dark:bg-[#191621] border border-gray-100 dark:border-[#3A3348]'}`}>
+                        <div className={`w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 ${item.role === 'user' ? 'bg-white/15' : 'bg-[#F0ECFF] dark:bg-[#302844] text-[#5B3FD6]'}`}>
+                          {attachment.kind === 'image' ? <ImageIcon className="w-4 h-4" /> : attachment.kind === 'bank' ? <Database className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold truncate">{attachment.title}</div>
+                          <div className={`text-[9px] mt-0.5 ${item.role === 'user' ? 'text-white/70' : 'text-gray-400'}`}>
+                            {attachment.kind === 'pdf' ? 'PDF' : attachment.kind === 'image' ? 'صورة' : attachment.kind === 'bank' ? 'بنك أسئلة' : attachment.kind === 'reference' ? 'مرجع' : attachment.kind === 'url' ? 'رابط' : 'ملف'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div className="whitespace-pre-wrap">{item.text}</div>
+            </div>
+          );
+        })}
 
         {busy && (
           <div className="self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] rounded-[17px] px-4 py-3 flex items-center gap-2 text-[11px] text-gray-500 dark:text-[#B1A9BD]">
