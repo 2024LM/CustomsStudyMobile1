@@ -9,8 +9,8 @@ import {
   HardDrive,
   BrainCircuit,
   ChevronLeft,
+  MoreHorizontal,
 } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
 
@@ -112,10 +112,17 @@ export const MorePage: React.FC<MorePageProps> = ({
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <ScreenHeader
-        title="المزيد"
-        subtitle={`أدوات وإعدادات ${appConfig.appName}`}
-      />
+      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+            <MoreHorizontal className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-bold text-lg">المزيد</h1>
+            <p className="text-xs text-[#DDD5FF] mt-0.5">أدوات وإعدادات ${appConfig.appName}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {menuItems.map((item, idx) => {
