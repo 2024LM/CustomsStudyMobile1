@@ -45,6 +45,26 @@ function sourceDomain(url: string): string {
   catch { return url; }
 }
 
+function asksForWebSearch(text: string): boolean {
+  const value = text.trim().toLocaleLowerCase('ar');
+  return [
+    'ابحث', 'إبحث', 'بحث عنه', 'ابحث عنه', 'ابحث عنها', 'فتش',
+    'مصادر', 'مراجع', 'روابط', 'تحقق من', 'تأكد من'
+  ].some((token) => value.includes(token.toLocaleLowerCase('ar')));
+}
+
+function previousUserTopic(messages: AiWorkspaceState['messages'], currentText: string): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const item = messages[i];
+    if (item.role !== 'user') continue;
+    const value = item.text.trim();
+    if (!value || value === currentText.trim()) continue;
+    if (asksForWebSearch(value) && value.length < 40) continue;
+    return value.slice(0, 300);
+  }
+  return '';
+}
+
 export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings }) => {
   const [workspace, setWorkspace] = useState<AiWorkspaceState>(() => loadAiWorkspace());
   const [ready, setReady] = useState(false);
@@ -267,8 +287,19 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       state = addAiMessage({ ...state, task: nextTask }, 'assistant', decision.reply);
       setWorkspace(state);
 
-      if (decision.requestSources && nextTask.topic && nextTask.sourceUrls.length === 0) {
-        await searchSources(nextTask.topic, state);
+      const explicitSearch = asksForWebSearch(text);
+      const fallbackTopic = previousUserTopic(state.messages, text);
+      const searchTopic = (nextTask.topic || state.task.topic || fallbackTopic || '').trim();
+
+      if ((decision.requestSources || explicitSearch) && searchTopic && nextTask.sourceUrls.length === 0) {
+        await searchSources(searchTopic, state);
+      } else if ((decision.requestSources || explicitSearch) && !searchTopic) {
+        const asking = addAiMessage(
+          state,
+          'assistant',
+          'ما الموضوع الذي تريد أن أبحث له عن مصادر؟'
+        );
+        setWorkspace(asking);
       }
 
       if (decision.shouldGenerateBank && (nextTask.sourceUrls.length > 0 || localSources.length > 0)) {
