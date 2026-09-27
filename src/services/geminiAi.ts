@@ -229,3 +229,147 @@ export async function flashcardsFromReference(title: string, text: string): Prom
   if (!cards.length) throw new Error('لم يتم توليد بطاقات صالحة من هذا المرجع.');
   return cards;
 }
+
+
+export interface StudyAssistantContext {
+  message: string;
+  task: {
+    kind: string;
+    status: string;
+    bankName: string;
+    topic: string;
+    sourceUrls: string[];
+    expectedQuestions: number;
+  };
+  app: {
+    activeDomain: string;
+    activeBank: string;
+    banks: Array<{ id: string; name: string; questions: number }>;
+    stats: {
+      answered: number;
+      correct: number;
+      wrong: number;
+      successRate: number;
+      dueReview: number;
+      unseen: number;
+      weakTopics: Array<{ topic: string; successRate: number; wrong: number; attempts: number }>;
+      strongTopics: Array<{ topic: string; successRate: number; attempts: number }>;
+    };
+    references: Array<{ id: string; title: string; description: string; url: string; type: string }>;
+  };
+  recentMessages: Array<{ role: string; text: string }>;
+}
+
+export interface StudyAssistantDecision {
+  reply: string;
+  intent: 'chat' | 'progress' | 'bank' | 'topic' | 'references';
+  taskStatus: 'idle' | 'collecting' | 'ready' | 'review' | 'done';
+  bankName?: string;
+  topic?: string;
+  expectedQuestions?: number;
+  requestSources?: boolean;
+  requestConfirmation?: boolean;
+  shouldGenerateBank?: boolean;
+}
+
+function parseJsonObject(raw: string): any {
+  const cleaned = raw
+    .replace(/^\`\`\`json\s*/i, '')
+    .replace(/^\`\`\`\s*/i, '')
+    .replace(/\s*\`\`\`$/i, '')
+    .trim();
+  try { return JSON.parse(cleaned); }
+  catch { throw new Error('تعذر فهم استجابة المساعد. أعد المحاولة.'); }
+}
+
+export async function runStudyAssistant(context: StudyAssistantContext): Promise<StudyAssistantDecision> {
+  const raw = await generate(
+    `أنت عقل مساعد دراسة داخل تطبيق، لكن التطبيق نفسه يدير الذاكرة والتنفيذ. لا تفترض أنك تتذكر أي شيء خارج JSON المرسل لك الآن.
+
+قواعدك:
+1) أجب بالعربية وباختصار عملي.
+2) لا تدّعي تنفيذ شيء. أنت تقترح القرار فقط، والتطبيق ينفذ.
+3) عند طلب إنشاء بنك أسئلة: لا تطلب من التطبيق التوليد قبل توفر اسم بنك واضح وموضوع واضح ومصدر مرجعي واحد على الأقل. المصادر يجب أن تأتي من app.references أو sourceUrls الموجودة في task.
+4) إذا كانت المعلومات ناقصة، اجعل taskStatus="collecting" واشرح بالضبط ما ينقص.
+5) إذا كانت جميع معلومات البنك مكتملة والمستخدم طلب المتابعة/الإنشاء، اجعل shouldGenerateBank=true وtaskStatus="ready".
+6) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
+7) إذا طلب المستخدم اقتراح مراجع، استخدم فقط app.references المرسلة.
+8) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
+9) أعد JSON صالحًا فقط بدون Markdown بالشكل:
+{"reply":"...","intent":"chat|progress|bank|topic|references","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"requestSources":false,"requestConfirmation":false,"shouldGenerateBank":false}
+
+السياق الحالي:
+${JSON.stringify(context)}`,
+    1000
+  );
+  const parsed = parseJsonObject(raw);
+  return {
+    reply: String(parsed.reply || '').trim() || 'تم فهم الطلب.',
+    intent: ['chat','progress','bank','topic','references'].includes(parsed.intent) ? parsed.intent : 'chat',
+    taskStatus: ['idle','collecting','ready','review','done'].includes(parsed.taskStatus) ? parsed.taskStatus : 'idle',
+    bankName: String(parsed.bankName || '').trim().slice(0, 80),
+    topic: String(parsed.topic || '').trim().slice(0, 200),
+    expectedQuestions: Math.min(Math.max(Number(parsed.expectedQuestions) || 20, 5), 100),
+    requestSources: Boolean(parsed.requestSources),
+    requestConfirmation: Boolean(parsed.requestConfirmation),
+    shouldGenerateBank: Boolean(parsed.shouldGenerateBank),
+  };
+}
+
+export interface GeneratedBankQuestion {
+  question: string;
+  correctAnswer: string;
+  wrong1: string;
+  wrong2: string;
+  wrong3: string;
+  explanation: string;
+  topic: string;
+}
+
+export async function generateBankFromSources(input: {
+  bankName: string;
+  topic: string;
+  count: number;
+  sources: Array<{ title: string; url: string; text: string }>;
+}): Promise<GeneratedBankQuestion[]> {
+  const sourceText = input.sources.map((source, index) =>
+    `[المصدر ${index + 1}] ${source.title}\nالرابط: ${source.url}\n${cleanReferenceText(source.text)}`
+  ).join('\n\n---\n\n');
+
+  const raw = await generate(
+    `أنشئ بنك أسئلة QCM عربي اعتمادًا حصريًا على المصادر أدناه.
+اسم البنك: ${input.bankName}
+الموضوع: ${input.topic}
+العدد المطلوب: ${Math.min(Math.max(input.count, 5), 100)}
+
+أعد JSON صالحًا فقط بدون Markdown، وهو مصفوفة عناصر بالشكل:
+[{"question":"...","correctAnswer":"...","wrong1":"...","wrong2":"...","wrong3":"...","explanation":"...","topic":"..."}]
+
+الشروط:
+- كل سؤال له إجابة صحيحة وثلاث إجابات خاطئة مختلفة.
+- لا تستخدم معرفة خارج المصادر.
+- لا تكرر الأسئلة.
+- إذا لم تكفِ المصادر للعدد المطلوب، أنشئ عددًا أقل بدل الاختراع.
+- اكتب شرحًا قصيرًا يوضح سبب صحة الجواب.
+
+المصادر:
+${sourceText}`,
+    5200
+  );
+
+  const parsed = parseJsonObject(raw);
+  if (!Array.isArray(parsed)) throw new Error('صيغة بنك الأسئلة المولّد غير صالحة.');
+  return parsed.map((item: any) => ({
+    question: String(item?.question || '').trim().slice(0, 2000),
+    correctAnswer: String(item?.correctAnswer || '').trim().slice(0, 2000),
+    wrong1: String(item?.wrong1 || '').trim().slice(0, 2000),
+    wrong2: String(item?.wrong2 || '').trim().slice(0, 2000),
+    wrong3: String(item?.wrong3 || '').trim().slice(0, 2000),
+    explanation: String(item?.explanation || '').trim().slice(0, 2000),
+    topic: String(item?.topic || input.topic).trim().slice(0, 200),
+  })).filter((item: GeneratedBankQuestion) => {
+    const values = [item.correctAnswer, item.wrong1, item.wrong2, item.wrong3];
+    return item.question.length >= 3 && values.every(Boolean)
+      && new Set(values.map((value) => value.toLocaleLowerCase('ar'))).size === 4;
+  }).slice(0, Math.min(Math.max(input.count, 5), 100));
+}
