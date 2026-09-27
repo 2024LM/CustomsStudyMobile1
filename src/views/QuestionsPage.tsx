@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, SlidersHorizontal, BookOpen } from 'lucide-react';
+import { Search, X, SlidersHorizontal, BookOpen, Rows3, ListTree } from 'lucide-react';
 import { db } from '../services/db';
 import { QuestionCard } from '../components/QuestionCard';
 
@@ -8,6 +8,7 @@ export const QuestionsPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('ALL');
   const [selectedType, setSelectedType] = useState<'ALL' | 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL'>('ALL');
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   const topics = useMemo(() => Array.from(new Set(db.questions(db.activeBankId()).map((q) => q.topic.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar')), []);
   const pageSize = 50;
 
@@ -122,24 +123,58 @@ export const QuestionsPage: React.FC = () => {
           </button>
         ))}      </div>
 
-      {/* Results Count Header */}
-      <div className="flex items-center justify-between py-1">
-        <span className="font-bold text-sm text-[#2C2145]">النتائج</span>
-        <span className="bg-[#F5F3FF] text-[#5B3FD6] text-xs font-bold px-3 py-1.5 rounded-[20px]">
-          {total} سؤال
-        </span>
+      {/* Results Count + view mode */}
+      <div className="flex items-center justify-between gap-3 py-1">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm text-[#2C2145]">النتائج</span>
+          <span className="bg-[#F5F3FF] text-[#5B3FD6] text-[11px] font-bold px-2.5 py-1 rounded-full">
+            {total} سؤال
+          </span>
+        </div>
+
+        <div className="flex bg-white border border-gray-100 rounded-[12px] p-1 shadow-xs">
+          <button
+            onClick={() => setViewMode('compact')}
+            className={`h-8 px-2.5 rounded-[9px] text-[10px] font-bold flex items-center gap-1.5 transition-all ${
+              viewMode === 'compact'
+                ? 'bg-[#F5F3FF] text-[#5B3FD6]'
+                : 'text-gray-400'
+            }`}
+          >
+            <Rows3 className="w-3.5 h-3.5" />
+            مضغوط
+          </button>
+          <button
+            onClick={() => setViewMode('detailed')}
+            className={`h-8 px-2.5 rounded-[9px] text-[10px] font-bold flex items-center gap-1.5 transition-all ${
+              viewMode === 'detailed'
+                ? 'bg-[#F5F3FF] text-[#5B3FD6]'
+                : 'text-gray-400'
+            }`}
+          >
+            <ListTree className="w-3.5 h-3.5" />
+            مفصل
+          </button>
+        </div>
       </div>
 
       {/* Questions List */}
-      <div className="flex flex-col gap-3">
+      <div data-tour="questions-list" className="overflow-hidden rounded-[18px] border border-gray-100 bg-white divide-y divide-gray-100">
         {questions.length === 0 ? (
-          <div className="bg-white rounded-[20px] p-8 text-center text-gray-500 border border-gray-100 flex flex-col items-center gap-2">
+          <div className="p-8 text-center text-gray-500 flex flex-col items-center gap-2">
             <span className="text-3xl">🔍</span>
             <p className="font-bold text-base text-[#2C2145]">لم يتم العثور على نتائج</p>
             <p className="text-xs text-gray-400">جرب البحث بكلمات أخرى أو اختر محورًا آخر</p>
           </div>
         ) : (
-          questions.map((q) => <QuestionCard key={q.rowId} question={q} />)
+          questions.map((q, index) => (
+            <QuestionCard
+              key={q.rowId}
+              question={q}
+              index={page * pageSize + index + 1}
+              expandedByDefault={viewMode === 'detailed'}
+            />
+          ))
         )}
       </div>
 
