@@ -112,14 +112,14 @@ export const MorePage: React.FC<MorePageProps> = ({
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+      <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
             <MoreHorizontal className="w-6 h-6" />
           </div>
           <div className="min-w-0">
             <h1 className="font-bold text-lg">المزيد</h1>
-            <p className="text-xs text-[#DDD5FF] mt-0.5">أدوات وإعدادات ${appConfig.appName}</p>
+            <p className="text-xs text-[#DDD5FF] mt-0.5">أدوات وإعدادات {appConfig.appName}</p>
           </div>
         </div>
       </div>
