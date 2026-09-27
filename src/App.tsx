@@ -324,19 +324,19 @@ export function App() {
 
           {page === 'REFERENCES' && <ReferencesPage />}
 
-          {page === 'MISTAKES' && <MistakesPage />}
+          {page === 'MISTAKES' && <MistakesPage onBack={() => setPage('MORE')} />}
 
-          {page === 'FAVORITES' && <FavoritesPage />}
+          {page === 'FAVORITES' && <FavoritesPage onBack={() => setPage('MORE')} />}
 
-          {page === 'BANKS' && <BanksPage onBankSelected={() => setPage('HOME')} />}
+          {page === 'BANKS' && <BanksPage onBankSelected={() => setPage('HOME')} onBack={() => setPage('MORE')} />}
 
-          {page === 'DOMAINS' && <DomainsPage onDomainSelected={() => setPage('HOME')} />}
+          {page === 'DOMAINS' && <DomainsPage onDomainSelected={() => setPage('HOME')} onBack={() => setPage('MORE')} />}
 
-          {page === 'PLAN' && <StudyPlanPage />}
+          {page === 'PLAN' && <StudyPlanPage onBack={() => setPage('MORE')} />}
 
-          {page === 'DOWNLOADS' && <DownloadsPage />}
+          {page === 'DOWNLOADS' && <DownloadsPage onBack={() => setPage('MORE')} />}
 
-          {page === 'ADVANCED' && <AdvancedStudyPage />}
+          {page === 'ADVANCED' && <AdvancedStudyPage onBack={() => setPage('MORE')} />}
 
 
 
