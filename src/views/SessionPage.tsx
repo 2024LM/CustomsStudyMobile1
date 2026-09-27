@@ -7,6 +7,7 @@ import { ArabicText } from '../components/ArabicText';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
+import { AiQuestionTools } from '../components/AiQuestionTools';
 import { showInterstitial } from '../services/ads';
 
 interface SessionPageProps {
@@ -432,6 +433,13 @@ export const SessionPage: React.FC<SessionPageProps> = ({
             );
           })}
         </div>
+
+        {isAnswered && (
+          <AiQuestionTools
+            question={currentQuestion}
+            selectedAnswer={selectedAnswer}
+          />
+        )}
 
         {exitPrompt && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-5" onClick={() => setExitPrompt(false)}>
