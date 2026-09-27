@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NexusStudyAlarmPlugin.class);
         registerPlugin(NexusTtsPlugin.class);
         registerPlugin(NexusSecureSecretsPlugin.class);
+        registerPlugin(NexusNanoAiPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
