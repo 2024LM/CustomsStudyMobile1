@@ -232,17 +232,29 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
   const send = async (preset?: string) => {
     const text = (preset ?? message).trim();
-    if (!text || busy || !ready) return;
+    const hasAttachments = localSources.length > 0 || workspace.task.sourceUrls.length > 0;
+    if ((!text && !hasAttachments) || busy || !ready) return;
 
     setMessage('');
     setBusy(true);
     setStatus('');
-    let state = addAiMessage(workspace, 'user', text);
+    const userText = text || 'حلّل المصادر المرفقة.';
+    let state = addAiMessage(workspace, 'user', userText);
     setWorkspace(state);
 
     try {
+      const activeSources: MixedAiSource[] = [
+        ...state.task.sourceUrls.map((url, index) => ({
+          id: 'web_chat_' + index,
+          title: state.task.sourceTitles[index] || sourceDomain(url),
+          kind: 'url' as const,
+          url,
+        })),
+        ...localSources,
+      ];
+
       const decision = await runStudyAssistant({
-        message: text,
+        message: userText,
         task: {
           kind: state.task.kind,
           status: state.task.status,
@@ -272,7 +284,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           references: [],
         },
         recentMessages: state.messages.slice(-8).map((item) => ({ role: item.role, text: item.text })),
-      });
+      }, activeSources);
 
       const nextTask = {
         ...state.task,
@@ -287,8 +299,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       state = addAiMessage({ ...state, task: nextTask }, 'assistant', decision.reply);
       setWorkspace(state);
 
-      const explicitSearch = asksForWebSearch(text);
-      const fallbackTopic = previousUserTopic(state.messages, text);
+      const explicitSearch = asksForWebSearch(userText);
+      const fallbackTopic = previousUserTopic(state.messages, userText);
       const searchTopic = (nextTask.topic || state.task.topic || fallbackTopic || '').trim();
 
       if ((decision.requestSources || explicitSearch) && searchTopic && nextTask.sourceUrls.length === 0) {
@@ -697,7 +709,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
               <button
                 onClick={() => void send()}
-                disabled={busy || !message.trim()}
+                disabled={busy || (!message.trim() && localSources.length === 0 && workspace.task.sourceUrls.length === 0)}
                 className="w-11 h-11 rounded-[14px] bg-[#5B3FD6] text-white flex items-center justify-center disabled:opacity-40 shrink-0"
               >
                 {busy ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
