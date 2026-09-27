@@ -465,6 +465,7 @@ ${JSON.stringify(sourceSummary)}`;
   if (sources.length === 0) {
     raw = await generate(prompt, 1200);
   } else {
+    assertMixedSourcePayload(sources);
     const key = await getGeminiKey();
     if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
     const model = geminiModel();
@@ -610,6 +611,27 @@ export interface MixedAiSource {
   base64?: string;
 }
 
+export function approximateMixedSourceBytes(source: MixedAiSource): number {
+  if (source.kind === 'inline' && source.base64) {
+    return Math.floor((source.base64.length * 3) / 4);
+  }
+  if (source.kind === 'text' && source.text) {
+    return new Blob([source.text]).size;
+  }
+  if (source.kind === 'url' && source.url) {
+    return new Blob([source.url]).size;
+  }
+  return 0;
+}
+
+function assertMixedSourcePayload(sources: MixedAiSource[]): void {
+  const total = sources.reduce((sum, source) => sum + approximateMixedSourceBytes(source), 0);
+  const MAX_TOTAL_BYTES = 24 * 1024 * 1024;
+  if (total > MAX_TOTAL_BYTES) {
+    throw new Error('إجمالي المرفقات كبير جدًا. خفّضها إلى أقل من 24 MB تقريبًا قبل الإرسال إلى Gemini.');
+  }
+}
+
 export async function generateBankFromMixedSources(input: {
   bankName: string;
   topic: string;
@@ -618,6 +640,7 @@ export async function generateBankFromMixedSources(input: {
 }): Promise<GeneratedBankQuestion[]> {
   const sources = input.sources.slice(0, 8);
   if (!sources.length) throw new Error('أضف مصدرًا واحدًا على الأقل قبل إنشاء البنك.');
+  assertMixedSourcePayload(sources);
 
   const key = await getGeminiKey();
   if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
