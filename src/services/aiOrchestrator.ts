@@ -18,6 +18,7 @@ export interface AiTaskState {
   topic: string;
   sourceIds: string[];
   sourceUrls: string[];
+  sourceTitles: string[];
   expectedQuestions: number;
   generatedBankId?: string;
   lastError?: string;
@@ -40,6 +41,7 @@ function emptyTask(): AiTaskState {
     topic: '',
     sourceIds: [],
     sourceUrls: [],
+    sourceTitles: [],
     expectedQuestions: 20,
     updatedAt: Date.now(),
   };
