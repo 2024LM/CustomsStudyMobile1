@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as mammoth from 'mammoth';
 import { BookMarked, ChevronLeft, FileText, FolderOpen, RefreshCw, Search, WifiOff, X, Upload, Trash2, Download, Cloud, HardDrive, UserRound } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { downloadableReferenceType, fetchReferenceContent, fetchReferenceDocx, fetchReferenceDownload, fetchReferenceIndex, isInlineReadable, ReferenceItem } from '../services/references';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { showReferenceInterstitial } from '../services/ads';
@@ -349,15 +348,29 @@ export const ReferencesPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader title="المراجع" subtitle="مكتبة المراجعة والقوالب والمستندات" action={
-        <button onClick={() => void load(true)} disabled={loading} className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center cursor-pointer disabled:opacity-50"><RefreshCw className={`w-4.5 h-4.5 ${loading ? 'animate-spin' : ''}`} /></button>
-      } />
+      <div data-tour="references-library" className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+              <BookMarked className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-bold text-lg">المراجع</h1>
+              <p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} عبر الإنترنت • {downloadedItems.length} منزّل • {uploadedItems.length} خاص</p>
+            </div>
+          </div>
+          <button
+            onClick={() => void load(true)}
+            disabled={loading}
+            className="w-10 h-10 rounded-[12px] bg-white/15 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer disabled:opacity-50 shrink-0"
+            aria-label="تحديث المراجع"
+          >
+            <RefreshCw className={`w-4.5 h-4.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
 
       <ReferenceBannerAd slot="top" />
-
-      <div data-tour="references-library" className="bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
-        <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><BookMarked className="w-6 h-6" /></div><div><h2 className="font-bold text-lg">مكتبة المراجع</h2><p className="text-xs text-[#DDD5FF] mt-0.5">{items.length} عبر الإنترنت • {downloadedItems.length} منزّل • {uploadedItems.length} خاص</p></div></div>
-      </div>
 
       <div className="grid grid-cols-3 gap-2">
         {[
