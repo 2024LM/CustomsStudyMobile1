@@ -10,6 +10,7 @@ import {
   BrainCircuit,
   ChevronLeft,
   MoreHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
@@ -22,6 +23,7 @@ interface MorePageProps {
   onGoToPlan: () => void;
   onGoToDownloads: () => void;
   onGoToAdvanced: () => void;
+  onGoToAiSettings: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -36,6 +38,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToPlan,
   onGoToDownloads,
   onGoToAdvanced,
+  onGoToAiSettings,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -64,6 +67,12 @@ export const MorePage: React.FC<MorePageProps> = ({
       title: 'مركز الدراسة',
       subtitle: 'بحث، ملاحظات، Flashcards، مراجعة ذكية، Pomodoro، البنوك والتحليلات',
       action: onGoToAdvanced,
+    },
+    {
+      icon: Sparkles,
+      title: 'الذكاء الاصطناعي',
+      subtitle: 'Gemini API، التفعيل واختبار الاتصال',
+      action: onGoToAiSettings,
     },
     {
       icon: CalendarDays,
