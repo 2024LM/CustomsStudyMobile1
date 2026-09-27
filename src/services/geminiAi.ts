@@ -517,3 +517,112 @@ ${sourceText}`,
       && new Set(values.map((value) => value.toLocaleLowerCase('ar'))).size === 4;
   }).slice(0, Math.min(Math.max(input.count, 5), 100));
 }
+
+
+export interface MixedAiSource {
+  id: string;
+  title: string;
+  kind: 'text' | 'url' | 'inline';
+  text?: string;
+  url?: string;
+  mimeType?: string;
+  base64?: string;
+}
+
+export async function generateBankFromMixedSources(input: {
+  bankName: string;
+  topic: string;
+  count: number;
+  sources: MixedAiSource[];
+}): Promise<GeneratedBankQuestion[]> {
+  const sources = input.sources.slice(0, 8);
+  if (!sources.length) throw new Error('أضف مصدرًا واحدًا على الأقل قبل إنشاء البنك.');
+
+  const key = await getGeminiKey();
+  if (!key) throw new Error('لم يتم حفظ مفتاح Gemini API.');
+  const model = geminiModel();
+
+  const parts: any[] = [{
+    text: `أنشئ بنك أسئلة QCM عربيًا اعتمادًا حصريًا على المصادر المرفقة في هذا الطلب.
+
+اسم البنك: ${input.bankName}
+الموضوع: ${input.topic}
+العدد المطلوب: ${Math.min(Math.max(input.count, 5), 100)}
+
+أعد JSON صالحًا فقط بدون Markdown بالشكل:
+[{"question":"...","correctAnswer":"...","wrong1":"...","wrong2":"...","wrong3":"...","explanation":"...","topic":"..."}]
+
+الشروط:
+- لا تستخدم معرفة خارج المصادر.
+- كل سؤال له إجابة صحيحة وثلاث إجابات خاطئة مختلفة.
+- لا تكرر الأسئلة.
+- إذا كانت المادة غير كافية، أنشئ عددًا أقل بدل الاختراع.
+- اكتب شرحًا قصيرًا مفيدًا.
+- عند وجود صورة أو PDF استخرج منها فقط ما يمكن قراءته بوضوح.`
+  }];
+
+  const urlSources: string[] = [];
+  for (const source of sources) {
+    if (source.kind === 'text' && source.text?.trim()) {
+      parts.push({ text: `\n\n[مصدر: ${source.title}]\n${cleanReferenceText(source.text)}` });
+    } else if (source.kind === 'url' && source.url) {
+      urlSources.push(source.url);
+      parts.push({ text: `\n[رابط مصدر: ${source.title}] ${source.url}` });
+    } else if (source.kind === 'inline' && source.base64 && source.mimeType) {
+      parts.push({
+        inlineData: {
+          mimeType: source.mimeType,
+          data: source.base64,
+        },
+      });
+      parts.push({ text: `[الملف/الصورة السابقة مصدر بعنوان: ${source.title}]` });
+    }
+  }
+
+  const body: any = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 5200,
+    },
+  };
+  if (urlSources.length) body.tools = [{ url_context: {} }];
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  let payload: any = null;
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const apiMessage = payload?.error?.message || '';
+    if (response.status === 429) throw new Error('تم بلوغ حد الطلبات لدى Gemini. حاول لاحقًا.');
+    throw new Error(apiMessage || 'تعذر إنشاء البنك من المصادر المختارة.');
+  }
+
+  const raw = responseText(payload);
+  const parsed = parseJsonObject(raw);
+  if (!Array.isArray(parsed)) throw new Error('صيغة بنك الأسئلة المولّد غير صالحة.');
+
+  return parsed.map((item: any) => ({
+    question: String(item?.question || '').trim().slice(0, 2000),
+    correctAnswer: String(item?.correctAnswer || '').trim().slice(0, 2000),
+    wrong1: String(item?.wrong1 || '').trim().slice(0, 2000),
+    wrong2: String(item?.wrong2 || '').trim().slice(0, 2000),
+    wrong3: String(item?.wrong3 || '').trim().slice(0, 2000),
+    explanation: String(item?.explanation || '').trim().slice(0, 2000),
+    topic: String(item?.topic || input.topic).trim().slice(0, 200),
+  })).filter((item: GeneratedBankQuestion) => {
+    const values = [item.correctAnswer, item.wrong1, item.wrong2, item.wrong3];
+    return item.question.length >= 3 && values.every(Boolean)
+      && new Set(values.map((value) => value.toLocaleLowerCase('ar'))).size === 4;
+  }).slice(0, Math.min(Math.max(input.count, 5), 100));
+}
