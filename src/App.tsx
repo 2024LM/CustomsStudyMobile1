@@ -31,6 +31,7 @@ import { ReferencesPage } from './views/ReferencesPage';
 import { StudyPlanPage } from './views/StudyPlanPage';
 import { DownloadsPage } from './views/DownloadsPage';
 import { AdvancedStudyPage } from './views/AdvancedStudyPage';
+import { AiSettingsPage } from './views/AiSettingsPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -338,6 +339,8 @@ export function App() {
 
           {page === 'ADVANCED' && <AdvancedStudyPage onBack={() => setPage('MORE')} />}
 
+          {page === 'AI_SETTINGS' && <AiSettingsPage onBack={() => setPage('MORE')} />}
+
 
 
           {page === 'MORE' && (
@@ -349,6 +352,7 @@ export function App() {
               onGoToPlan={() => setPage('PLAN')}
               onGoToDownloads={() => setPage('DOWNLOADS')}
               onGoToAdvanced={() => setPage('ADVANCED')}
+              onGoToAiSettings={() => setPage('AI_SETTINGS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
               remote={remote}
@@ -364,7 +368,7 @@ export function App() {
             const isSelected =
               page === item.p ||
               (item.p === 'MORE' &&
-                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED'].includes(page));
+                ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS'].includes(page));
 
             return (
               <button
