@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { db } from '../services/db';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { ArabicText } from '../components/ArabicText';
 
-export const FavoritesPage: React.FC = () => {
+export const FavoritesPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [refresh, setRefresh] = useState(0);
   const favorites = db.favorites();
 
@@ -15,10 +15,7 @@ export const FavoritesPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <ScreenHeader
-        title="المفضلة"
-        subtitle="أسئلتك المحفوظة للعودة إليها"
-      />
+      <PurpleSubpageHeader title="المفضلة" subtitle="أسئلتك المحفوظة للعودة إليها" onBack={onBack} />
 
       {favorites.length === 0 ? (
         <div className="bg-white rounded-[22px] p-10 text-center flex flex-col items-center gap-3 border border-gray-100 shadow-xs mt-4">
