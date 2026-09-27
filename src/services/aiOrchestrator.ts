@@ -22,6 +22,8 @@ export interface AiRichContentItem {
 export interface AiRichContentBlock {
   type: 'rich_content';
   title: string;
+  beforeText?: string;
+  afterText?: string;
   items: AiRichContentItem[];
 }
 
