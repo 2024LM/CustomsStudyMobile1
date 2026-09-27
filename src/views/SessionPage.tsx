@@ -465,7 +465,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   // 3. Setup Screen
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-5 text-white shadow-sm">
+      <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
             <PlayCircle className="w-6 h-6" />
