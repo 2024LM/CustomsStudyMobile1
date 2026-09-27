@@ -3,11 +3,19 @@ import { db } from './db';
 export type AiTaskKind = 'chat' | 'progress' | 'bank' | 'topic' | 'references';
 export type AiTaskStatus = 'idle' | 'collecting' | 'ready' | 'generating' | 'review' | 'done' | 'error';
 
+export interface AiMessageAttachment {
+  id: string;
+  title: string;
+  kind: 'image' | 'pdf' | 'file' | 'bank' | 'reference' | 'url';
+  mimeType?: string;
+}
+
 export interface AiChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
   at: number;
+  attachments?: AiMessageAttachment[];
 }
 
 export interface AiTaskState {
@@ -83,13 +91,15 @@ export function resetAiWorkspace(): AiWorkspaceState {
 export function addAiMessage(
   state: AiWorkspaceState,
   role: AiChatMessage['role'],
-  text: string
+  text: string,
+  attachments: AiMessageAttachment[] = []
 ): AiWorkspaceState {
   const message: AiChatMessage = {
     id: 'aim_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     role,
     text: text.trim().slice(0, 12000),
     at: Date.now(),
+    attachments: attachments.length ? attachments.slice(0, 8) : undefined,
   };
   return saveAiWorkspace({ ...state, messages: [...state.messages, message] });
 }
