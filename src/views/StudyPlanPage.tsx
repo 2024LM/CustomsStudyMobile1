@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BellRing, CalendarDays, Music, Save, Upload, Volume2, XCircle } from 'lucide-react';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
   cancelStudyAlarm,
@@ -10,7 +10,7 @@ import {
   StudyAlarmSound,
 } from '../services/studyAlarm';
 
-export const StudyPlanPage: React.FC = () => {
+export const StudyPlanPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [examDate, setExamDate] = useState(() => db.setting('study_plan_exam_date', ''));
   const [dailyTarget, setDailyTarget] = useState(() => Number(db.setting('study_plan_daily_target', '20')) || 20);
   const [alarmEnabled, setAlarmEnabled] = useState(() => db.setting('study_alarm_enabled', '0') === '1');
@@ -101,7 +101,7 @@ export const StudyPlanPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <ScreenHeader title="خطة المراجعة" subtitle="الهدف اليومي، موعد الامتحان ومنبّه المراجعة" />
+      <PurpleSubpageHeader title="خطة المراجعة" subtitle="الهدف اليومي، موعد الامتحان ومنبّه المراجعة" onBack={onBack} />
 
       {status && <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>}
 
