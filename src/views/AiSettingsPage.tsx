@@ -18,14 +18,17 @@ import {
   aiProviderMode,
   AiProviderMode,
   aiVerified,
-  deleteGeminiKey,
+  addVerifiedGeminiKey,
+  deleteGeminiKeyById,
   GEMINI_MODELS,
   GeminiModel,
   geminiModel,
-  getGeminiKey,
+  findGeminiKeyNumber,
+  GeminiKeyMeta,
+  listGeminiKeys,
   nanoStatus,
   generateWithNano,
-  saveGeminiKey,
+  selectGeminiKey,
   setAiEnabled,
   setAiProviderMode,
   setGeminiModel,
@@ -41,13 +44,14 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   const [provider, setProvider] = useState<AiProviderMode>(initialProvider);
   const [nano, setNano] = useState<{ status: 'available' | 'downloadable' | 'downloading' | 'unavailable'; available: boolean; model?: string; tokenLimit?: number }>({ status: 'unavailable', available: false });
   const [draftKey, setDraftKey] = useState('');
-  const [hasStoredKey, setHasStoredKey] = useState(false);
+  const [keys, setKeys] = useState<GeminiKeyMeta[]>([]);
+  const [duplicateNumber, setDuplicateNumber] = useState<number | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    void getGeminiKey().then((value) => setHasStoredKey(Boolean(value)));
+    void listGeminiKeys().then(setKeys);
 
     if (isAndroid) {
       void nanoStatus().then(setNano);
@@ -67,32 +71,61 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   };
 
   const saveKey = async () => {
-    if (!draftKey.trim()) {
+    const clean = draftKey.trim();
+    if (!clean) {
       setStatus('أدخل مفتاح Gemini API جديدًا أولًا.');
       return;
     }
+
+    const duplicate = await findGeminiKeyNumber(clean);
+    if (duplicate) {
+      setDuplicateNumber(duplicate);
+      setStatus(`هذا المفتاح محفوظ مسبقًا باسم «مفتاح ${duplicate}».`);
+      return;
+    }
+
     setBusy(true);
-    setStatus('');
+    setStatus('جارٍ اختبار المفتاح قبل حفظه…');
     try {
-      await saveGeminiKey(draftKey);
+      const added = await addVerifiedGeminiKey(clean);
       setDraftKey('');
-      setHasStoredKey(true);
-      setVerified(false);
-      setStatus('تم حفظ المفتاح. اضغط «اختبار الاتصال» للتحقق منه.');
+      setDuplicateNumber(null);
+      setKeys(await listGeminiKeys());
+      setVerified(true);
+      setEnabled(true);
+      setAiEnabled(true);
+      setStatus(`نجح الاختبار وتم حفظه باسم «مفتاح ${added.number}».`);
     } catch (error: any) {
-      setStatus(error?.message || 'تعذر حفظ المفتاح.');
+      setStatus(error?.message || 'فشل اختبار المفتاح، لذلك لم يتم حفظه.');
     } finally {
       setBusy(false);
     }
   };
+
+  const handleDraftKeyChange = (value: string) => {
+    setDraftKey(value);
+    const clean = value.trim();
+    if (!clean) {
+      setDuplicateNumber(null);
+      return;
+    }
+    void findGeminiKeyNumber(clean).then((number) => {
+      setDuplicateNumber(number);
+      if (number) setStatus(`هذا المفتاح محفوظ مسبقًا باسم «مفتاح ${number}».`);
+      else if (status.includes('محفوظ مسبقًا')) setStatus('');
+    });
+  };
+
 
   const testConnection = async () => {
     setBusy(true);
     setStatus('جارٍ اختبار الاتصال بـ Gemini…');
     try {
       await verifyGeminiConnection();
+      setKeys(await listGeminiKeys());
       setVerified(true);
-      setStatus('تم الاتصال بـ Gemini بنجاح. أدوات AI جاهزة للاستخدام.');
+      const active = (await listGeminiKeys()).find((key) => key.active);
+      setStatus(active ? `تم الاتصال بنجاح باستخدام «مفتاح ${active.number}».` : 'تم الاتصال بـ Gemini بنجاح.');
     } catch (error: any) {
       setVerified(false);
       setStatus(error?.message || 'فشل اختبار الاتصال.');
@@ -101,19 +134,31 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     }
   };
 
-  const removeKey = async () => {
-    if (!window.confirm('حذف مفتاح Gemini وإيقاف أدوات الذكاء الاصطناعي؟')) return;
+  const removeKey = async (id: string, number: number) => {
+    if (!window.confirm(`حذف «مفتاح ${number}»؟`)) return;
     setBusy(true);
     try {
-      await deleteGeminiKey();
-      setDraftKey('');
-      setHasStoredKey(false);
-      setEnabled(false);
-      setVerified(false);
-      setStatus('تم حذف المفتاح وإيقاف الذكاء الاصطناعي.');
+      await deleteGeminiKeyById(id);
+      const next = await listGeminiKeys();
+      setKeys(next);
+      const hasVerified = next.some((key) => key.verifiedAt > 0);
+      setVerified(hasVerified);
+      if (!next.length) {
+        setEnabled(false);
+        setAiEnabled(false);
+      }
+      setStatus(next.length
+        ? `تم حذف «مفتاح ${number}». سيتم استخدام مفتاح آخر تلقائيًا.`
+        : 'تم حذف آخر مفتاح محفوظ وإيقاف AI السحابي.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const makeActive = async (id: string, number: number) => {
+    await selectGeminiKey(id);
+    setKeys(await listGeminiKeys());
+    setStatus(`أصبح «مفتاح ${number}» هو المفتاح النشط.`);
   };
 
   const changeModel = (value: GeminiModel) => {
@@ -285,7 +330,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
           <div>
             <h3 className="font-bold text-sm">Gemini API Key — للسحابة</h3>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              {hasStoredKey ? 'يوجد مفتاح محفوظ على هذا الجهاز' : 'لم يتم حفظ مفتاح بعد'}
+              {keys.length ? `${keys.length} مفاتيح محفوظة ومتحققة` : 'لم يتم حفظ مفتاح بعد'}
             </p>
           </div>
         </div>
@@ -294,8 +339,8 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
           <input
             type={showKey ? 'text' : 'password'}
             value={draftKey}
-            onChange={(event) => setDraftKey(event.target.value)}
-            placeholder={hasStoredKey ? 'أدخل مفتاحًا جديدًا لاستبدال المحفوظ' : 'ألصق Gemini API Key هنا'}
+            onChange={(event) => handleDraftKeyChange(event.target.value)}
+            placeholder={keys.length ? 'أضف Gemini API Key آخر' : 'ألصق Gemini API Key هنا'}
             autoComplete="off"
             spellCheck={false}
             className="w-full rounded-[14px] bg-[#F8F9FD] border border-gray-200 px-3 py-3 pl-11 text-sm outline-none focus:border-[#5B3FD6] font-mono"
@@ -312,11 +357,51 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
 
         <button
           onClick={() => void saveKey()}
-          disabled={busy || !draftKey.trim()}
+          disabled={busy || !draftKey.trim() || duplicateNumber !== null}
           className="h-11 rounded-[13px] bg-[#5B3FD6] text-white text-xs font-bold disabled:opacity-40"
         >
-          حفظ المفتاح
+          {busy ? 'جارٍ الاختبار…' : 'اختبار وإضافة المفتاح'}
         </button>
+
+        {duplicateNumber && (
+          <div className="rounded-[12px] bg-amber-50 border border-amber-100 px-3 py-2.5 text-[11px] text-amber-700 font-semibold">
+            هذا المفتاح محفوظ مسبقًا باسم «مفتاح {duplicateNumber}».
+          </div>
+        )}
+
+        {keys.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="text-[11px] font-black text-[#2C2145]">المفاتيح المحفوظة</div>
+            {keys.map((key) => (
+              <div key={key.id} className={`rounded-[13px] border p-3 flex items-center gap-3 ${key.active ? 'border-[#5B3FD6] bg-[#F5F3FF]' : 'border-gray-100 bg-[#F8F9FD]'}`}>
+                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${key.active ? 'bg-[#5B3FD6] text-white' : 'bg-white text-[#5B3FD6]'}`}>
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#2C2145]">مفتاح {key.number}</span>
+                    {key.active && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#EAE4FF] text-[#5B3FD6]">نشط</span>}
+                  </div>
+                  <div className="text-[9px] text-gray-400 mt-1 font-mono truncate">{key.masked}</div>
+                  <div className="text-[9px] text-emerald-600 mt-0.5">تم التحقق ✓</div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  {!key.active && (
+                    <button onClick={() => void makeActive(key.id, key.number)} disabled={busy} className="h-8 px-2.5 rounded-[9px] bg-white border border-gray-200 text-[9px] font-bold text-[#5B3FD6] disabled:opacity-40">
+                      استخدام
+                    </button>
+                  )}
+                  <button onClick={() => void removeKey(key.id, key.number)} disabled={busy} className="w-8 h-8 rounded-[9px] bg-red-50 text-red-600 flex items-center justify-center disabled:opacity-40" aria-label={`حذف مفتاح ${key.number}`}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="text-[10px] leading-5 text-gray-500">
+              عند فشل المفتاح النشط بسبب المصادقة أو انتهاء الحصة، ينتقل التطبيق تلقائيًا إلى المفتاح التالي المتحقق.
+            </div>
+          </div>
+        )}
 
         <div className="rounded-[13px] bg-[#F8F9FD] p-3 flex items-start gap-2">
           <ShieldCheck className="w-4 h-4 text-[#16864B] shrink-0 mt-0.5" />
@@ -366,7 +451,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
 
         <button
           onClick={() => void testConnection()}
-          disabled={busy || !hasStoredKey}
+          disabled={busy || keys.length === 0}
           className="h-12 rounded-[14px] bg-[#2C2145] text-white font-bold text-sm disabled:opacity-40"
         >
           اختبار الاتصال
@@ -379,16 +464,6 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
         )}
       </div>
 
-      {hasStoredKey && (
-        <button
-          onClick={() => void removeKey()}
-          disabled={busy}
-          className="h-12 rounded-[14px] border border-red-100 bg-red-50 text-red-600 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-        >
-          <Trash2 className="w-4 h-4" />
-          حذف المفتاح وإيقاف AI
-        </button>
-      )}
     </div>
   );
 };
