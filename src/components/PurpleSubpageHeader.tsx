@@ -12,7 +12,7 @@ export const PurpleSubpageHeader: React.FC<PurpleSubpageHeaderProps> = ({
   subtitle,
   onBack,
 }) => (
-  <div className="w-full bg-gradient-to-l from-[#392080] to-[#6841E8] rounded-[24px] p-4.5 text-white shadow-sm">
+  <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
     <div className="flex items-center gap-3">
       <button
         onClick={onBack}
