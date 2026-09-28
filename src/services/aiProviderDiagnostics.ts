@@ -74,3 +74,64 @@ export function subscribeAiProviderLogs(callback: () => void): () => void {
     window.removeEventListener('storage', listener);
   };
 }
+
+
+export interface AiProviderLogExport {
+  schemaVersion: 1;
+  exportedAt: string;
+  total: number;
+  summary: {
+    success: number;
+    errors: number;
+    retries: number;
+    info: number;
+  };
+  entries: AiProviderLogEntry[];
+}
+
+export function aiProviderLogExport(): AiProviderLogExport {
+  const entries = aiProviderLogs()
+    .slice()
+    .sort((a, b) => a.at - b.at);
+
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    total: entries.length,
+    summary: {
+      success: entries.filter((entry) => entry.status === 'success').length,
+      errors: entries.filter((entry) => entry.status === 'error').length,
+      retries: entries.filter((entry) => entry.status === 'retry').length,
+      info: entries.filter((entry) => entry.status === 'info').length,
+    },
+    entries,
+  };
+}
+
+export function downloadAiProviderLogJson(): string {
+  const payload = aiProviderLogExport();
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const now = new Date();
+  const stamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    '-',
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+  ].join('');
+
+  const filename = `ai-provider-log-${stamp}.json`;
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
