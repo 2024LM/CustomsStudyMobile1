@@ -722,6 +722,133 @@ export async function searchRichWebContent(
   return items;
 }
 
+
+function normalizeRichUrl(url: string): string {
+  const value = String(url || '').trim();
+  return /^https:\/\//i.test(value) ? value : '';
+}
+
+function normalizeRichResponse(parsed: any): GeminiRichResponse {
+  const blocks: GeminiRichBlock[] = [];
+  for (const rawBlock of Array.isArray(parsed?.blocks) ? parsed.blocks : []) {
+    const type = String(rawBlock?.type || '');
+    if (!['youtube','image','link'].includes(type)) continue;
+
+    const items: GeminiRichItem[] = [];
+    for (const rawItem of Array.isArray(rawBlock?.items) ? rawBlock.items : []) {
+      const url = normalizeRichUrl(rawItem?.url);
+      if (!url) continue;
+      if (type === 'youtube' && !youtubeVideoId(url)) continue;
+
+      const item: GeminiRichItem = {
+        title: String(rawItem?.title || safeDomain(url) || 'رابط').trim().slice(0, 180),
+        url,
+        description: String(rawItem?.description || '').trim().slice(0, 500),
+      };
+
+      if (type === 'youtube') {
+        const id = youtubeVideoId(url);
+        item.thumbnailUrl = id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : undefined;
+      } else if (type === 'image') {
+        item.thumbnailUrl = normalizeRichUrl(rawItem?.thumbnailUrl) || url;
+      }
+
+      items.push(item);
+      if (items.length >= 8) break;
+    }
+
+    if (!items.length) continue;
+    blocks.push({
+      type: type as GeminiRichBlock['type'],
+      title: String(rawBlock?.title || '').trim().slice(0, 120) || (type === 'youtube' ? 'فيديوهات مقترحة' : type === 'image' ? 'صور' : 'روابط'),
+      beforeText: String(rawBlock?.beforeText || '').trim().slice(0, 800) || undefined,
+      afterText: String(rawBlock?.afterText || '').trim().slice(0, 800) || undefined,
+      items,
+    });
+    if (blocks.length >= 6) break;
+  }
+
+  return {
+    reply: String(parsed?.reply || '').trim().slice(0, 2000),
+    blocks,
+  };
+}
+
+export async function generateRichWebResponse(
+  query: string,
+  kinds: Array<'youtube' | 'images' | 'links'>
+): Promise<GeminiRichResponse> {
+  const cleanQuery = query.trim().slice(0, 600);
+  const cleanKinds = Array.from(new Set(kinds.filter((kind) => ['youtube','images','links'].includes(kind)))).slice(0, 3);
+  if (!cleanQuery) throw new Error('اكتب طلبًا واضحًا للبحث.');
+  if (!cleanKinds.length) cleanKinds.push('links');
+
+  const typeInstruction = cleanKinds.map((kind) =>
+    kind === 'youtube'
+      ? 'youtube: اجلب روابط فيديوهات YouTube حقيقية ومباشرة، مع عنوان ووصف مختصر.'
+      : kind === 'images'
+        ? 'image: اجلب روابط صور حقيقية يمكن عرضها، ويفضل روابط مباشرة أو صفحات موثوقة مع رابط صورة.'
+        : 'link: اجلب روابط ويب مفيدة وموثوقة.'
+  ).join('\n');
+
+  const payload = await generateWithTools(
+    `نفّذ Google Search فعليًا لتلبية طلب المستخدم التالي:
+"${cleanQuery}"
+
+الأنواع المطلوبة:
+${typeInstruction}
+
+أنت مسؤول عن اختيار أفضل النتائج وشرحها. لا تخترع روابط. استخدم فقط روابط عثرت عليها أثناء البحث.
+أعد JSON صالحًا فقط بدون Markdown بهذه البنية:
+{
+  "reply":"مقدمة أو شرح مختصر",
+  "blocks":[
+    {
+      "type":"youtube|image|link",
+      "title":"عنوان القسم",
+      "beforeText":"نص اختياري قبل القسم",
+      "afterText":"نص اختياري بعد القسم",
+      "items":[
+        {"title":"...","url":"https://...","description":"سبب الاختيار أو شرح مختصر","thumbnailUrl":"https://..."}
+      ]
+    }
+  ]
+}
+لا تُرجع source_picker هنا. هذه نتائج نهائية للعرض داخل المحادثة.`,
+    [{ google_search: {} }],
+    2600
+  );
+
+  const raw = responseText(payload);
+  let parsed: any;
+  try {
+    parsed = parseJsonObject(raw);
+  } catch {
+    // Fallback to grounded links if the model did not keep JSON valid.
+    const fallbackBlocks: GeminiRichBlock[] = [];
+    for (const kind of cleanKinds) {
+      const items = await searchRichWebContent(cleanQuery, kind);
+      fallbackBlocks.push({
+        type: kind === 'images' ? 'image' : kind === 'links' ? 'link' : 'youtube',
+        title: kind === 'youtube' ? 'فيديوهات مقترحة' : kind === 'images' ? 'صور مرتبطة' : 'روابط مفيدة',
+        items: items.map((item) => ({
+          title: item.title,
+          url: item.url,
+          description: item.subtitle,
+          thumbnailUrl: item.thumbnailUrl,
+        })),
+      });
+    }
+    return { reply: 'هذه أفضل النتائج التي عثرت عليها.', blocks: fallbackBlocks };
+  }
+
+  const normalized = normalizeRichResponse(parsed);
+  if (!normalized.blocks.length) {
+    throw new Error('أعاد Gemini نتيجة بحث بدون روابط قابلة للعرض.');
+  }
+  return normalized;
+}
+
 async function generateWithTools(
   prompt: string,
   tools: Array<Record<string, unknown>>,
@@ -884,16 +1011,40 @@ export interface StudyAssistantContext {
   recentMessages: Array<{ role: string; text: string }>;
 }
 
+export type StudyAssistantAction = 'respond' | 'source_picker' | 'web_content' | 'generate_bank';
+
 export interface StudyAssistantDecision {
   reply: string;
   intent: 'chat' | 'progress' | 'bank' | 'topic' | 'references';
+  action: StudyAssistantAction;
   taskStatus: 'idle' | 'collecting' | 'ready' | 'review' | 'done';
   bankName?: string;
   topic?: string;
   expectedQuestions?: number;
-  requestSources?: boolean;
+  sourcePicker?: boolean;
+  webKinds?: Array<'youtube' | 'images' | 'links'>;
   requestConfirmation?: boolean;
   shouldGenerateBank?: boolean;
+}
+
+export interface GeminiRichItem {
+  title: string;
+  url: string;
+  description?: string;
+  thumbnailUrl?: string;
+}
+
+export interface GeminiRichBlock {
+  type: 'youtube' | 'image' | 'link';
+  title: string;
+  beforeText?: string;
+  afterText?: string;
+  items: GeminiRichItem[];
+}
+
+export interface GeminiRichResponse {
+  reply: string;
+  blocks: GeminiRichBlock[];
 }
 
 function parseJsonObject(raw: string): any {
@@ -917,22 +1068,24 @@ export async function runStudyAssistant(
     url: source.url || '',
   }));
 
-  const prompt = `أنت عقل مساعد دراسة داخل تطبيق، لكن التطبيق نفسه يدير الذاكرة والتنفيذ. لا تفترض أنك تتذكر أي شيء خارج ما أرسله التطبيق في هذا الطلب.
+  const prompt = `أنت منسق ذكي لمساعد دراسة داخل تطبيق. التطبيق يدير الحالة وينفذ أوامرك، وأنت تعيد قرارًا منظمًا بصيغة JSON فقط.
 
-قواعدك:
-1) أجب بالعربية وباختصار عملي.
-2) لا تدّعي تنفيذ شيء. أنت تقترح القرار فقط، والتطبيق ينفذ.
-3) إذا أرسل التطبيق مرفقات أو مصادر مع الطلب، اقرأها فعليًا واستخدم محتواها للإجابة عن سؤال المستخدم. لا تقل إنك لا ترى الصورة أو الملف إذا كان مرفقًا في هذا الطلب.
-4) عند طلب إنشاء بنك أسئلة: يكفي وجود اسم بنك واضح وموضوع واضح ومصدر واحد على الأقل، سواء كان رابطًا في sourceUrls أو مرفقًا ضمن attachedSources.
-5) إذا كانت المعلومات ناقصة، اجعل taskStatus="collecting" واشرح بالضبط ما ينقص.
-6) إذا كانت معلومات البنك مكتملة والمستخدم طلب المتابعة/الإنشاء، اجعل shouldGenerateBank=true وtaskStatus="ready".
-7) تحليل التقدم يعتمد فقط على app.stats ولا تخترع بيانات.
-8) إذا طلب المستخدم مراجع ويب أو كان إنشاء البنك يحتاج مصادر ولم توجد مرفقات أو روابط، اجعل requestSources=true. لا تخترع روابط بنفسك.
-9) لا تغيّر بيانات المستخدم بنفسك ولا تحفظ شيئًا بنفسك.
-10) ممنوع أن تقول للمستخدم «اطلب من التطبيق» أو «استخدم زر البحث». إذا احتجت أداة يملكها التطبيق فعبّر عنها في حقول القرار.
-11) عندما يقول المستخدم «ابحث عنه» أو «ابحث في الويب» أو «هات مصادر/روابط» وكان موضوع المحادثة معروفًا، اجعل requestSources=true واحتفظ بالموضوع في topic.
-12) أعد JSON صالحًا فقط بدون Markdown بالشكل:
-{"reply":"...","intent":"chat|progress|bank|topic|references","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"requestSources":false,"requestConfirmation":false,"shouldGenerateBank":false}
+قواعد القرار:
+1) أجب بالعربية، ولا تدّع تنفيذ شيء لم يُنفذ بعد.
+2) فرّق بدقة بين "مصادر لبناء شيء" وبين "محتوى أريد مشاهدته الآن".
+3) source_picker يُستخدم فقط عندما تكون المهمة إنشاء بنك أسئلة أو إنشاء/تجميع مرجع دراسي ويحتاج المستخدم اختيار المصادر التي سيُبنى منها الناتج.
+4) في source_picker: اقترح التطبيق مصادر ويب للمستخدم، ويمكن للمستخدم أيضًا إضافة رابط أو ملف أو صورة أو بنك موجود أو مرجع محفوظ. لا تجعل source_picker يظهر لمجرد طلب فيديو أو صورة أو رابط مفيد.
+5) إذا قال المستخدم "اجلب أفضل درس يوتيوب" أو "فيديوهات" أو "صور" أو "روابط مفيدة" أو طلب شرحًا مدعومًا بوسائط، استخدم action="web_content" وحدد webKinds المناسبة. Gemini سيجري البحث في خطوة لاحقة ويعيد روابط ووسائط منظمة.
+6) إذا كان الطلب مجرد شرح/محادثة/تحليل تقدم ولا يحتاج بحث ويب، استخدم action="respond".
+7) إذا كان المستخدم يبني بنكًا وكانت البيانات والمصادر المختارة مكتملة وطلب الإنشاء، استخدم action="generate_bank" وshouldGenerateBank=true.
+8) إذا كان إنشاء البنك يحتاج مصادر ولم تُحدد بعد، استخدم action="source_picker" وsourcePicker=true.
+9) لا تجعل سياق مهمة قديمة يجبر طلبًا جديدًا مستقلًا على نفس المهمة. طلب YouTube أو صور جديد يعامل كمحتوى مستقل ما لم يربطه المستخدم صراحة بالبنك الحالي.
+10) المرفقات التي يرسلها التطبيق مرئية لك في هذا الطلب؛ استخدمها عند الإجابة.
+11) تحليل التقدم يعتمد فقط على app.stats.
+12) ممنوع أن تقول "اطلب من التطبيق" أو "اضغط زر البحث". أنت تُرجع action والتطبيق ينفذه.
+
+أعد JSON صالحًا فقط، بدون Markdown:
+{"reply":"...","intent":"chat|progress|bank|topic|references","action":"respond|source_picker|web_content|generate_bank","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"sourcePicker":false,"webKinds":["youtube|images|links"],"requestConfirmation":false,"shouldGenerateBank":false}`
 
 السياق الحالي:
 ${JSON.stringify(context)}
@@ -1023,16 +1176,25 @@ ${JSON.stringify(sourceSummary)}`;
   }
 
   const parsed = parseJsonObject(raw);
+  const action: StudyAssistantAction = ['respond','source_picker','web_content','generate_bank'].includes(parsed.action)
+    ? parsed.action
+    : (parsed.shouldGenerateBank ? 'generate_bank' : parsed.sourcePicker ? 'source_picker' : 'respond');
+  const webKinds = Array.isArray(parsed.webKinds)
+    ? parsed.webKinds.filter((kind: unknown) => ['youtube','images','links'].includes(String(kind))).slice(0, 3)
+    : [];
+
   return {
     reply: String(parsed.reply || '').trim() || 'تم فهم الطلب.',
     intent: ['chat','progress','bank','topic','references'].includes(parsed.intent) ? parsed.intent : 'chat',
+    action,
     taskStatus: ['idle','collecting','ready','review','done'].includes(parsed.taskStatus) ? parsed.taskStatus : 'idle',
     bankName: String(parsed.bankName || '').trim().slice(0, 80),
     topic: String(parsed.topic || '').trim().slice(0, 200),
     expectedQuestions: Math.min(Math.max(Number(parsed.expectedQuestions) || 20, 5), 100),
-    requestSources: Boolean(parsed.requestSources),
+    sourcePicker: action === 'source_picker' || Boolean(parsed.sourcePicker),
+    webKinds,
     requestConfirmation: Boolean(parsed.requestConfirmation),
-    shouldGenerateBank: Boolean(parsed.shouldGenerateBank),
+    shouldGenerateBank: action === 'generate_bank' || Boolean(parsed.shouldGenerateBank),
   };
 }
 
