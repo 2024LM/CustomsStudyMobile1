@@ -960,7 +960,11 @@ async function generateWithTools(
   operation = 'Web tools'
 ): Promise<any> {
   await assertCloudAiReady('أدوات البحث والروابط');
-  const model = geminiModel();
+  const usesGoogleSearch = tools.some((tool) => Object.prototype.hasOwnProperty.call(tool, 'google_search'));
+  // Gemini 3.5 Flash-Lite does not offer Google Search Grounding on the Free Tier.
+  // Keep the user's selected model for normal AI work, but route grounded search
+  // through 2.5 Flash-Lite where Search Grounding is available on the Free Tier.
+  const model = usesGoogleSearch ? 'gemini-2.5-flash-lite' : geminiModel();
 
   const { response, payload } = await geminiFetchWithFailover((key) =>
     fetch(
