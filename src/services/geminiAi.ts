@@ -11,6 +11,9 @@ const MODEL_KEY = 'ai_gemini_model';
 const WEB_KEY = 'ai_gemini_web_key';
 const PROVIDER_KEY = 'ai_provider_mode';
 const KEY_POOL_VERSION = 1;
+const WEB_CAPABILITY_KEY = 'ai_web_search_capability_v1';
+const WEB_CAPABILITY_SUCCESS_TTL = 12 * 60 * 60 * 1000;
+const WEB_CAPABILITY_RETRY_TTL = 10 * 60 * 1000;
 
 interface SecureSecretsPlugin {
   setGeminiKey(options: { value: string }): Promise<void>;
@@ -45,6 +48,43 @@ export function aiProviderMode(): AiProviderMode {
 
 export function setAiProviderMode(mode: AiProviderMode): void {
   localStorage.setItem(PROVIDER_KEY, mode);
+}
+
+export type WebSearchCapabilityStatus = 'ready' | 'quota' | 'unsupported' | 'error' | 'unknown';
+
+export interface WebSearchCapability {
+  status: WebSearchCapabilityStatus;
+  model?: string;
+  checkedAt: number;
+  detail?: string;
+}
+
+function clearWebSearchCapability(): void {
+  localStorage.removeItem(WEB_CAPABILITY_KEY);
+}
+
+export function cachedWebSearchCapability(): WebSearchCapability {
+  try {
+    const raw = localStorage.getItem(WEB_CAPABILITY_KEY);
+    if (!raw) return { status: 'unknown', checkedAt: 0 };
+    const parsed = JSON.parse(raw) as WebSearchCapability;
+    if (!['ready','quota','unsupported','error'].includes(parsed.status)) {
+      return { status: 'unknown', checkedAt: 0 };
+    }
+    return {
+      status: parsed.status,
+      model: parsed.model,
+      checkedAt: Number(parsed.checkedAt) || 0,
+      detail: parsed.detail ? String(parsed.detail).slice(0, 500) : undefined,
+    };
+  } catch {
+    return { status: 'unknown', checkedAt: 0 };
+  }
+}
+
+function saveWebSearchCapability(value: WebSearchCapability): WebSearchCapability {
+  localStorage.setItem(WEB_CAPABILITY_KEY, JSON.stringify(value));
+  return value;
 }
 
 export async function nanoStatus(): Promise<{
@@ -142,6 +182,7 @@ export function geminiModel(): GeminiModel {
 
 export function setGeminiModel(model: GeminiModel): void {
   localStorage.setItem(MODEL_KEY, model);
+  clearWebSearchCapability();
   setAiVerified(false);
 }
 
@@ -354,6 +395,7 @@ export async function addVerifiedGeminiKey(value: string): Promise<GeminiKeyMeta
   pool.nextNumber = number + 1;
   if (!pool.activeId) pool.activeId = key.id;
   await writeKeyPool(pool);
+  clearWebSearchCapability();
   setAiEnabled(true);
 
   return {
@@ -380,6 +422,7 @@ export async function selectGeminiKey(id: string): Promise<void> {
   if (!pool.keys.some((key) => key.id === id)) throw new Error('المفتاح غير موجود.');
   pool.activeId = id;
   await writeKeyPool(pool);
+  clearWebSearchCapability();
 }
 
 export async function deleteGeminiKeyById(id: string): Promise<void> {
@@ -391,12 +434,14 @@ export async function deleteGeminiKeyById(id: string): Promise<void> {
     pool.activeId = pool.keys.find((key) => key.verifiedAt > 0)?.id || pool.keys[0]?.id || '';
   }
   await writeKeyPool(pool);
+  clearWebSearchCapability();
   if (!pool.keys.length) setAiEnabled(false);
 }
 
 export async function deleteGeminiKey(): Promise<void> {
   const pool = emptyKeyPool();
   await writeKeyPool(pool);
+  clearWebSearchCapability();
   setAiEnabled(false);
 }
 
@@ -953,6 +998,205 @@ ${typeInstruction}
   return normalized;
 }
 
+
+function modelRank(model: string): number {
+  const selected = geminiModel();
+  if (model === selected) return 1000;
+  if (/gemini-3\.8-flash$/i.test(model)) return 980;
+  if (/gemini-3\.7-flash$/i.test(model)) return 970;
+  if (/gemini-3\.6-flash$/i.test(model)) return 960;
+  if (/gemini-3\.5-flash$/i.test(model)) return 950;
+  if (/gemini-3\.5-flash-lite$/i.test(model)) return 940;
+  if (/gemini-3\.1-pro/i.test(model)) return 900;
+  if (/gemini-3.*flash/i.test(model)) return 850;
+  if (/gemini-2\.5.*flash/i.test(model)) return 700;
+  return 100;
+}
+
+function usableWebModelName(value: unknown): string {
+  return String(value || '')
+    .replace(/^models\//, '')
+    .trim();
+}
+
+async function availableGenerateModels(key: string): Promise<string[]> {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', {
+    headers: { 'x-goog-api-key': key },
+  });
+  let payload: any = null;
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `تعذر جلب نماذج Gemini (HTTP ${response.status}).`);
+  }
+
+  return (Array.isArray(payload?.models) ? payload.models : [])
+    .filter((item: any) =>
+      Array.isArray(item?.supportedGenerationMethods) &&
+      item.supportedGenerationMethods.includes('generateContent')
+    )
+    .map((item: any) => usableWebModelName(item?.name))
+    .filter((name: string) =>
+      name.startsWith('gemini-') &&
+      !/(embedding|tts|image|live|audio|vision)/i.test(name)
+    );
+}
+
+async function probeGoogleSearchModel(
+  model: string,
+  key: GeminiStoredKey,
+  attempt: number
+): Promise<{ ok: boolean; status: number; detail: string }> {
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key.value,
+        },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [{ text: 'استخدم Google Search مرة واحدة ثم أجب بكلمة: جاهز' }],
+          }],
+          tools: [{ google_search: {} }],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 32,
+          },
+        }),
+      }
+    );
+  } catch (error: any) {
+    logAiProviderEvent({
+      provider: 'gemini-api',
+      operation: 'فحص Web Provider',
+      model,
+      keyNumber: key.number,
+      attempt,
+      status: 'error',
+      httpStatus: 'network',
+      durationMs: Date.now() - started,
+      requestSummary: 'Capability probe: google_search',
+      error: error?.message || 'خطأ شبكة',
+    });
+    return { ok: false, status: 0, detail: error?.message || 'خطأ شبكة' };
+  }
+
+  let payload: any = null;
+  try { payload = await response.json(); } catch {}
+  const detail = payload?.error?.message || (response.ok ? 'google_search accepted' : `HTTP ${response.status}`);
+
+  logAiProviderEvent({
+    provider: 'gemini-api',
+    operation: 'فحص Web Provider',
+    model,
+    keyNumber: key.number,
+    attempt,
+    status: response.ok ? 'success' : 'error',
+    httpStatus: response.status,
+    durationMs: Date.now() - started,
+    requestSummary: 'Capability probe: google_search',
+    responseSummary: response.ok ? responseText(payload) : undefined,
+    error: response.ok ? undefined : detail,
+  });
+
+  return { ok: response.ok, status: response.status, detail };
+}
+
+export async function refreshWebSearchCapability(force = true): Promise<WebSearchCapability> {
+  const cached = cachedWebSearchCapability();
+  const now = Date.now();
+  const ttl = cached.status === 'ready' ? WEB_CAPABILITY_SUCCESS_TTL : WEB_CAPABILITY_RETRY_TTL;
+  if (!force && cached.checkedAt && now - cached.checkedAt < ttl) return cached;
+
+  await assertCloudAiReady('البحث على الويب');
+  const pool = await readKeyPool();
+  const keys = orderedPoolKeys(pool).filter((key) => key.verifiedAt > 0);
+  if (!keys.length) {
+    return saveWebSearchCapability({
+      status: 'error',
+      checkedAt: now,
+      detail: 'لا يوجد مفتاح Gemini متحقق.',
+    });
+  }
+
+  let modelNames: string[] = [];
+  let listError = '';
+  for (const key of keys) {
+    try {
+      modelNames = await availableGenerateModels(key.value);
+      if (modelNames.length) break;
+    } catch (error: any) {
+      listError = error?.message || 'تعذر جلب قائمة النماذج.';
+    }
+  }
+
+  if (!modelNames.length) {
+    const result = saveWebSearchCapability({
+      status: 'error',
+      checkedAt: now,
+      detail: listError || 'لم يعرض الحساب أي نموذج يدعم generateContent.',
+    });
+    return result;
+  }
+
+  const candidates = Array.from(new Set(modelNames))
+    .sort((a, b) => modelRank(b) - modelRank(a))
+    .slice(0, 8);
+
+  let sawQuota = false;
+  let lastDetail = '';
+
+  for (const model of candidates) {
+    for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+      const result = await probeGoogleSearchModel(model, keys[keyIndex], keyIndex + 1);
+      lastDetail = result.detail;
+
+      if (result.ok) {
+        return saveWebSearchCapability({
+          status: 'ready',
+          model,
+          checkedAt: Date.now(),
+          detail: 'تم اختبار Google Search فعليًا بنجاح.',
+        });
+      }
+
+      if (result.status === 429) {
+        sawQuota = true;
+        continue;
+      }
+
+      if ([401, 403].includes(result.status)) continue;
+      if ([400, 404].includes(result.status)) break;
+    }
+  }
+
+  return saveWebSearchCapability({
+    status: sawQuota ? 'quota' : 'unsupported',
+    checkedAt: Date.now(),
+    detail: sawQuota
+      ? 'النماذج المتاحة تقبل البحث لكن الحصة الحالية لا تسمح بتنفيذ Search.'
+      : (lastDetail || 'لم ينجح Google Search مع أي نموذج متاح لهذا الحساب.'),
+  });
+}
+
+async function resolveWebSearchModel(): Promise<string> {
+  const capability = await refreshWebSearchCapability(false);
+  if (capability.status === 'ready' && capability.model) return capability.model;
+
+  if (capability.status === 'quota') {
+    throw new Error('Web Provider متاح لكن حصة Google Search الحالية ممتلئة. أعد المحاولة لاحقًا أو استخدم مفتاحًا من مشروع آخر.');
+  }
+  if (capability.status === 'unsupported') {
+    throw new Error('لم يجد التطبيق نموذجًا متاحًا لهذا الحساب يدعم Google Search بنجاح.');
+  }
+  throw new Error(capability.detail || 'تعذر تجهيز Web Provider.');
+}
+
 async function generateWithTools(
   prompt: string,
   tools: Array<Record<string, unknown>>,
@@ -961,10 +1205,7 @@ async function generateWithTools(
 ): Promise<any> {
   await assertCloudAiReady('أدوات البحث والروابط');
   const usesGoogleSearch = tools.some((tool) => Object.prototype.hasOwnProperty.call(tool, 'google_search'));
-  // Gemini 3.5 Flash-Lite does not offer Google Search Grounding on the Free Tier.
-  // Keep the user's selected model for normal AI work, but route grounded search
-  // through 2.5 Flash-Lite where Search Grounding is available on the Free Tier.
-  const model = usesGoogleSearch ? 'gemini-2.5-flash-lite' : geminiModel();
+  const model = usesGoogleSearch ? await resolveWebSearchModel() : geminiModel();
 
   const { response, payload } = await geminiFetchWithFailover((key) =>
     fetch(
