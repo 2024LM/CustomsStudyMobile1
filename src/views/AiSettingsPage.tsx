@@ -29,6 +29,9 @@ import {
   listGeminiKeys,
   nanoStatus,
   generateWithNano,
+  cachedWebSearchCapability,
+  refreshWebSearchCapability,
+  WebSearchCapability,
   selectGeminiKey,
   setAiEnabled,
   setAiProviderMode,
@@ -50,9 +53,12 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   const [showKey, setShowKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [webCapability, setWebCapability] = useState<WebSearchCapability>(() => cachedWebSearchCapability());
+  const [webChecking, setWebChecking] = useState(false);
 
   useEffect(() => {
     void listGeminiKeys().then(setKeys);
+    setWebCapability(cachedWebSearchCapability());
 
     if (isAndroid) {
       void nanoStatus().then(setNano);
@@ -223,6 +229,29 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
       setNano(await nanoStatus());
     } finally {
       setBusy(false);
+    }
+  };
+
+  const checkWebProvider = async () => {
+    setWebChecking(true);
+    setStatus('جارٍ فحص النماذج المتاحة وقدرة Google Search فعليًا…');
+    try {
+      const result = await refreshWebSearchCapability(true);
+      setWebCapability(result);
+      setStatus(
+        result.status === 'ready'
+          ? `Web Provider جاهز عبر ${result.model}.`
+          : result.status === 'quota'
+            ? 'Web Provider مدعوم لكن حصة Google Search الحالية ممتلئة.'
+            : result.status === 'unsupported'
+              ? 'لم يجد التطبيق نموذجًا متاحًا يدعم Google Search لهذا الحساب.'
+              : (result.detail || 'تعذر فحص Web Provider.')
+      );
+    } catch (error: any) {
+      setWebCapability(cachedWebSearchCapability());
+      setStatus(error?.message || 'تعذر فحص Web Provider.');
+    } finally {
+      setWebChecking(false);
     }
   };
 
@@ -435,6 +464,74 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
             <div className="text-[10px] text-gray-400 mt-1">{item.description}</div>
           </button>
         ))}
+      </div>
+
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-sm">قدرة البحث على الويب</h3>
+            <p className="text-[11px] text-gray-400 mt-1">يفحص التطبيق النماذج المتاحة ويختبر Google Search فعليًا</p>
+          </div>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            webCapability.status === 'ready'
+              ? 'bg-emerald-50 text-emerald-600'
+              : webCapability.status === 'quota'
+                ? 'bg-amber-50 text-amber-600'
+                : webCapability.status === 'unsupported' || webCapability.status === 'error'
+                  ? 'bg-red-50 text-red-600'
+                  : 'bg-gray-100 text-gray-400'
+          }`}>
+            {webChecking ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Wifi className="w-5 h-5" />}
+          </div>
+        </div>
+
+        <div className="rounded-[13px] bg-[#F8F9FD] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-gray-400">الحالة</span>
+            <span className={`text-[10px] font-black ${
+              webCapability.status === 'ready'
+                ? 'text-emerald-600'
+                : webCapability.status === 'quota'
+                  ? 'text-amber-600'
+                  : webCapability.status === 'unknown'
+                    ? 'text-gray-500'
+                    : 'text-red-600'
+            }`}>
+              {webCapability.status === 'ready'
+                ? 'جاهز'
+                : webCapability.status === 'quota'
+                  ? 'الحصة ممتلئة'
+                  : webCapability.status === 'unsupported'
+                    ? 'غير مدعوم'
+                    : webCapability.status === 'error'
+                      ? 'خطأ'
+                      : 'لم يُفحص'}
+            </span>
+          </div>
+          {webCapability.model && (
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-[10px] text-gray-400">نموذج الويب</span>
+              <span className="text-[10px] font-mono font-bold text-[#2C2145]">{webCapability.model}</span>
+            </div>
+          )}
+          {webCapability.checkedAt > 0 && (
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-[10px] text-gray-400">آخر فحص</span>
+              <span className="text-[9px] text-gray-500">{new Date(webCapability.checkedAt).toLocaleString('ar-MA')}</span>
+            </div>
+          )}
+          {webCapability.detail && (
+            <p className="text-[9px] leading-5 text-gray-500 mt-2">{webCapability.detail}</p>
+          )}
+        </div>
+
+        <button
+          onClick={() => void checkWebProvider()}
+          disabled={webChecking || keys.length === 0}
+          className="h-11 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] text-xs font-bold disabled:opacity-40"
+        >
+          {webChecking ? 'جارٍ الفحص…' : 'فحص Web Provider'}
+        </button>
       </div>
 
       <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
