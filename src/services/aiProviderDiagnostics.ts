@@ -1,3 +1,5 @@
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
 export type AiProviderLogStatus = 'success' | 'error' | 'retry' | 'info';
 
 export interface AiProviderLogEntry {
@@ -15,6 +17,16 @@ export interface AiProviderLogEntry {
   responseSummary?: string;
   error?: string;
 }
+
+interface FileExportPlugin {
+  saveTextFile(options: {
+    filename: string;
+    content: string;
+    mimeType: string;
+  }): Promise<{ saved: boolean; cancelled?: boolean; uri?: string }>;
+}
+
+const FileExport = registerPlugin<FileExportPlugin>('NexusFileExport');
 
 const STORAGE_KEY = 'ai_provider_diagnostics_v1';
 const EVENT_NAME = 'ai-provider-log-updated';
@@ -108,11 +120,9 @@ export function aiProviderLogExport(): AiProviderLogExport {
   };
 }
 
-export function downloadAiProviderLogJson(): string {
+export async function downloadAiProviderLogJson(): Promise<string> {
   const payload = aiProviderLogExport();
   const json = JSON.stringify(payload, null, 2);
-  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
 
   const now = new Date();
   const stamp = [
@@ -125,6 +135,21 @@ export function downloadAiProviderLogJson(): string {
   ].join('');
 
   const filename = `ai-provider-log-${stamp}.json`;
+
+  if (Capacitor.getPlatform() === 'android') {
+    const result = await FileExport.saveTextFile({
+      filename,
+      content: json,
+      mimeType: 'application/json',
+    });
+    if (!result.saved && !result.cancelled) {
+      throw new Error('تعذر حفظ ملف JSON.');
+    }
+    return filename;
+  }
+
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
