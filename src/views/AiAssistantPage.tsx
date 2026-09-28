@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Bot,
+  Check,
   CheckCircle2,
+  Copy,
   Database,
   ExternalLink,
   FileText,
@@ -9,21 +11,31 @@ import {
   Image as ImageIcon,
   Link2,
   LoaderCircle,
+  Menu,
+  MessageSquare,
+  Plus,
   RefreshCcw,
   Search,
   Send,
   Settings2,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { db } from '../services/db';
 import {
+  activeAiSessionId,
   addAiMessage,
+  AiChatMessage,
   AiRichContentBlock,
+  AiSessionSummary,
   AiWorkspaceState,
+  aiSessionSummaries,
+  createAiSession,
+  deleteAiSession,
   loadAiWorkspace,
-  resetAiWorkspace,
   saveAiWorkspace,
+  switchAiSession,
 } from '../services/aiOrchestrator';
 import {
   aiReady,
@@ -105,8 +117,43 @@ function dedupeSources(sources: MixedAiSource[]): MixedAiSource[] {
   }).slice(0, 8);
 }
 
+function copyableMessageText(message: AiChatMessage): string {
+  const parts: string[] = [];
+  if (message.text.trim()) parts.push(message.text.trim());
+
+  for (const block of message.blocks || []) {
+    if (block.beforeText) parts.push(block.beforeText);
+    if (block.title) parts.push(block.title);
+    for (const item of block.items) {
+      parts.push([item.title, item.subtitle, item.url].filter(Boolean).join(' — '));
+    }
+    if (block.afterText) parts.push(block.afterText);
+  }
+
+  return parts.join('\n\n').trim();
+}
+
+async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  area.remove();
+}
+
 export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings }) => {
   const [workspace, setWorkspace] = useState<AiWorkspaceState>(() => loadAiWorkspace());
+  const [sessions, setSessions] = useState<AiSessionSummary[]>(() => aiSessionSummaries());
+  const [activeSessionId, setActiveSessionId] = useState(() => activeAiSessionId());
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [checking, setChecking] = useState(true);
   const [message, setMessage] = useState('');
@@ -143,7 +190,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [workspace.messages.length, busy]);
+    setSessions(aiSessionSummaries());
+    setActiveSessionId(activeAiSessionId());
+  }, [workspace.messages.length, workspace.task.updatedAt, busy]);
 
   const analytics = db.dashboardAnalytics(null);
   const banks = db.banks();
@@ -511,16 +560,63 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     }
   };
 
-  const clearWorkspace = () => {
-    if (!window.confirm('بدء محادثة ومهمة جديدة؟')) return;
-    setWorkspace(resetAiWorkspace());
+  const clearTransientSessionState = () => {
     setCandidates([]);
     setGenerated([]);
     setLocalSources([]);
     setTaskLocalSources([]);
     setSentAttachmentPayloads({});
+    setPlayingYoutubeId(null);
     setStatus('');
     setShowSources(false);
+  };
+
+  const startNewSession = () => {
+    const next = createAiSession();
+    setWorkspace(next);
+    setSessions(aiSessionSummaries());
+    setActiveSessionId(activeAiSessionId());
+    clearTransientSessionState();
+    setSessionsOpen(false);
+  };
+
+  const openSession = (id: string) => {
+    if (id === activeSessionId) {
+      setSessionsOpen(false);
+      return;
+    }
+    const next = switchAiSession(id);
+    setWorkspace(next);
+    setSessions(aiSessionSummaries());
+    setActiveSessionId(id);
+    clearTransientSessionState();
+    setSessionsOpen(false);
+  };
+
+  const removeSession = (id: string) => {
+    if (!window.confirm('حذف هذه الجلسة المحفوظة؟')) return;
+    const next = deleteAiSession(id);
+    setWorkspace(next);
+    setSessions(aiSessionSummaries());
+    setActiveSessionId(activeAiSessionId());
+    clearTransientSessionState();
+  };
+
+  const copyMessage = async (item: AiChatMessage) => {
+    const text = copyableMessageText(item);
+    if (!text) return;
+    try {
+      await copyToClipboard(text);
+      setCopiedMessageId(item.id);
+      window.setTimeout(() => setCopiedMessageId((current) => current === item.id ? null : current), 1600);
+    } catch {
+      setStatus('تعذر نسخ الرسالة على هذا الجهاز.');
+    }
+  };
+
+  const clearWorkspace = () => {
+    if (!window.confirm('بدء جلسة جديدة؟ ستبقى هذه الجلسة محفوظة في القائمة.')) return;
+    startNewSession();
   };
 
   if (checking) {
@@ -563,6 +659,15 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
+              onClick={() => setSessionsOpen(true)}
+              className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center"
+              aria-label="الجلسات"
+              title="الجلسات المحفوظة"
+            >
+              <Menu className="w-4.5 h-4.5" />
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (window.location.protocol.startsWith('http')) {
                   const url = new URL(window.location.href);
@@ -578,12 +683,78 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
               <RefreshCcw className="w-3.5 h-3.5" />
               {BUILD_SHA}
             </button>
-            <button onClick={clearWorkspace} className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center" aria-label="مهمة جديدة">
-              <X className="w-4 h-4" />
+            <button onClick={clearWorkspace} className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center" aria-label="جلسة جديدة">
+              <Plus className="w-4.5 h-4.5" />
             </button>
           </div>
         </div>
       </div>
+
+      {sessionsOpen && (
+        <div className="fixed inset-0 z-[80]">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
+            onClick={() => setSessionsOpen(false)}
+            aria-label="إغلاق الجلسات"
+          />
+          <aside className="absolute top-0 right-0 h-full w-[86%] max-w-sm bg-white dark:bg-[#191621] shadow-2xl flex flex-col text-right">
+            <div className="px-4 pt-5 pb-4 border-b border-gray-100 dark:border-[#332D3D]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-black text-base text-[#2C2145] dark:text-white">جلسات AI</h2>
+                  <p className="text-[10px] text-gray-400 mt-1">تُحفظ تلقائيًا ويُحدد العنوان من أول رسالة</p>
+                </div>
+                <button onClick={() => setSessionsOpen(false)} className="w-9 h-9 rounded-[11px] bg-[#F8F9FD] dark:bg-[#292435] flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={startNewSession}
+                className="mt-4 w-full h-11 rounded-[13px] bg-[#5B3FD6] text-white text-xs font-black flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                جلسة جديدة
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`rounded-[14px] border transition-all ${session.active ? 'border-[#6E50DD] bg-[#F5F3FF] dark:bg-[#302844]' : 'border-gray-100 dark:border-[#373043] bg-white dark:bg-[#211D2C]'}`}
+                >
+                  <div className="flex items-center gap-2 p-2">
+                    <button
+                      type="button"
+                      onClick={() => openSession(session.id)}
+                      className="min-w-0 flex-1 text-right px-1 py-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className={`w-4 h-4 shrink-0 ${session.active ? 'text-[#5B3FD6]' : 'text-gray-400'}`} />
+                        <span className="text-[11px] font-bold truncate text-[#2C2145] dark:text-white">{session.title}</span>
+                      </div>
+                      <div className="text-[9px] text-gray-400 mt-1 pr-6">
+                        {session.messageCount} رسالة • {new Date(session.updatedAt).toLocaleDateString('ar-MA')}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSession(session.id)}
+                      className="w-8 h-8 rounded-[9px] text-gray-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center shrink-0"
+                      aria-label="حذف الجلسة"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
 
       {workspace.task.status !== 'idle' && (
         <div className="bg-white dark:bg-[#211D2C] rounded-[18px] border border-[#E9E4F8] dark:border-[#3A314A] p-3 shadow-xs">
@@ -652,7 +823,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         ))}
       </div>
 
-      <div className="flex flex-col gap-2 min-h-[260px]">
+      <div className="flex flex-col gap-10 min-h-[260px]">
         {workspace.messages.length === 0 && (
           <div className="py-10 text-center">
             <Bot className="w-10 h-10 text-[#8B6FE8] mx-auto" />
@@ -664,7 +835,17 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         {workspace.messages.map((item) => {
           const payloads = sentAttachmentPayloads[item.id] || [];
           return (
-            <div key={item.id} className={`max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
+            <div key={item.id} className={`group relative max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
+              <button
+                type="button"
+                onClick={() => void copyMessage(item)}
+                className={`absolute -bottom-8 ${item.role === 'user' ? 'right-1' : 'left-1'} h-7 px-2 rounded-[9px] flex items-center gap-1 text-[9px] font-bold opacity-70 hover:opacity-100 ${item.role === 'user' ? 'bg-[#4B31C7] text-white' : 'bg-white dark:bg-[#292435] border border-gray-100 dark:border-[#3A3348] text-gray-500 dark:text-[#C9C1D3]'}`}
+                aria-label="نسخ الرسالة"
+                title="نسخ الرسالة"
+              >
+                {copiedMessageId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copiedMessageId === item.id ? 'تم' : 'نسخ'}
+              </button>
               {item.attachments?.length ? (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {item.attachments.map((attachment) => {
