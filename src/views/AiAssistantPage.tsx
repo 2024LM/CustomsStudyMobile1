@@ -28,10 +28,10 @@ import {
 import {
   aiReady,
   generateBankFromMixedSources,
+  generateRichWebResponse,
   GeneratedBankQuestion,
   MixedAiSource,
   runStudyAssistant,
-  searchRichWebContent,
   searchWebReferences,
   WebReferenceCandidate,
 } from '../services/geminiAi';
@@ -69,68 +69,6 @@ function youtubeEmbedUrl(url: string): string {
   }
 }
 
-function asksForWebSearch(text: string): boolean {
-  const value = text.trim().toLocaleLowerCase('ar');
-  return [
-    'ابحث', 'إبحث', 'بحث عنه', 'ابحث عنه', 'ابحث عنها', 'فتش',
-    'مصادر', 'مراجع', 'روابط', 'تحقق من', 'تأكد من'
-  ].some((token) => value.includes(token.toLocaleLowerCase('ar')));
-}
-
-function richContentIntents(text: string): Array<'youtube' | 'images' | 'links'> {
-  const value = text.trim().toLocaleLowerCase('ar');
-  const intents: Array<'youtube' | 'images' | 'links'> = [];
-
-  const wantsYoutube =
-    value.includes('يوتيوب') ||
-    value.includes('youtube') ||
-    value.includes('فيديوهات') ||
-    value.includes('فيديو تعليمي') ||
-    value.includes('فيديوهات تعليم') ||
-    (value.includes('دروس') && value.includes('فيديو'));
-
-  const wantsImages =
-    value.includes('صور') ||
-    value.includes('صورة') ||
-    value.includes('خرائط') ||
-    value.includes('خريطة');
-
-  const bankLanguage =
-    value.includes('بنك') ||
-    value.includes('أسئلة') ||
-    value.includes('انشاء بنك') ||
-    value.includes('إنشاء بنك') ||
-    value.includes('اعتماد مصادر');
-
-  const wantsLinks = !bankLanguage && (
-    value.includes('روابط') ||
-    value.includes('مواقع مفيدة') ||
-    value.includes('مراجع مفيدة')
-  );
-
-  if (wantsYoutube) intents.push('youtube');
-  if (wantsImages) intents.push('images');
-  if (wantsLinks) intents.push('links');
-  return intents;
-}
-
-function shouldUseSourcePicker(text: string, taskKind: string): boolean {
-  const value = text.trim().toLocaleLowerCase('ar');
-  const bankLanguage =
-    taskKind === 'bank' ||
-    value.includes('بنك') ||
-    value.includes('أسئلة') ||
-    value.includes('اعتماد مصادر') ||
-    value.includes('اختر مصادر');
-
-  return bankLanguage && (
-    value.includes('مصادر') ||
-    value.includes('مراجع') ||
-    value.includes('ابحث') ||
-    value.includes('روابط')
-  );
-}
-
 function freshChatTask(task: AiWorkspaceState['task']): AiWorkspaceState['task'] {
   return {
     ...task,
@@ -146,18 +84,6 @@ function freshChatTask(task: AiWorkspaceState['task']): AiWorkspaceState['task']
     lastError: undefined,
     updatedAt: Date.now(),
   };
-}
-
-function previousUserTopic(messages: AiWorkspaceState['messages'], currentText: string): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const item = messages[i];
-    if (item.role !== 'user') continue;
-    const value = item.text.trim();
-    if (!value || value === currentText.trim()) continue;
-    if (asksForWebSearch(value) && value.length < 40) continue;
-    return value.slice(0, 300);
-  }
-  return '';
 }
 
 function attachmentKind(source: MixedAiSource): 'image' | 'pdf' | 'file' | 'bank' | 'reference' | 'url' {
@@ -356,54 +282,31 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     const labels = uniqueKinds.map((kind) =>
       kind === 'youtube' ? 'فيديوهات YouTube' : kind === 'images' ? 'صور' : 'روابط'
     );
-    setStatus(`جارٍ البحث عن ${labels.join(' و')}…`);
+    setStatus(`Gemini يبحث ويُعد ${labels.join(' و')}…`);
 
-    const resultGroups = [];
-    for (const kind of uniqueKinds) {
-      const results = await searchRichWebContent(query, kind);
-      resultGroups.push({ kind, results });
-    }
-
-    const blocks: AiRichContentBlock[] = resultGroups.map(({ kind, results }, groupIndex) => ({
+    const rich = await generateRichWebResponse(query, uniqueKinds);
+    const blocks: AiRichContentBlock[] = rich.blocks.map((block, blockIndex) => ({
       type: 'rich_content',
-      title: kind === 'youtube'
-        ? 'فيديوهات مقترحة'
-        : kind === 'images'
-          ? 'صور مرتبطة بالموضوع'
-          : 'روابط مفيدة',
-      beforeText: groupIndex === 0
-        ? (kind === 'youtube'
-            ? 'ابدأ بهذه الفيديوهات، ثم افتح ما يناسب مستواك.'
-            : kind === 'images'
-              ? 'هذه صور تساعد على فهم الموضوع بصريًا.'
-              : 'هذه روابط مفيدة للمتابعة.')
-        : (kind === 'images'
-            ? 'وللتوضيح البصري، هذه صور مرتبطة بالموضوع.'
-            : kind === 'youtube'
-              ? 'وللتعلم بالمشاهدة، هذه فيديوهات مناسبة.'
-              : 'وهذه روابط إضافية مفيدة.'),
-      afterText: groupIndex === resultGroups.length - 1
-        ? 'إذا أردت، يمكنني بعد ذلك ترتيب هذه المواد كخطة دراسة أو تحويلها إلى بنك أسئلة.'
-        : undefined,
-      items: results.map((item, index) => ({
-        id: `${kind}_${Date.now().toString(36)}_${groupIndex}_${index}`,
-        type: item.type,
+      title: block.title,
+      beforeText: block.beforeText,
+      afterText: block.afterText,
+      items: block.items.map((item, itemIndex) => ({
+        id: `${block.type}_${Date.now().toString(36)}_${blockIndex}_${itemIndex}`,
+        type: block.type,
         title: item.title,
         url: item.url,
-        subtitle: item.subtitle,
+        subtitle: item.description,
         thumbnailUrl: item.thumbnailUrl,
       })),
     }));
 
-    const reply = uniqueKinds.length > 1
-      ? 'جمعت لك المحتوى في أقسام مرتبة بدل تحويله إلى مصادر لإنشاء بنك.'
-      : uniqueKinds[0] === 'youtube'
-        ? 'هذه فيديوهات YouTube مرتبطة بطلبك، مرتبة لسهولة الاختيار.'
-        : uniqueKinds[0] === 'images'
-          ? 'هذه صور مرتبطة بالموضوع من روابط مباشرة عثر عليها البحث.'
-          : 'هذه روابط مفيدة مرتبطة بطلبك.';
-
-    const next = addAiMessage(baseState, 'assistant', reply, [], blocks);
+    const next = addAiMessage(
+      baseState,
+      'assistant',
+      rich.reply || 'هذه النتائج التي أعدها Gemini لطلبك.',
+      [],
+      blocks
+    );
     setWorkspace(next);
     setStatus('');
     return next;
@@ -438,21 +341,6 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(state);
 
     try {
-      const directRichIntents = richContentIntents(userText);
-      if (directRichIntents.length > 0) {
-        const freshState: AiWorkspaceState = {
-          ...state,
-          task: freshChatTask(state.task),
-        };
-        setWorkspace(freshState);
-        setCandidates([]);
-        setShowSources(false);
-        setGenerated([]);
-        setTaskLocalSources([]);
-        await runRichSearch(directRichIntents, userText, freshState);
-        return;
-      }
-
       const activeSources: MixedAiSource[] = [
         ...state.task.sourceUrls.map((url, index) => ({
           id: 'web_chat_' + index,
@@ -496,6 +384,24 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         recentMessages: state.messages.slice(-8).map((item) => ({ role: item.role, text: item.text })),
       }, activeSources);
 
+      if (decision.action === 'web_content') {
+        const freshState: AiWorkspaceState = {
+          ...state,
+          task: freshChatTask(state.task),
+        };
+        setWorkspace(freshState);
+        setCandidates([]);
+        setShowSources(false);
+        setGenerated([]);
+        setTaskLocalSources([]);
+        await runRichSearch(
+          decision.webKinds?.length ? decision.webKinds : ['links'],
+          userText,
+          freshState
+        );
+        return;
+      }
+
       const nextTask = {
         ...state.task,
         kind: decision.intent,
@@ -509,25 +415,19 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       state = addAiMessage({ ...state, task: nextTask }, 'assistant', decision.reply);
       setWorkspace(state);
 
-      const explicitSourceSearch = shouldUseSourcePicker(userText, nextTask.kind);
-      const fallbackTopic = previousUserTopic(state.messages, userText);
-      const searchTopic = (nextTask.topic || state.task.topic || fallbackTopic || '').trim();
-      const sourcePickerRequested = decision.requestSources && nextTask.kind === 'bank';
-
-      if ((sourcePickerRequested || explicitSourceSearch) && searchTopic && nextTask.sourceUrls.length === 0) {
+      if (decision.action === 'source_picker' || decision.sourcePicker) {
+        const searchTopic = (decision.topic || nextTask.topic || userText).trim();
         await searchSources(searchTopic, state);
-      } else if ((sourcePickerRequested || explicitSourceSearch) && !searchTopic) {
-        const asking = addAiMessage(
-          state,
-          'assistant',
-          'ما الموضوع الذي تريد أن أبحث له عن مصادر؟'
-        );
-        setWorkspace(asking);
+        return;
       }
 
-      if (decision.shouldGenerateBank && (nextTask.sourceUrls.length > 0 || nextTaskLocalSources.length > 0)) {
+      if (
+        (decision.action === 'generate_bank' || decision.shouldGenerateBank) &&
+        (nextTask.sourceUrls.length > 0 || nextTaskLocalSources.length > 0)
+      ) {
         await generateBank({ ...state, task: nextTask }, nextTaskLocalSources);
       }
+
     } catch (error: any) {
       const textError = error?.message || 'حدث خطأ أثناء تنفيذ طلب المساعد.';
       const failed = addAiMessage(
