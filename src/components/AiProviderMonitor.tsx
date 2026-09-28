@@ -6,6 +6,7 @@ import {
   ChevronUp,
   CircleDot,
   Clock3,
+  Download,
   RefreshCcw,
   Trash2,
   Wifi,
@@ -14,6 +15,7 @@ import {
   AiProviderLogEntry,
   aiProviderLogs,
   clearAiProviderLogs,
+  downloadAiProviderLogJson,
   subscribeAiProviderLogs,
 } from '../services/aiProviderDiagnostics';
 
@@ -103,6 +105,17 @@ export const AiProviderMonitor: React.FC = () => {
               </button>
             ))}
             <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => downloadAiProviderLogJson()}
+              disabled={logs.length === 0}
+              className="h-8 px-3 rounded-[10px] bg-[#F5F3FF] text-[#5B3FD6] text-[10px] font-bold flex items-center gap-1.5 disabled:opacity-40"
+              aria-label="تحميل سجل JSON"
+              title="تحميل سجل JSON"
+            >
+              <Download className="w-3.5 h-3.5" />
+              تحميل JSON
+            </button>
             <button
               type="button"
               onClick={refresh}
