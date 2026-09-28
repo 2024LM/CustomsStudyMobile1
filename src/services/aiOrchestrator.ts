@@ -56,7 +56,32 @@ export interface AiWorkspaceState {
   task: AiTaskState;
 }
 
-const KEY = 'ai_workspace_v1';
+export interface AiSessionSummary {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  active: boolean;
+}
+
+interface AiSessionRecord {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  workspace: AiWorkspaceState;
+}
+
+interface AiSessionStore {
+  version: 1;
+  activeId: string;
+  sessions: AiSessionRecord[];
+}
+
+const LEGACY_KEY = 'ai_workspace_v1';
+const SESSIONS_KEY = 'ai_sessions_v1';
+const MAX_SESSIONS = 40;
 
 function emptyTask(): AiTaskState {
   return {
@@ -77,27 +102,188 @@ export function emptyAiWorkspace(): AiWorkspaceState {
   return { messages: [], task: emptyTask() };
 }
 
-export function loadAiWorkspace(): AiWorkspaceState {
-  try {
-    const raw = db.setting(KEY, '');
-    if (!raw) return emptyAiWorkspace();
-    const parsed = JSON.parse(raw) as AiWorkspaceState;
-    return {
-      messages: Array.isArray(parsed.messages) ? parsed.messages.slice(-60) : [],
-      task: { ...emptyTask(), ...(parsed.task || {}), updatedAt: Number(parsed.task?.updatedAt) || Date.now() },
-    };
-  } catch {
-    return emptyAiWorkspace();
+function cleanWorkspace(input?: Partial<AiWorkspaceState> | null): AiWorkspaceState {
+  return {
+    messages: Array.isArray(input?.messages) ? input!.messages!.slice(-60) : [],
+    task: {
+      ...emptyTask(),
+      ...(input?.task || {}),
+      updatedAt: Number(input?.task?.updatedAt) || Date.now(),
+    },
+  };
+}
+
+function titleFromWorkspace(workspace: AiWorkspaceState): string {
+  const firstUser = workspace.messages.find((message) => message.role === 'user' && message.text.trim());
+  if (!firstUser) return 'محادثة جديدة';
+  const clean = firstUser.text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= 46) return clean;
+  return clean.slice(0, 46).trimEnd() + '…';
+}
+
+function newSession(workspace: AiWorkspaceState = emptyAiWorkspace(), title?: string): AiSessionRecord {
+  const now = Date.now();
+  return {
+    id: 'ais_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 7),
+    title: title || titleFromWorkspace(workspace),
+    createdAt: now,
+    updatedAt: now,
+    workspace: cleanWorkspace(workspace),
+  };
+}
+
+function persistStore(store: AiSessionStore): AiSessionStore {
+  const clean: AiSessionStore = {
+    version: 1,
+    activeId: store.activeId,
+    sessions: store.sessions
+      .slice()
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, MAX_SESSIONS),
+  };
+  if (!clean.sessions.some((session) => session.id === clean.activeId) && clean.sessions[0]) {
+    clean.activeId = clean.sessions[0].id;
   }
+  db.setSetting(SESSIONS_KEY, JSON.stringify(clean));
+  return clean;
+}
+
+function loadStore(): AiSessionStore {
+  try {
+    const raw = db.setting(SESSIONS_KEY, '');
+    if (raw) {
+      const parsed = JSON.parse(raw) as AiSessionStore;
+      const sessions = Array.isArray(parsed.sessions)
+        ? parsed.sessions.map((session) => ({
+            id: String(session.id || ''),
+            title: String(session.title || 'محادثة جديدة').slice(0, 80),
+            createdAt: Number(session.createdAt) || Date.now(),
+            updatedAt: Number(session.updatedAt) || Date.now(),
+            workspace: cleanWorkspace(session.workspace),
+          })).filter((session) => session.id)
+        : [];
+      if (sessions.length) {
+        const activeId = sessions.some((session) => session.id === parsed.activeId)
+          ? parsed.activeId
+          : sessions[0].id;
+        return { version: 1, activeId, sessions };
+      }
+    }
+  } catch {}
+
+  // One-time migration from the old single-workspace format.
+  try {
+    const legacyRaw = db.setting(LEGACY_KEY, '');
+    if (legacyRaw) {
+      const legacy = cleanWorkspace(JSON.parse(legacyRaw));
+      const migrated = newSession(legacy, titleFromWorkspace(legacy));
+      return persistStore({ version: 1, activeId: migrated.id, sessions: [migrated] });
+    }
+  } catch {}
+
+  const first = newSession();
+  return persistStore({ version: 1, activeId: first.id, sessions: [first] });
+}
+
+export function aiSessionSummaries(): AiSessionSummary[] {
+  const store = loadStore();
+  return store.sessions
+    .slice()
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map((session) => ({
+      id: session.id,
+      title: session.title,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      messageCount: session.workspace.messages.length,
+      active: session.id === store.activeId,
+    }));
+}
+
+export function activeAiSessionId(): string {
+  return loadStore().activeId;
+}
+
+export function loadAiWorkspace(): AiWorkspaceState {
+  const store = loadStore();
+  return cleanWorkspace(store.sessions.find((session) => session.id === store.activeId)?.workspace);
 }
 
 export function saveAiWorkspace(state: AiWorkspaceState): AiWorkspaceState {
-  const clean: AiWorkspaceState = {
-    messages: state.messages.slice(-60),
-    task: { ...state.task, updatedAt: Date.now() },
-  };
-  db.setSetting(KEY, JSON.stringify(clean));
+  const store = loadStore();
+  const clean = cleanWorkspace(state);
+  const now = Date.now();
+  const index = store.sessions.findIndex((session) => session.id === store.activeId);
+
+  if (index < 0) {
+    const created = newSession(clean);
+    store.sessions.unshift(created);
+    store.activeId = created.id;
+  } else {
+    const current = store.sessions[index];
+    const shouldAutoTitle = current.title === 'محادثة جديدة' || current.workspace.messages.length === 0;
+    store.sessions[index] = {
+      ...current,
+      title: shouldAutoTitle ? titleFromWorkspace(clean) : current.title,
+      updatedAt: now,
+      workspace: clean,
+    };
+  }
+
+  persistStore(store);
+  // Keep legacy key synchronized for backward compatibility with older builds.
+  db.setSetting(LEGACY_KEY, JSON.stringify(clean));
   return clean;
+}
+
+export function createAiSession(): AiWorkspaceState {
+  const store = loadStore();
+  const created = newSession();
+  store.sessions.unshift(created);
+  store.activeId = created.id;
+  persistStore(store);
+  return created.workspace;
+}
+
+export function switchAiSession(id: string): AiWorkspaceState {
+  const store = loadStore();
+  const target = store.sessions.find((session) => session.id === id);
+  if (!target) return loadAiWorkspace();
+  store.activeId = id;
+  target.updatedAt = Date.now();
+  persistStore(store);
+  return cleanWorkspace(target.workspace);
+}
+
+export function deleteAiSession(id: string): AiWorkspaceState {
+  const store = loadStore();
+  store.sessions = store.sessions.filter((session) => session.id !== id);
+
+  if (!store.sessions.length) {
+    const created = newSession();
+    store.sessions = [created];
+    store.activeId = created.id;
+    persistStore(store);
+    return created.workspace;
+  }
+
+  if (store.activeId === id) {
+    store.activeId = store.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
+  }
+
+  persistStore(store);
+  return cleanWorkspace(store.sessions.find((session) => session.id === store.activeId)?.workspace);
+}
+
+export function renameAiSession(id: string, title: string): void {
+  const cleanTitle = title.replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!cleanTitle) return;
+  const store = loadStore();
+  const target = store.sessions.find((session) => session.id === id);
+  if (!target) return;
+  target.title = cleanTitle;
+  target.updatedAt = Date.now();
+  persistStore(store);
 }
 
 export function resetAiWorkspace(): AiWorkspaceState {
