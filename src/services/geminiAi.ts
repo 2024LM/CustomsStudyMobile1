@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { QuizQuestion } from '../types';
+import { logAiProviderEvent } from './aiProviderDiagnostics';
 
 export type GeminiModel = 'gemini-3.6-flash' | 'gemini-3.5-flash-lite' | 'gemini-3.1-pro';
 export type AiProviderMode = 'auto' | 'api' | 'nano';
@@ -62,18 +63,54 @@ export async function nanoStatus(): Promise<{
   }
 }
 
-export async function generateWithNano(prompt: string): Promise<string> {
+export async function generateWithNano(prompt: string, operation = 'Nano Text'): Promise<string> {
   if (Capacitor.getPlatform() !== 'android') {
     throw new Error('Gemini Nano المحلي متاح فقط في نسخة Android.');
   }
-  const result = await NanoAi.generate({ prompt });
-  if (result.status !== 'available') {
-    if (result.status === 'downloadable') throw new Error('Gemini Nano مدعوم على هذا الجهاز لكنه يحتاج تنزيل النموذج أولًا.');
-    if (result.status === 'downloading') throw new Error('Gemini Nano قيد التنزيل على هذا الجهاز.');
-    throw new Error('Gemini Nano غير متاح على هذا الجهاز.');
+  const started = Date.now();
+  try {
+    const result = await NanoAi.generate({ prompt });
+    if (result.status !== 'available') {
+      const message = result.status === 'downloadable'
+        ? 'Gemini Nano مدعوم على هذا الجهاز لكنه يحتاج تنزيل النموذج أولًا.'
+        : result.status === 'downloading'
+          ? 'Gemini Nano قيد التنزيل على هذا الجهاز.'
+          : 'Gemini Nano غير متاح على هذا الجهاز.';
+      logAiProviderEvent({
+        provider: 'gemini-nano',
+        operation,
+        model: result.model,
+        status: 'error',
+        durationMs: Date.now() - started,
+        requestSummary: prompt,
+        error: message,
+      });
+      throw new Error(message);
+    }
+    if (!result.text.trim()) throw new Error('لم يُرجع Gemini Nano استجابة.');
+    logAiProviderEvent({
+      provider: 'gemini-nano',
+      operation,
+      model: result.model,
+      status: 'success',
+      durationMs: Date.now() - started,
+      requestSummary: prompt,
+      responseSummary: result.text,
+    });
+    return result.text.trim();
+  } catch (error: any) {
+    if (!String(error?.message || '').includes('Gemini Nano')) {
+      logAiProviderEvent({
+        provider: 'gemini-nano',
+        operation,
+        status: 'error',
+        durationMs: Date.now() - started,
+        requestSummary: prompt,
+        error: error?.message || 'Gemini Nano inference failed',
+      });
+    }
+    throw error;
   }
-  if (!result.text.trim()) throw new Error('لم يُرجع Gemini Nano استجابة.');
-  return result.text.trim();
 }
 
 export const GEMINI_MODELS: Array<{ id: GeminiModel; label: string; description: string }> = [
@@ -244,6 +281,7 @@ export async function findGeminiKeyNumber(value: string): Promise<number | null>
 
 async function testGeminiKeyValue(value: string): Promise<void> {
   const model = geminiModel();
+  const started = Date.now();
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -261,17 +299,40 @@ async function testGeminiKeyValue(value: string): Promise<void> {
 
   let payload: any = null;
   try { payload = await response.json(); } catch {}
+  const number = await findGeminiKeyNumber(value);
   if (!response.ok) {
     const apiMessage = payload?.error?.message || '';
-    if ([400, 401, 403].includes(response.status)) {
-      throw new Error(apiMessage || 'مفتاح Gemini غير صالح أو غير مخوّل.');
-    }
-    if (response.status === 429) throw new Error('هذا المفتاح بلغ حد الطلبات حاليًا.');
-    throw new Error(apiMessage || 'تعذر اختبار مفتاح Gemini.');
+    const message = [400, 401, 403].includes(response.status)
+      ? (apiMessage || 'مفتاح Gemini غير صالح أو غير مخوّل.')
+      : response.status === 429
+        ? 'هذا المفتاح بلغ حد الطلبات حاليًا.'
+        : (apiMessage || 'تعذر اختبار مفتاح Gemini.');
+    logAiProviderEvent({
+      provider: 'gemini-api',
+      operation: 'اختبار مفتاح',
+      model,
+      keyNumber: number || undefined,
+      status: 'error',
+      httpStatus: response.status,
+      durationMs: Date.now() - started,
+      requestSummary: 'اختبار اتصال قصير',
+      error: message,
+    });
+    throw new Error(message);
   }
-  responseText(payload);
+  const text = responseText(payload);
+  logAiProviderEvent({
+    provider: 'gemini-api',
+    operation: 'اختبار مفتاح',
+    model,
+    keyNumber: number || undefined,
+    status: 'success',
+    httpStatus: response.status,
+    durationMs: Date.now() - started,
+    requestSummary: 'اختبار اتصال قصير',
+    responseSummary: text,
+  });
 }
-
 export async function addVerifiedGeminiKey(value: string): Promise<GeminiKeyMeta> {
   const clean = value.trim();
   if (!clean) throw new Error('أدخل مفتاح Gemini API أولًا.');
@@ -362,7 +423,8 @@ export async function verifyGeminiConnection(): Promise<void> {
 }
 
 async function geminiFetchWithFailover(
-  makeRequest: (key: string) => Promise<Response>
+  makeRequest: (key: string) => Promise<Response>,
+  meta: { operation: string; requestSummary?: string; model?: string }
 ): Promise<{ response: Response; payload: any; keyNumber: number }> {
   const pool = await readKeyPool();
   const ordered = orderedPoolKeys(pool).filter((key) => key.verifiedAt > 0);
@@ -372,12 +434,26 @@ async function geminiFetchWithFailover(
   let lastStatus = 0;
   const attempts: Array<{ number: number; status: number | 'network' }> = [];
 
-  for (const key of ordered) {
+  for (let index = 0; index < ordered.length; index++) {
+    const key = ordered[index];
+    const started = Date.now();
     let response: Response;
     try {
       response = await makeRequest(key.value);
-    } catch {
+    } catch (error: any) {
       attempts.push({ number: key.number, status: 'network' });
+      logAiProviderEvent({
+        provider: 'gemini-api',
+        operation: meta.operation,
+        model: meta.model,
+        keyNumber: key.number,
+        attempt: index + 1,
+        status: index < ordered.length - 1 ? 'retry' : 'error',
+        httpStatus: 'network',
+        durationMs: Date.now() - started,
+        requestSummary: meta.requestSummary,
+        error: error?.message || 'خطأ شبكة',
+      });
       continue;
     }
 
@@ -392,11 +468,37 @@ async function geminiFetchWithFailover(
         pool.activeId = key.id;
         await writeKeyPool(pool);
       }
+      logAiProviderEvent({
+        provider: 'gemini-api',
+        operation: meta.operation,
+        model: meta.model,
+        keyNumber: key.number,
+        attempt: index + 1,
+        status: 'success',
+        httpStatus: response.status,
+        durationMs: Date.now() - started,
+        requestSummary: meta.requestSummary,
+        responseSummary: responseText(payload),
+      });
       return { response, payload, keyNumber: key.number };
     }
 
-    if ([401, 403, 429].includes(response.status)) continue;
+    const apiMessage = payload?.error?.message || '';
+    const canRetry = [401, 403, 429].includes(response.status) && index < ordered.length - 1;
+    logAiProviderEvent({
+      provider: 'gemini-api',
+      operation: meta.operation,
+      model: meta.model,
+      keyNumber: key.number,
+      attempt: index + 1,
+      status: canRetry ? 'retry' : 'error',
+      httpStatus: response.status,
+      durationMs: Date.now() - started,
+      requestSummary: meta.requestSummary,
+      error: apiMessage || `HTTP ${response.status}`,
+    });
 
+    if ([401, 403, 429].includes(response.status)) continue;
     return { response, payload, keyNumber: key.number };
   }
 
@@ -418,7 +520,6 @@ async function geminiFetchWithFailover(
   }
   throw new Error(apiMessage || `تعذر الاتصال بـ Gemini. جُرّبت: ${summary || 'لا توجد محاولة مكتملة'}.`);
 }
-
 function responseText(payload: any): string {
   const text = payload?.candidates?.[0]?.content?.parts
     ?.map((part: any) => typeof part?.text === 'string' ? part.text : '')
@@ -432,7 +533,7 @@ function responseText(payload: any): string {
   return text;
 }
 
-async function generateCloud(prompt: string, maxOutputTokens = 700): Promise<string> {
+async function generateCloud(prompt: string, maxOutputTokens = 700, operation = 'نص Gemini'): Promise<string> {
   const model = geminiModel();
   const { response, payload } = await geminiFetchWithFailover((key) =>
     fetch(
@@ -451,7 +552,8 @@ async function generateCloud(prompt: string, maxOutputTokens = 700): Promise<str
           },
         }),
       }
-    )
+    ),
+    { operation, requestSummary: prompt, model }
   );
 
   if (!response.ok) {
@@ -462,18 +564,18 @@ async function generateCloud(prompt: string, maxOutputTokens = 700): Promise<str
   return responseText(payload);
 }
 
-async function generate(prompt: string, maxOutputTokens = 700): Promise<string> {
+async function generate(prompt: string, maxOutputTokens = 700, operation = 'نص Gemini'): Promise<string> {
   const mode = aiProviderMode();
 
   if (mode === 'nano') {
-    return generateWithNano(prompt);
+    return generateWithNano(prompt, operation);
   }
 
   if (mode === 'auto') {
     const local = await nanoStatus();
     if (local.available) {
       try {
-        return await generateWithNano(prompt);
+        return await generateWithNano(prompt, operation);
       } catch {
         // Fall through to cloud when a verified API key exists.
       }
@@ -488,7 +590,7 @@ async function generate(prompt: string, maxOutputTokens = 700): Promise<string> 
     );
   }
 
-  return generateCloud(prompt, maxOutputTokens);
+  return generateCloud(prompt, maxOutputTokens, operation);
 }
 
 export async function aiReady(): Promise<boolean> {
@@ -1096,7 +1198,7 @@ ${JSON.stringify(sourceSummary)}`;
   let raw = '';
 
   if (sources.length === 0) {
-    raw = await generate(prompt, 1200);
+    raw = await generate(prompt, 1200, 'Planner JSON');
   } else {
     assertMixedSourcePayload(sources);
 
@@ -1108,7 +1210,7 @@ ${JSON.stringify(sourceSummary)}`;
         const textSources = sources
           .map((source) => `[مصدر مرفق: ${source.title}]\n${cleanReferenceText(source.text || '')}`)
           .join('\n\n');
-        raw = await generateWithNano(`${prompt}\n\n${textSources}`);
+        raw = await generateWithNano(`${prompt}\n\n${textSources}`, 'Planner JSON');
       } else if (mode === 'nano') {
         throw new Error('Gemini Nano غير متاح على هذا الجهاز.');
       }
