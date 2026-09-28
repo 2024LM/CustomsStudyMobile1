@@ -762,7 +762,8 @@ export async function searchRichWebContent(
     `${searchInstruction}
 نفّذ Google Search فعليًا. لا تخترع روابط. استخدم فقط النتائج التي تظهر لك من البحث.`,
     [{ google_search: {} }],
-    1200
+    1200,
+    kind === 'youtube' ? 'بحث YouTube' : kind === 'images' ? 'بحث صور' : 'بحث روابط'
   );
 
   const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -918,7 +919,8 @@ ${typeInstruction}
 }
 لا تُرجع source_picker هنا. هذه نتائج نهائية للعرض داخل المحادثة.`,
     [{ google_search: {} }],
-    2600
+    2600,
+    'Rich Web JSON'
   );
 
   const raw = responseText(payload);
@@ -954,7 +956,8 @@ ${typeInstruction}
 async function generateWithTools(
   prompt: string,
   tools: Array<Record<string, unknown>>,
-  maxOutputTokens = 1400
+  maxOutputTokens = 1400,
+  operation = 'Web tools'
 ): Promise<any> {
   await assertCloudAiReady('أدوات البحث والروابط');
   const model = geminiModel();
@@ -977,7 +980,8 @@ async function generateWithTools(
           },
         }),
       }
-    )
+    ),
+    { operation, requestSummary: prompt, model }
   );
 
   if (!response.ok) {
@@ -1004,7 +1008,8 @@ export async function searchWebReferences(topic: string): Promise<{
 تجنب الصفحات التجارية الضعيفة والمحتوى المكرر. نحتاج مصادر يمكن استخدامها لبناء بنك أسئلة ومراجعة دراسية.
 اكتب في الرد وصفًا موجزًا لأفضل المصادر التي وجدتها، لكن الأهم أن تنفذ بحث Google فعليًا.`,
     [{ google_search: {} }],
-    1200
+    1200,
+    'اقتراح مصادر للبناء'
   );
 
   const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -1062,7 +1067,8 @@ ${urls.map((url, index) => `${index + 1}. ${url}`).join('\n')}
 - إذا تعذر الوصول إلى بعض الروابط أو لم تكفِ المادة، أنشئ عددًا أقل بدل الاختراع.
 - الشرح قصير ومفيد.`,
     [{ url_context: {} }],
-    5200
+    5200,
+    'إنشاء بنك من روابط'
   );
 
   const raw = responseText(rawPayload);
@@ -1265,7 +1271,8 @@ ${JSON.stringify(sourceSummary)}`;
           },
           body: JSON.stringify(body),
         }
-      )
+      ),
+      { operation: 'Planner + مرفقات', requestSummary: prompt, model }
     );
 
     if (!response.ok) {
@@ -1460,7 +1467,8 @@ export async function generateBankFromMixedSources(input: {
         },
         body: JSON.stringify(body),
       }
-    )
+    ),
+    { operation: 'إنشاء بنك من مصادر', requestSummary: `${input.bankName} | ${input.topic} | ${sources.length} مصادر`, model }
   );
 
   if (!response.ok) {
