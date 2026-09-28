@@ -1085,7 +1085,7 @@ export async function runStudyAssistant(
 12) ممنوع أن تقول "اطلب من التطبيق" أو "اضغط زر البحث". أنت تُرجع action والتطبيق ينفذه.
 
 أعد JSON صالحًا فقط، بدون Markdown:
-{"reply":"...","intent":"chat|progress|bank|topic|references","action":"respond|source_picker|web_content|generate_bank","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"sourcePicker":false,"webKinds":["youtube|images|links"],"requestConfirmation":false,"shouldGenerateBank":false}`
+{"reply":"...","intent":"chat|progress|bank|topic|references","action":"respond|source_picker|web_content|generate_bank","taskStatus":"idle|collecting|ready|review|done","bankName":"","topic":"","expectedQuestions":20,"sourcePicker":false,"webKinds":["youtube|images|links"],"requestConfirmation":false,"shouldGenerateBank":false}
 
 السياق الحالي:
 ${JSON.stringify(context)}
