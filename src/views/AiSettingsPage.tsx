@@ -13,6 +13,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
+import { AiProviderMonitor } from '../components/AiProviderMonitor';
 import {
   aiEnabled,
   aiProviderMode,
@@ -463,6 +464,8 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
           </div>
         )}
       </div>
+
+      <AiProviderMonitor />
 
     </div>
   );
