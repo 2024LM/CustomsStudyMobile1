@@ -11,6 +11,7 @@ cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
 cp native-android/NexusNanoAiPlugin.java "$JAVA_DIR/NexusNanoAiPlugin.java"
+cp native-android/NexusFileExportPlugin.java "$JAVA_DIR/NexusFileExportPlugin.java"
 
 
 python3 - <<'PY'
