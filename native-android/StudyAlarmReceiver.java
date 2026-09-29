@@ -7,7 +7,6 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
@@ -30,7 +29,6 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
     private static final int QUESTION_NOTIFICATION_ID = 7420;
     private static final String QUESTION_CHANNEL_ID = "study_question_reminders";
     private static final String DATABASE_NAME = "customs_study_core.db";
-    private static final String PREFS = "study_question_reminders";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -76,12 +74,6 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
         QuestionReminder question = readRandomQuestion(context);
 
         if (question != null) {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            prefs.edit()
-                .putLong("pending_question_row_id", question.rowId)
-                .putString("pending_question_bank_id", question.bankId)
-                .apply();
-
             Intent open = new Intent(context, MainActivity.class);
             open.putExtra("questionRowId", question.rowId);
             open.putExtra("questionBankId", question.bankId);
