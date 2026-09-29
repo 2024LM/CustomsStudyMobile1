@@ -1,36 +1,203 @@
-import { registerPlugin } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+export interface TtsVoiceOption {
+  id: string;
+  name: string;
+  locale: string;
+  language: string;
+  country: string;
+  networkRequired: boolean;
+  quality?: number;
+  latency?: number;
+  platform: 'android' | 'web';
+}
 
 interface NexusTtsPlugin {
   status(): Promise<{ ready: boolean; arabic: boolean; locale: string; voice: string }>;
-  speak(options: { text: string; rate?: number }): Promise<{ started: boolean; locale: string; voice: string }>;
+  voices(): Promise<{ ready: boolean; voices: Array<{
+    name: string;
+    locale: string;
+    language: string;
+    country: string;
+    networkRequired: boolean;
+    quality?: number;
+    latency?: number;
+  }> }>;
+  speak(options: { text: string; rate?: number; voice?: string }): Promise<{ started: boolean; locale: string; voice: string }>;
   stop(): Promise<void>;
 }
 
 const NexusTts = registerPlugin<NexusTtsPlugin>('NexusTts');
+const VOICE_KEY = 'tts_selected_voice_v1';
+const RATE_KEY = 'tts_rate_v1';
 
-export async function arabicTtsStatus() {
+export function selectedTtsVoiceId(): string {
+  try { return localStorage.getItem(VOICE_KEY) || ''; } catch { return ''; }
+}
+
+export function saveSelectedTtsVoiceId(id: string): void {
   try {
-    return await NexusTts.status();
+    if (id) localStorage.setItem(VOICE_KEY, id);
+    else localStorage.removeItem(VOICE_KEY);
+  } catch {}
+}
+
+export function selectedTtsRate(): number {
+  try {
+    const value = Number(localStorage.getItem(RATE_KEY));
+    return Number.isFinite(value) ? Math.min(1.5, Math.max(0.5, value)) : 0.92;
   } catch {
-    return { ready: false, arabic: false, locale: '', voice: '' };
+    return 0.92;
   }
 }
 
-export async function speakArabic(text: string, rate = 0.92): Promise<{ locale: string; voice: string }> {
+export function saveSelectedTtsRate(rate: number): void {
+  const safe = Math.min(1.5, Math.max(0.5, rate));
+  try { localStorage.setItem(RATE_KEY, String(safe)); } catch {}
+}
+
+function browserVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  return window.speechSynthesis.getVoices() || [];
+}
+
+async function waitForBrowserVoices(): Promise<SpeechSynthesisVoice[]> {
+  const current = browserVoices();
+  if (current.length) return current;
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  return await new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(browserVoices()), 1200);
+    const handler = () => {
+      window.clearTimeout(timer);
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+      resolve(browserVoices());
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', handler, { once: true });
+  });
+}
+
+export async function listTtsVoices(): Promise<TtsVoiceOption[]> {
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+    try {
+      const result = await NexusTts.voices();
+      if (!result.ready) return [];
+      return (result.voices || []).map((voice) => ({
+        id: voice.name,
+        name: voice.name,
+        locale: voice.locale || '',
+        language: voice.language || '',
+        country: voice.country || '',
+        networkRequired: Boolean(voice.networkRequired),
+        quality: voice.quality,
+        latency: voice.latency,
+        platform: 'android' as const,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  const voices = await waitForBrowserVoices();
+  return voices
+    .map((voice) => ({
+      id: voice.voiceURI,
+      name: voice.name,
+      locale: voice.lang || '',
+      language: (voice.lang || '').split('-')[0] || '',
+      country: (voice.lang || '').split('-')[1] || '',
+      networkRequired: !voice.localService,
+      platform: 'web' as const,
+    }))
+    .sort((a, b) => a.locale.localeCompare(b.locale) || a.name.localeCompare(b.name));
+}
+
+export async function arabicTtsStatus() {
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+    try {
+      return await NexusTts.status();
+    } catch {
+      return { ready: false, arabic: false, locale: '', voice: '' };
+    }
+  }
+
+  const voices = await waitForBrowserVoices();
+  const selectedId = selectedTtsVoiceId();
+  const selected = voices.find((voice) => voice.voiceURI === selectedId) || voices.find((voice) => /^ar(?:-|$)/i.test(voice.lang));
+  return {
+    ready: voices.length > 0,
+    arabic: Boolean(selected && /^ar(?:-|$)/i.test(selected.lang)),
+    locale: selected?.lang || '',
+    voice: selected?.name || '',
+  };
+}
+
+function speakInBrowser(text: string, rate: number, selectedId: string): Promise<{ locale: string; voice: string }> {
+  return new Promise(async (resolve, reject) => {
+    if (!('speechSynthesis' in window)) {
+      reject(new Error('تحويل النص إلى كلام غير مدعوم في هذا المتصفح.'));
+      return;
+    }
+
+    const voices = await waitForBrowserVoices();
+    const selected = voices.find((voice) => voice.voiceURI === selectedId)
+      || voices.find((voice) => /^ar(?:-|$)/i.test(voice.lang))
+      || voices[0];
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    if (selected) {
+      utterance.voice = selected;
+      utterance.lang = selected.lang;
+    }
+    utterance.onerror = () => reject(new Error('تعذر تشغيل الصوت في المتصفح.'));
+    utterance.onstart = () => resolve({ locale: selected?.lang || '', voice: selected?.name || '' });
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
+export async function speakArabic(text: string, rate = selectedTtsRate()): Promise<{ locale: string; voice: string }> {
   const clean = text.trim();
   if (!clean) throw new Error('لا يوجد نص للقراءة.');
+
+  const selectedId = selectedTtsVoiceId();
+  const safeRate = Math.min(1.5, Math.max(0.5, rate));
+
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+    return speakInBrowser(clean, safeRate, selectedId);
+  }
+
   try {
-    const result = await NexusTts.speak({ text: clean, rate });
+    const result = await NexusTts.speak({ text: clean, rate: safeRate, voice: selectedId || undefined });
     return { locale: result.locale || '', voice: result.voice || '' };
   } catch (error: any) {
     const message = String(error?.message || error || '');
-    if (message.toLowerCase().includes('arabic voice')) {
-      throw new Error('لا يوجد صوت عربي مثبت على الهاتف. ثبّت حزمة صوت عربية من إعدادات تحويل النص إلى كلام في Android.');
+    if (message.toLowerCase().includes('not ready')) {
+      throw new Error('محرك تحويل النص إلى كلام غير جاهز على الهاتف.');
     }
-    throw new Error('تعذر تشغيل القراءة العربية على هذا الجهاز.');
+    throw new Error('تعذر تشغيل القراءة الصوتية على هذا الجهاز.');
+  }
+}
+
+export async function previewTtsVoice(voiceId: string, locale = ''): Promise<void> {
+  const previous = selectedTtsVoiceId();
+  saveSelectedTtsVoiceId(voiceId);
+  try {
+    const sample = /^fr/i.test(locale)
+      ? 'Bonjour, ceci est un test de la voix sélectionnée.'
+      : /^en/i.test(locale)
+        ? 'Hello, this is a preview of the selected voice.'
+        : 'مرحبًا، هذا اختبار للصوت الذي اخترته في تطبيق منصة المراجعة.';
+    await speakArabic(sample, selectedTtsRate());
+  } finally {
+    saveSelectedTtsVoiceId(previous);
   }
 }
 
 export async function stopArabicTts(): Promise<void> {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+    try { window.speechSynthesis?.cancel(); } catch {}
+    return;
+  }
   try { await NexusTts.stop(); } catch {}
 }
