@@ -337,7 +337,12 @@ export function App() {
 
           {page === 'DOMAINS' && <DomainsPage onDomainSelected={() => setPage('HOME')} onBack={() => setPage('MORE')} />}
 
-          {page === 'PLAN' && <StudyPlanPage onBack={() => setPage('MORE')} />}
+          {page === 'PLAN' && (
+            <StudyPlanPage
+              onBack={() => setPage('MORE')}
+              onStartReview={(count) => startSessionWithTopic(undefined, count, 'classic', true)}
+            />
+          )}
 
           {page === 'DOWNLOADS' && <DownloadsPage onBack={() => setPage('MORE')} />}
 
