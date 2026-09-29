@@ -19,6 +19,7 @@ import {
   cancelStudyAlarm,
   listDeviceAlarmSounds,
   previewDeviceAlarmSound,
+  previewCustomAlarmSound,
   stopDeviceAlarmPreview,
   saveAlarmAudio,
   requestStudyAlarmPermission,
@@ -548,14 +549,36 @@ export const StudyPlanPage: React.FC<{
                 void handleAudio(file);
               }}
             />
-            <button
-              disabled={busy}
-              onClick={() => audioInputRef.current?.click()}
-              className="w-full py-3 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <Upload className="w-4 h-4" />
-              {customName ? 'تغيير الصوت الخاص' : 'رفع موسيقى أو صوت من الهاتف'}
-            </button>
+            {alarmSound === 'custom' && (
+              <div className="flex gap-2">
+                <button
+                  disabled={busy}
+                  onClick={() => audioInputRef.current?.click()}
+                  className="flex-1 py-3 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {customName ? `تغيير الملف · ${customName}` : 'رفع موسيقى أو صوت خاص'}
+                </button>
+                {customPath && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (previewing) {
+                        await stopDeviceAlarmPreview();
+                        setPreviewing(false);
+                      } else {
+                        await previewCustomAlarmSound(customPath);
+                        setPreviewing(true);
+                      }
+                    }}
+                    className="w-12 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center"
+                    aria-label={previewing ? 'إيقاف المعاينة' : 'تشغيل المعاينة'}
+                  >
+                    {previewing ? <Square className="w-4 h-4 fill-current" /> : <PlayCircle className="w-5 h-5" />}
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </section>
