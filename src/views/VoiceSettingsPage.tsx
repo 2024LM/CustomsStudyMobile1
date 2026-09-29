@@ -6,8 +6,12 @@ import {
   previewTtsVoice,
   saveSelectedTtsRate,
   saveSelectedTtsVoiceId,
+  saveSentencePauseEnabled,
+  saveSoftenFinalTaaMarbuta,
   selectedTtsRate,
   selectedTtsVoiceId,
+  sentencePauseEnabled,
+  softenFinalTaaMarbuta,
   TtsVoiceOption,
 } from '../services/arabicTts';
 
@@ -15,6 +19,8 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
   const [selected, setSelected] = useState(() => selectedTtsVoiceId());
   const [rate, setRate] = useState(() => selectedTtsRate());
+  const [softTaa, setSoftTaa] = useState(() => softenFinalTaaMarbuta());
+  const [sentencePause, setSentencePause] = useState(() => sentencePauseEnabled());
   const [loading, setLoading] = useState(true);
   const [previewing, setPreviewing] = useState('');
   const [status, setStatus] = useState('');
@@ -105,6 +111,51 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
           }}
           className="w-full mt-4 accent-[#5B3FD6]"
         />
+        <div className="mt-2 grid grid-cols-3 text-[10px] text-gray-400">
+          <span className="text-right">0.5× بطيء</span>
+          <span className="text-center font-bold text-[#5B3FD6]">1.0× طبيعي</span>
+          <span className="text-left">1.5× سريع</span>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs">
+        <div className="font-bold text-sm text-[#2C2145] mb-3">تحسين النطق العربي</div>
+
+        <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-[#2C2145]">تخفيف التاء المربوطة في نهاية الكلمة</div>
+            <div className="text-[10px] text-gray-400 mt-1">يُعامل آخر «ة» كنطق وقفي أخف أثناء القراءة فقط، دون تعديل النص الأصلي.</div>
+          </div>
+          <input
+            type="checkbox"
+            checked={softTaa}
+            onChange={(event) => {
+              const value = event.target.checked;
+              setSoftTaa(value);
+              saveSoftenFinalTaaMarbuta(value);
+            }}
+            className="w-5 h-5 accent-[#5B3FD6]"
+          />
+        </label>
+
+        <div className="border-t border-gray-100 my-2" />
+
+        <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-[#2C2145]">وقفة عند نهاية الجملة</div>
+            <div className="text-[10px] text-gray-400 mt-1">يحافظ على علامات نهاية الجمل ليستفيد منها محرك الصوت في الوقفات الطبيعية.</div>
+          </div>
+          <input
+            type="checkbox"
+            checked={sentencePause}
+            onChange={(event) => {
+              const value = event.target.checked;
+              setSentencePause(value);
+              saveSentencePauseEnabled(value);
+            }}
+            className="w-5 h-5 accent-[#5B3FD6]"
+          />
+        </label>
       </div>
 
       {status && <div className="rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-[11px] font-semibold">{status}</div>}
