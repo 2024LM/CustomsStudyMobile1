@@ -10,6 +10,7 @@ interface StudyPageProps {
   initialCount?: number | null;
   autoStart?: boolean;
   onActiveChange?: (active: boolean) => void;
+  onSessionExit?: () => void;
 }
 
 export const StudyPage: React.FC<StudyPageProps> = ({
@@ -19,6 +20,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
   initialCount = null,
   autoStart = false,
   onActiveChange,
+  onSessionExit,
 }) => {
   const [view, setView] = useState<'browse' | 'session'>(initialView);
   const [sessionActive, setSessionActive] = useState(false);
@@ -97,6 +99,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             setSessionActive(false);
             onActiveChange?.(false);
             setView('browse');
+            onSessionExit?.();
           }}
         />
       )}
