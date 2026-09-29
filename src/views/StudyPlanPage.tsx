@@ -8,7 +8,6 @@ import {
   Sparkles,
   Target,
   Upload,
-  Volume2,
   PlayCircle,
   Square,
   XCircle,
@@ -45,7 +44,10 @@ export const StudyPlanPage: React.FC<{
   });
   const [alarmEnabled, setAlarmEnabled] = useState(() => db.setting('study_alarm_enabled', '0') === '1');
   const [alarmTime, setAlarmTime] = useState(() => db.setting('study_alarm_time', '20:00'));
-  const [alarmSound, setAlarmSound] = useState<StudyAlarmSound>(() => (db.setting('study_alarm_sound', 'focus') as StudyAlarmSound));
+  const [alarmSound, setAlarmSound] = useState<StudyAlarmSound>(() => {
+    const saved = db.setting('study_alarm_sound', 'device') as StudyAlarmSound;
+    return saved === 'custom' ? 'custom' : 'device';
+  });
   const [customPath, setCustomPath] = useState(() => db.setting('study_alarm_custom_path', ''));
   const [customName, setCustomName] = useState(() => db.setting('study_alarm_custom_name', ''));
   const [customMessage, setCustomMessage] = useState(() => db.setting('study_alarm_custom_message', ''));
@@ -66,6 +68,9 @@ export const StudyPlanPage: React.FC<{
       setDeviceSounds(items);
       if (!deviceSoundUri && items.length > 0) {
         setDeviceSoundUri(items[0].uri);
+      }
+      if (db.setting('study_alarm_sound', 'device') !== 'custom') {
+        setAlarmSound('device');
       }
     };
     void loadSounds();
@@ -195,7 +200,7 @@ export const StudyPlanPage: React.FC<{
 
       const result = await scheduleStudyAlarm({
         time: alarmTime,
-        sound: alarmSound === 'custom' && !customPath ? 'focus' : alarmSound,
+        sound: alarmSound === 'custom' && customPath ? 'custom' : 'device',
         customPath: alarmSound === 'custom' ? customPath : '',
         deviceSoundUri: alarmSound === 'device' ? deviceSoundUri : '',
         customMessage: customMessage.trim(),
@@ -224,6 +229,10 @@ export const StudyPlanPage: React.FC<{
         return;
       }
 
+      if (alarmSound === 'device' && !deviceSoundUri) {
+        setStatus('تم حفظ الخطة، لكن لم يتم العثور على صوت من الهاتف للمنبّه.');
+        return;
+      }
       if (alarmSound === 'custom' && !customPath) {
         setStatus('تم حفظ الخطة، لكن المنبّه لم يُجدول: اختر ملفًا صوتيًا خاصًا أولًا.');
         return;
@@ -261,12 +270,6 @@ export const StudyPlanPage: React.FC<{
     onStartReview(reviewSessionSize);
   };
 
-  const sounds: Array<{ id: StudyAlarmSound; title: string; subtitle: string }> = [
-    { id: 'calm', title: 'هادئ', subtitle: 'تنبيه متباعد وخفيف' },
-    { id: 'focus', title: 'تركيز', subtitle: 'نغمة واضحة للمراجعة' },
-    { id: 'bell', title: 'جرس', subtitle: 'تنبيه أقوى ومتكرر' },
-    { id: 'custom', title: 'صوت خاص', subtitle: customName || 'ارفع موسيقى أو صوتًا من هاتفك' },
-  ];
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -475,68 +478,77 @@ export const StudyPlanPage: React.FC<{
             </div>
 
             <div>
-              <div className="text-xs font-bold mb-2">صوت التنبيه</div>
-              <select
-                value={alarmSound}
-                onChange={(e) => {
-                  setAlarmSound(e.target.value as StudyAlarmSound);
+              <div className="text-xs font-bold mb-2">صوت التنبيه من الهاتف</div>
+              <div className="rounded-[16px] border border-gray-100 bg-[#F8F9FD] overflow-hidden">
+                {deviceSounds.length === 0 ? (
+                  <div className="p-4 text-xs text-gray-400 text-center">
+                    لم يتم العثور على أصوات متاحة في الهاتف.
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-auto divide-y divide-gray-100">
+                    {deviceSounds.map((sound) => {
+                      const selected = alarmSound === 'device' && deviceSoundUri === sound.uri;
+                      return (
+                        <div
+                          key={sound.id}
+                          className={`flex items-center gap-2 p-2.5 ${selected ? 'bg-[#F5F3FF]' : 'bg-white'}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAlarmSound('device');
+                              setDeviceSoundUri(sound.uri);
+                              setPreviewing(false);
+                              void stopDeviceAlarmPreview();
+                            }}
+                            className="flex-1 min-w-0 text-right"
+                          >
+                            <div className={`text-xs truncate ${selected ? 'font-black text-[#5B3FD6]' : 'font-semibold text-[#2C2145]'}`}>
+                              {sound.title}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const isCurrentPreview = previewing && deviceSoundUri === sound.uri;
+                              if (isCurrentPreview) {
+                                await stopDeviceAlarmPreview();
+                                setPreviewing(false);
+                              } else {
+                                setAlarmSound('device');
+                                setDeviceSoundUri(sound.uri);
+                                await previewDeviceAlarmSound(sound.uri);
+                                setPreviewing(true);
+                              }
+                            }}
+                            className="w-10 h-10 shrink-0 rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center"
+                            aria-label={previewing && deviceSoundUri === sound.uri ? 'إيقاف الصوت' : 'تشغيل الصوت'}
+                          >
+                            {previewing && deviceSoundUri === sound.uri
+                              ? <Square className="w-4 h-4 fill-current" />
+                              : <PlayCircle className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAlarmSound('custom');
                   setPreviewing(false);
                   void stopDeviceAlarmPreview();
                 }}
-                className="w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
+                className={`w-full py-2.5 rounded-[12px] border text-xs font-bold ${alarmSound === 'custom' ? 'border-[#5B3FD6] bg-[#F5F3FF] text-[#5B3FD6]' : 'border-gray-100 bg-white text-gray-600'}`}
               >
-                <option value="device">نغمة من الهاتف</option>
-                <option value="focus">تركيز</option>
-                <option value="calm">هادئ</option>
-                <option value="bell">جرس</option>
-                <option value="custom">ملف صوتي خاص</option>
-              </select>
+                استخدام ملف صوتي خاص
+              </button>
             </div>
-
-            {alarmSound === 'device' && (
-              <div className="rounded-[16px] bg-[#F8F9FD] border border-gray-100 p-3">
-                <label className="text-xs font-bold">موسيقى / نغمة الهاتف</label>
-                <div className="flex gap-2 mt-2">
-                  <select
-                    value={deviceSoundUri}
-                    onChange={(e) => {
-                      setDeviceSoundUri(e.target.value);
-                      setPreviewing(false);
-                      void stopDeviceAlarmPreview();
-                    }}
-                    className="flex-1 min-w-0 rounded-[12px] bg-white border border-gray-100 p-2.5 text-xs"
-                  >
-                    {deviceSounds.length === 0 && <option value="">لم يتم العثور على نغمات</option>}
-                    {deviceSounds.map((sound) => (
-                      <option key={sound.id} value={sound.uri}>{sound.title}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={!deviceSoundUri}
-                    onClick={async () => {
-                      if (previewing) {
-                        await stopDeviceAlarmPreview();
-                        setPreviewing(false);
-                      } else {
-                        await previewDeviceAlarmSound(deviceSoundUri);
-                        setPreviewing(true);
-                      }
-                    }}
-                    className="w-11 h-11 shrink-0 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-40"
-                    aria-label={previewing ? 'إيقاف المعاينة' : 'تشغيل المعاينة'}
-                  >
-                    {previewing ? <Square className="w-4 h-4 fill-current" /> : <PlayCircle className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {alarmSound !== 'device' && alarmSound !== 'custom' && (
-              <div className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-xs text-gray-500">
-                سيتم استخدام نغمة التطبيق: {sounds.find((sound) => sound.id === alarmSound)?.title || 'الافتراضية'}.
-              </div>
-            )}
 
             <input
               ref={audioInputRef}
