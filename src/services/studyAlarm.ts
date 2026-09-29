@@ -11,6 +11,7 @@ interface NexusStudyAlarmPlugin {
   requestAudioPermission(): Promise<{ granted: boolean }>;
   listDeviceSounds(): Promise<{ sounds: DeviceAlarmSound[]; audioPermissionGranted?: boolean }>;
   previewSound(options: { uri: string }): Promise<void>;
+  previewCustomSound(options: { path: string }): Promise<void>;
   stopPreview(): Promise<void>;
   saveCustomSound(options: { base64: string; extension: string }): Promise<{ path: string }>;
   schedule(options: {
@@ -97,6 +98,11 @@ export async function listDeviceAlarmSounds(): Promise<DeviceAlarmSound[]> {
 export async function previewDeviceAlarmSound(uri: string): Promise<void> {
   if (!uri) return;
   await NexusStudyAlarm.previewSound({ uri });
+}
+
+export async function previewCustomAlarmSound(path: string): Promise<void> {
+  if (!path) return;
+  await NexusStudyAlarm.previewCustomSound({ path });
 }
 
 export async function stopDeviceAlarmPreview(): Promise<void> {
