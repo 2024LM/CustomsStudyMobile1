@@ -50,6 +50,7 @@ import {
 } from '../services/geminiAi';
 import { ExcelPreview } from '../types';
 import { AiSourcePicker } from '../components/AiSourcePicker';
+import { SpeakButton } from '../components/SpeakButton';
 
 interface AiAssistantPageProps {
   onOpenSettings: () => void;
@@ -956,16 +957,24 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           const payloads = sentAttachmentPayloads[item.id] || [];
           return (
             <div key={item.id} className={`group relative max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
-              <button
-                type="button"
-                onClick={() => void copyMessage(item)}
-                className={`absolute -bottom-8 ${item.role === 'user' ? 'right-1' : 'left-1'} h-7 px-2 rounded-[9px] flex items-center gap-1 text-[9px] font-bold opacity-70 hover:opacity-100 ${item.role === 'user' ? 'bg-[#4B31C7] text-white' : 'bg-white dark:bg-[#292435] border border-gray-100 dark:border-[#3A3348] text-gray-500 dark:text-[#C9C1D3]'}`}
-                aria-label="نسخ الرسالة"
-                title="نسخ الرسالة"
-              >
-                {copiedMessageId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {copiedMessageId === item.id ? 'تم' : 'نسخ'}
-              </button>
+              <div className={`absolute -bottom-8 ${item.role === 'user' ? 'right-1' : 'left-1'} flex items-center gap-1`}>
+                <button
+                  type="button"
+                  onClick={() => void copyMessage(item)}
+                  className={`h-7 px-2 rounded-[9px] flex items-center gap-1 text-[9px] font-bold opacity-70 hover:opacity-100 ${item.role === 'user' ? 'bg-[#4B31C7] text-white' : 'bg-white dark:bg-[#292435] border border-gray-100 dark:border-[#3A3348] text-gray-500 dark:text-[#C9C1D3]'}`}
+                  aria-label="نسخ الرسالة"
+                  title="نسخ الرسالة"
+                >
+                  {copiedMessageId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  {copiedMessageId === item.id ? 'تم' : 'نسخ'}
+                </button>
+                <SpeakButton
+                  text={copyableMessageText(item)}
+                  title="قراءة الرسالة"
+                  className={`!w-7 !h-7 opacity-70 hover:opacity-100 ${item.role === 'user' ? 'bg-[#4B31C7] text-white' : 'bg-white dark:bg-[#292435] border border-gray-100 dark:border-[#3A3348]'}`}
+                  onError={setStatus}
+                />
+              </div>
               {item.attachments?.length ? (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {item.attachments.map((attachment) => {
