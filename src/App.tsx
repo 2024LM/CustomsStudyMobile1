@@ -34,6 +34,7 @@ import { DownloadsPage } from './views/DownloadsPage';
 import { AdvancedStudyPage } from './views/AdvancedStudyPage';
 import { AiSettingsPage } from './views/AiSettingsPage';
 import { AiAssistantPage } from './views/AiAssistantPage';
+import { VoiceSettingsPage } from './views/VoiceSettingsPage';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -344,6 +345,8 @@ export function App() {
 
           {page === 'AI_SETTINGS' && <AiSettingsPage onBack={() => setPage('MORE')} />}
 
+          {page === 'VOICE_SETTINGS' && <VoiceSettingsPage onBack={() => setPage('MORE')} />}
+
           {page === 'AI_ASSISTANT' && (
             <AiAssistantPage onOpenSettings={() => setPage('AI_SETTINGS')} />
           )}
@@ -360,6 +363,7 @@ export function App() {
               onGoToDownloads={() => setPage('DOWNLOADS')}
               onGoToAdvanced={() => setPage('ADVANCED')}
               onGoToAiSettings={() => setPage('AI_SETTINGS')}
+              onGoToVoiceSettings={() => setPage('VOICE_SETTINGS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
               remote={remote}
@@ -377,7 +381,7 @@ export function App() {
                 const isSelected =
                   page === item.p ||
                   (item.p === 'MORE' &&
-                    ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS'].includes(page));
+                    ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS', 'VOICE_SETTINGS'].includes(page));
 
                 return (
                   <button
