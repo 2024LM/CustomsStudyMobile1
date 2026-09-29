@@ -21,8 +21,7 @@ import { GuidedTour, TourStep } from './components/GuidedTour';
 import { RatingPrompt } from './components/RatingPrompt';
 
 import { HomePage } from './views/HomePage';
-import { QuestionsPage } from './views/QuestionsPage';
-import { SessionPage } from './views/SessionPage';
+import { StudyPage } from './views/StudyPage';
 import { MistakesPage } from './views/MistakesPage';
 import { FavoritesPage } from './views/FavoritesPage';
 import { BanksPage } from './views/BanksPage';
@@ -211,7 +210,7 @@ export function App() {
     setSessionCount(count || null);
     setSessionMode(mode);
     setSessionAutoStart(autoStart);
-    setPage('SESSION');
+    setPage('QUESTIONS');
   };
 
 
@@ -227,11 +226,6 @@ export function App() {
       { target: 'questions-search', title: 'البحث في الأسئلة', text: 'ابحث عن سؤال أو محور داخل البنك النشط.' },
       { target: 'questions-filter', title: 'فلترة نوع السؤال', text: 'اعرض جميع الأسئلة أو أسئلة الاختيار المتعدد أو المفتوحة أو الشفهية.' },
       { target: 'questions-list', title: 'قائمة الأسئلة', text: 'من هنا تتصفح الأسئلة وبياناتها وتراجع محتوى البنك.' },
-    ],
-    SESSION: [
-      { target: 'session-count', title: 'عدد أسئلة الجلسة', text: 'حدد حجم جلسة المراجعة الذي يناسب وقتك.' },
-      { target: 'session-topics', title: 'اختيار المحاور', text: 'يمكنك اختيار محور واحد أو عدة محاور، أو تركها بدون تحديد لجلسة متنوعة.' },
-      { target: 'session-start', title: 'بدء الجلسة', text: 'بعد ضبط خياراتك، ابدأ جلسة المراجعة من هنا.' },
     ],
     REFERENCES: [
       { target: 'references-library', title: 'مكتبة المراجع', text: 'هنا تظهر المراجع والقوالب والمستندات المنشورة للتطبيق.' },
@@ -259,7 +253,6 @@ export function App() {
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
     { p: 'AI_ASSISTANT' as Page, title: 'AI', icon: Sparkles },
-    { p: 'SESSION' as Page, title: 'جلسة', icon: PlayCircle },
     { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
     { p: 'MORE' as Page, title: 'المزيد', icon: MoreHorizontal },
   ];
@@ -338,20 +331,21 @@ export function App() {
             />
           )}
 
-          {page === 'QUESTIONS' && <QuestionsPage />}
-
-          {page === 'SESSION' && (
-            <SessionPage
-              key={[Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all'), sessionMode, sessionCount || 0, sessionAutoStart ? 'auto' : 'manual'].join(':')}
+          {(page === 'QUESTIONS' || page === 'SESSION') && (
+            <StudyPage
+              key={[
+                page,
+                Array.isArray(sessionTopic) ? sessionTopic.join('|') : (sessionTopic || 'all'),
+                sessionMode,
+                sessionCount || 0,
+                sessionAutoStart ? 'auto' : 'manual',
+              ].join(':')}
+              initialView={page === 'SESSION' || sessionAutoStart ? 'session' : 'browse'}
               initialTopic={sessionTopic}
               initialMode={sessionMode}
               initialCount={sessionCount}
               autoStart={sessionAutoStart}
               onActiveChange={setSessionFocus}
-              onExit={() => {
-                setSessionAutoStart(false);
-                setPage('HOME');
-              }}
             />
           )}
 
@@ -420,7 +414,7 @@ export function App() {
                   <button
                     key={item.p}
                     onClick={() => {
-                      if (item.p === 'SESSION') {
+                      if (item.p === 'QUESTIONS') {
                         setSessionTopic(null);
                         setSessionCount(null);
                         setSessionMode('classic');
