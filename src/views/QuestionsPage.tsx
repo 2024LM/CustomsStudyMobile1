@@ -3,7 +3,11 @@ import { Search, X, SlidersHorizontal, BookOpen, Rows3, ListTree } from 'lucide-
 import { db } from '../services/db';
 import { QuestionCard } from '../components/QuestionCard';
 
-export const QuestionsPage: React.FC = () => {
+interface QuestionsPageProps {
+  embedded?: boolean;
+}
+
+export const QuestionsPage: React.FC<QuestionsPageProps> = ({ embedded = false }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState('ALL');
@@ -46,17 +50,19 @@ export const QuestionsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-3 pb-8 text-right">
-      <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-bold text-lg">الأسئلة</h1>
-            <p className="text-xs text-[#DDD5FF] mt-0.5">ابحث وراجع محتوى بنك الأسئلة بسهولة</p>
+      {!embedded && (
+        <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-bold text-lg">الأسئلة</h1>
+              <p className="text-xs text-[#DDD5FF] mt-0.5">ابحث وراجع محتوى بنك الأسئلة بسهولة</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Search Bar */}
       <div data-tour="questions-search" className="relative w-full">
