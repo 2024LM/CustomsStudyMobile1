@@ -922,6 +922,76 @@ function normalizeRichResponse(parsed: any): GeminiRichResponse {
   };
 }
 
+function richFallbackFromGrounding(
+  payload: any,
+  kinds: Array<'youtube' | 'images' | 'links'>
+): GeminiRichResponse {
+  const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  const seenByType = new Map<string, Set<string>>();
+  const blocks: GeminiRichBlock[] = [];
+
+  for (const kind of kinds) {
+    const type: GeminiRichBlock['type'] = kind === 'images' ? 'image' : kind === 'links' ? 'link' : 'youtube';
+    const seen = seenByType.get(type) || new Set<string>();
+    seenByType.set(type, seen);
+    const items: GeminiRichItem[] = [];
+
+    for (const chunk of chunks) {
+      const web = chunk?.web;
+      const url = String(web?.uri || '').trim();
+      if (!/^https:\/\//i.test(url) || seen.has(url)) continue;
+
+      const domain = safeDomain(url);
+      const title = String(web?.title || domain || 'رابط').trim().slice(0, 180);
+
+      if (type === 'youtube') {
+        const id = youtubeVideoId(url);
+        if (!id) continue;
+        seen.add(url);
+        items.push({
+          title,
+          url,
+          description: domain,
+          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+        });
+      } else if (type === 'image') {
+        if (!isDirectImageUrl(url)) continue;
+        seen.add(url);
+        items.push({
+          title,
+          url,
+          description: domain,
+          thumbnailUrl: url,
+        });
+      } else {
+        seen.add(url);
+        items.push({
+          title,
+          url,
+          description: domain,
+        });
+      }
+
+      if (items.length >= 8) break;
+    }
+
+    if (items.length) {
+      blocks.push({
+        type,
+        title: type === 'youtube' ? 'فيديوهات مقترحة' : type === 'image' ? 'صور مرتبطة' : 'روابط مفيدة',
+        items,
+      });
+    }
+  }
+
+  return {
+    reply: blocks.length
+      ? 'تعذر تنسيق الرد الكامل، لذلك عُرضت النتائج الموثقة من نفس عملية البحث.'
+      : '',
+    blocks,
+  };
+}
+
 export async function generateRichWebResponse(
   query: string,
   kinds: Array<'youtube' | 'images' | 'links'>
@@ -973,22 +1043,13 @@ ${typeInstruction}
   try {
     parsed = parseJsonObject(raw);
   } catch {
-    // Fallback to grounded links if the model did not keep JSON valid.
-    const fallbackBlocks: GeminiRichBlock[] = [];
-    for (const kind of cleanKinds) {
-      const items = await searchRichWebContent(cleanQuery, kind);
-      fallbackBlocks.push({
-        type: kind === 'images' ? 'image' : kind === 'links' ? 'link' : 'youtube',
-        title: kind === 'youtube' ? 'فيديوهات مقترحة' : kind === 'images' ? 'صور مرتبطة' : 'روابط مفيدة',
-        items: items.map((item) => ({
-          title: item.title,
-          url: item.url,
-          description: item.subtitle,
-          thumbnailUrl: item.thumbnailUrl,
-        })),
-      });
+    // لا نكرر طلب Google Search عند فشل JSON. نستخرج فقط روابط grounding
+    // من نفس الاستجابة حتى يبقى طلب المحتوى الغني = طلب Gemini واحدًا.
+    const fallback = richFallbackFromGrounding(payload, cleanKinds);
+    if (!fallback.blocks.length) {
+      throw new Error('اكتمل البحث لكن تعذر استخراج نتائج قابلة للعرض من نفس الاستجابة. أعد المحاولة بصياغة أوضح.');
     }
-    return { reply: 'هذه أفضل النتائج التي عثرت عليها.', blocks: fallbackBlocks };
+    return fallback;
   }
 
   const normalized = normalizeRichResponse(parsed);
