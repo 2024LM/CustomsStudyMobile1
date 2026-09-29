@@ -149,6 +149,47 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         call.resolve(result);
     }
 
+    private List<String> splitForSpeech(String text) {
+        List<String> chunks = new ArrayList<>();
+        int engineLimit = TextToSpeech.getMaxSpeechInputLength();
+        int safeLimit = Math.max(500, Math.min(engineLimit - 100, 3200));
+        String remaining = text == null ? "" : text.trim();
+
+        while (!remaining.isEmpty()) {
+            if (remaining.length() <= safeLimit) {
+                chunks.add(remaining);
+                break;
+            }
+
+            int end = safeLimit;
+            int searchStart = Math.max(0, safeLimit - 700);
+            int best = -1;
+            char[] separators = new char[] {'\n', '.', '!', '?', '؟', '؛', ';', '،', ','};
+
+            for (int i = safeLimit; i >= searchStart; i--) {
+                char ch = remaining.charAt(i - 1);
+                for (char separator : separators) {
+                    if (ch == separator) {
+                        best = i;
+                        break;
+                    }
+                }
+                if (best > 0) break;
+            }
+
+            if (best <= 0) {
+                int space = remaining.lastIndexOf(' ', safeLimit);
+                best = space > searchStart ? space + 1 : safeLimit;
+            }
+
+            String chunk = remaining.substring(0, best).trim();
+            if (!chunk.isEmpty()) chunks.add(chunk);
+            remaining = remaining.substring(best).trim();
+        }
+
+        return chunks;
+    }
+
     @PluginMethod
     public void speak(PluginCall call) {
         if (!ready || tts == null) {
@@ -174,15 +215,27 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         float safeRate = (float)Math.max(0.5, Math.min(rate != null ? rate : 0.92, 1.5));
         tts.setSpeechRate(safeRate);
 
-        String utteranceId = "nexus_" + System.currentTimeMillis();
-        int speakResult = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
-        if (speakResult == TextToSpeech.ERROR) {
-            call.reject("Unable to speak text");
+        List<String> chunks = splitForSpeech(text);
+        if (chunks.isEmpty()) {
+            call.reject("Missing text");
             return;
+        }
+
+        tts.stop();
+        String baseId = "nexus_" + System.currentTimeMillis();
+        for (int i = 0; i < chunks.size(); i++) {
+            int queueMode = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
+            int speakResult = tts.speak(chunks.get(i), queueMode, null, baseId + "_" + i);
+            if (speakResult == TextToSpeech.ERROR) {
+                tts.stop();
+                call.reject("Unable to speak text chunk " + (i + 1));
+                return;
+            }
         }
 
         JSObject response = new JSObject();
         response.put("started", true);
+        response.put("chunks", chunks.size());
         response.put("locale", activeLocale != null ? activeLocale.toLanguageTag() : "");
         response.put("voice", activeVoice != null ? activeVoice.getName() : "");
         call.resolve(response);
