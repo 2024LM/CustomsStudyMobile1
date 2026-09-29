@@ -16,6 +16,7 @@ import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
   cancelStudyAlarm,
+  cancelQuestionReminder,
   listDeviceAlarmSounds,
   previewDeviceAlarmSound,
   previewCustomAlarmSound,
@@ -24,6 +25,7 @@ import {
   requestStudyAlarmPermission,
   requestDeviceAudioPermission,
   scheduleStudyAlarm,
+  scheduleQuestionReminder,
   DeviceAlarmSound,
   StudyAlarmSound,
 } from '../services/studyAlarm';
@@ -55,6 +57,12 @@ export const StudyPlanPage: React.FC<{
   const [deviceSoundUri, setDeviceSoundUri] = useState(() => db.setting('study_alarm_device_sound_uri', ''));
   const [previewing, setPreviewing] = useState(false);
   const [repeatDaily, setRepeatDaily] = useState(() => db.setting('study_alarm_repeat_daily', '1') === '1');
+  const [questionReminderEnabled, setQuestionReminderEnabled] = useState(() => db.setting('question_reminder_enabled', '0') === '1');
+  const [questionReminderStart, setQuestionReminderStart] = useState(() => db.setting('question_reminder_start_time', '09:00'));
+  const [questionReminderHours, setQuestionReminderHours] = useState(() => {
+    const value = Number(db.setting('question_reminder_interval_hours', '2'));
+    return Number.isFinite(value) ? Math.min(24, Math.max(1, Math.floor(value))) : 2;
+  });
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -165,6 +173,9 @@ export const StudyPlanPage: React.FC<{
     db.setSetting('study_alarm_custom_message', customMessage.trim());
     db.setSetting('study_alarm_device_sound_uri', deviceSoundUri);
     db.setSetting('study_alarm_repeat_daily', repeatDaily ? '1' : '0');
+    db.setSetting('question_reminder_enabled', questionReminderEnabled ? '1' : '0');
+    db.setSetting('question_reminder_start_time', questionReminderStart);
+    db.setSetting('question_reminder_interval_hours', String(questionReminderHours));
     return safeTarget;
   };
 
@@ -223,24 +234,38 @@ export const StudyPlanPage: React.FC<{
     try {
       persistPlanSettings();
 
+      const needsPermission = alarmEnabled || questionReminderEnabled;
+      if (needsPermission) {
+        const permissionGranted = await requestStudyAlarmPermission();
+        if (!permissionGranted) {
+          setStatus('تم حفظ الإعدادات، لكن يجب السماح بإشعارات Android لتفعيل التذكيرات.');
+          return;
+        }
+      }
+
+      if (questionReminderEnabled) {
+        await scheduleQuestionReminder({
+          startTime: questionReminderStart,
+          intervalHours: questionReminderHours,
+        });
+      } else {
+        await cancelQuestionReminder();
+      }
+
       if (!alarmEnabled) {
         try { await cancelStudyAlarm(); } catch {}
-        setStatus('تم حفظ خطة المراجعة وإيقاف المنبّه.');
+        setStatus(questionReminderEnabled
+          ? `تم حفظ الخطة وتفعيل سؤال مراجعة كل ${questionReminderHours} ساعة بدءًا من ${questionReminderStart}.`
+          : 'تم حفظ خطة المراجعة وإيقاف التنبيهات.');
         return;
       }
 
       if (alarmSound === 'device' && !deviceSoundUri) {
-        setStatus('تم حفظ الخطة، لكن لم يتم العثور على صوت من الهاتف للمنبّه.');
+        setStatus('تم حفظ الخطة وتذكير السؤال، لكن لم يتم العثور على صوت من الهاتف لمنبّه الخطة.');
         return;
       }
       if (alarmSound === 'custom' && !customPath) {
-        setStatus('تم حفظ الخطة، لكن المنبّه لم يُجدول: اختر ملفًا صوتيًا خاصًا أولًا.');
-        return;
-      }
-
-      const permissionGranted = await requestStudyAlarmPermission();
-      if (!permissionGranted) {
-        setStatus('تم حفظ خطة المراجعة، لكن المنبّه يحتاج إذن الإشعارات من Android.');
+        setStatus('تم حفظ الخطة وتذكير السؤال، لكن منبّه الخطة يحتاج ملفًا صوتيًا خاصًا.');
         return;
       }
 
@@ -255,10 +280,12 @@ export const StudyPlanPage: React.FC<{
         message: `هدف اليوم ${effectiveTarget} سؤال. المتبقي الآن ${todayRemaining}.`,
       });
       setStatus(result.exact
-        ? 'تم حفظ الخطة وجدولة المنبّه.'
-        : 'تم حفظ الخطة وجدولة المنبّه، وقد يؤخره Android قليلًا لعدم توفر الإذن الدقيق.');
+        ? (questionReminderEnabled
+          ? `تم حفظ الخطة والمنبّه وتفعيل سؤال دوري كل ${questionReminderHours} ساعة.`
+          : 'تم حفظ الخطة وجدولة المنبّه.')
+        : 'تم حفظ الإعدادات، وقد يؤخر Android بعض التنبيهات قليلًا لعدم توفر الإذن الدقيق.');
     } catch (error: any) {
-      setStatus(error?.message || 'تعذر حفظ الخطة أو جدولة المنبّه.');
+      setStatus(error?.message || 'تعذر حفظ الخطة أو جدولة التنبيهات.');
     } finally {
       setBusy(false);
     }
@@ -592,6 +619,68 @@ export const StudyPlanPage: React.FC<{
               </div>
             )}
           </>
+        )}
+      </section>
+
+      <section className="bg-white rounded-[22px] p-4 border border-gray-100 shadow-xs">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="font-black text-sm text-[#2C2145]">سؤال مراجعة دوري</div>
+            <div className="text-[11px] text-gray-400 mt-1">يرسل سؤالًا من البنك النشط كل فترة حتى عند إغلاق التطبيق</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQuestionReminderEnabled((value) => !value)}
+            className={`w-12 h-7 rounded-full p-1 transition-colors ${questionReminderEnabled ? 'bg-[#5B3FD6]' : 'bg-gray-200'}`}
+            aria-label="تفعيل سؤال المراجعة الدوري"
+          >
+            <span className={`block w-5 h-5 bg-white rounded-full transition-transform ${questionReminderEnabled ? '-translate-x-5' : ''}`} />
+          </button>
+        </div>
+
+        {questionReminderEnabled && (
+          <div className="mt-4 flex flex-col gap-4">
+            <div>
+              <label className="text-xs font-bold">يبدأ من الساعة</label>
+              <input
+                type="time"
+                value={questionReminderStart}
+                onChange={(e) => setQuestionReminderStart(e.target.value)}
+                className="mt-2 w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold">الفاصل بين الأسئلة</label>
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {[1, 2, 4, 6].map((hours) => (
+                  <button
+                    key={hours}
+                    type="button"
+                    onClick={() => setQuestionReminderHours(hours)}
+                    className={`py-2.5 rounded-[12px] text-xs font-bold border ${questionReminderHours === hours ? 'bg-[#5B3FD6] text-white border-[#5B3FD6]' : 'bg-white text-gray-600 border-gray-200'}`}
+                  >
+                    {hours === 1 ? 'ساعة' : `${hours} س`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={questionReminderHours}
+                  onChange={(e) => setQuestionReminderHours(Math.min(24, Math.max(1, Number(e.target.value) || 1)))}
+                  className="w-24 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-2.5 text-sm text-center"
+                />
+                <span className="text-[11px] text-gray-400">ساعة — من 1 إلى 24</span>
+              </div>
+            </div>
+
+            <div className="rounded-[14px] bg-[#F5F3FF] p-3 text-[11px] leading-relaxed text-[#5B3FD6]">
+              سيختار التطبيق سؤالًا جاهزًا من البنك النشط في كل مرة. عند الضغط على الإشعار يفتح نفس السؤال داخل التطبيق.
+            </div>
+          </div>
         )}
       </section>
 
