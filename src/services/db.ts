@@ -1338,6 +1338,55 @@ class StudyDatabaseService {
     return { total: questions.length, duplicates, incomplete, duplicateIds };
   }
 
+  public studyPlanAnalytics(bankId: string | null = null): {
+    playable: number;
+    unseenPlayable: number;
+    reviewedPlayable: number;
+    todayAnswered: number;
+    todayCorrect: number;
+  } {
+    const domainId = this.activeDomainId();
+    const targetBankIds = new Set(
+      this.data.banks
+        .filter((bank) => bank.enabled && bank.domainId === domainId && (!bankId || bank.id === bankId))
+        .map((bank) => bank.id)
+    );
+
+    const playable = this.data.questions.filter((q) => {
+      if (!q.enabled || !targetBankIds.has(q.bankId) || q.qcmStatus !== 'READY') return false;
+      if (q.questionType === 'TRUE_FALSE') {
+        return ['صحيح', 'خطأ', 'true', 'false'].includes(q.correctAnswer.trim().toLowerCase());
+      }
+      return q.questionType === 'QCM' && Boolean(q.wrong1 && q.wrong2 && q.wrong3);
+    });
+    const playableIds = new Set(playable.map((q) => q.rowId));
+
+    let unseenPlayable = 0;
+    for (const q of playable) {
+      if (!this.data.questionStates[q.rowId] || this.data.questionStates[q.rowId].timesSeen === 0) {
+        unseenPlayable += 1;
+      }
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    let todayAnswered = 0;
+    let todayCorrect = 0;
+    for (const attempt of this.data.attempts) {
+      if (attempt.answeredAt < todayStart.getTime() || !playableIds.has(attempt.questionRowId)) continue;
+      todayAnswered += 1;
+      if (attempt.isCorrect) todayCorrect += 1;
+    }
+
+    return {
+      playable: playable.length,
+      unseenPlayable,
+      reviewedPlayable: playable.length - unseenPlayable,
+      todayAnswered,
+      todayCorrect,
+    };
+  }
+
   public activityCalendar(days: number = 90): Array<{ date: string; total: number; correct: number }> {
     const safeDays = Math.min(Math.max(days, 7), 365);
     const map = new Map<string, { total: number; correct: number }>();
