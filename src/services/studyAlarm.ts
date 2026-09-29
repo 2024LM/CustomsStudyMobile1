@@ -1,14 +1,25 @@
 import { registerPlugin } from '@capacitor/core';
 
+interface DeviceAlarmSound {
+  id: string;
+  title: string;
+  uri: string;
+}
+
 interface NexusStudyAlarmPlugin {
   requestNotificationPermission(): Promise<{ granted: boolean }>;
+  listDeviceSounds(): Promise<{ sounds: DeviceAlarmSound[] }>;
+  previewSound(options: { uri: string }): Promise<void>;
+  stopPreview(): Promise<void>;
   saveCustomSound(options: { base64: string; extension: string }): Promise<{ path: string }>;
   schedule(options: {
     triggerAt: number;
     title: string;
     message: string;
-    sound: 'calm' | 'focus' | 'bell' | 'custom';
+    sound: 'calm' | 'focus' | 'bell' | 'device' | 'custom';
     customPath?: string;
+    deviceSoundUri?: string;
+    customMessage?: string;
     repeatDaily: boolean;
     hour: number;
     minute: number;
@@ -18,7 +29,8 @@ interface NexusStudyAlarmPlugin {
 
 const NexusStudyAlarm = registerPlugin<NexusStudyAlarmPlugin>('NexusStudyAlarm');
 
-export type StudyAlarmSound = 'calm' | 'focus' | 'bell' | 'custom';
+export type StudyAlarmSound = 'calm' | 'focus' | 'bell' | 'device' | 'custom';
+export type { DeviceAlarmSound };
 
 export function nextAlarmTimestamp(time: string): number {
   const [hourRaw, minuteRaw] = time.split(':');
@@ -64,10 +76,30 @@ export async function requestStudyAlarmPermission(): Promise<boolean> {
   }
 }
 
+export async function listDeviceAlarmSounds(): Promise<DeviceAlarmSound[]> {
+  try {
+    const result = await NexusStudyAlarm.listDeviceSounds();
+    return Array.isArray(result?.sounds) ? result.sounds : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function previewDeviceAlarmSound(uri: string): Promise<void> {
+  if (!uri) return;
+  await NexusStudyAlarm.previewSound({ uri });
+}
+
+export async function stopDeviceAlarmPreview(): Promise<void> {
+  try { await NexusStudyAlarm.stopPreview(); } catch {}
+}
+
 export async function scheduleStudyAlarm(options: {
   time: string;
   sound: StudyAlarmSound;
   customPath?: string;
+  deviceSoundUri?: string;
+  customMessage?: string;
   repeatDaily: boolean;
   title?: string;
   message?: string;
@@ -82,6 +114,8 @@ export async function scheduleStudyAlarm(options: {
     message: options.message || 'حان وقت جلسة المراجعة.',
     sound: options.sound,
     customPath: options.customPath || '',
+    deviceSoundUri: options.deviceSoundUri || '',
+    customMessage: options.customMessage || '',
     repeatDaily: options.repeatDaily,
     hour,
     minute,
