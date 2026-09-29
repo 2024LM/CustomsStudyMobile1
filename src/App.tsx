@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Home,
   BookOpen,
-  PlayCircle,
   BookMarked,
   MoreHorizontal,
   Sparkles,
@@ -210,7 +209,7 @@ export function App() {
     setSessionCount(count || null);
     setSessionMode(mode);
     setSessionAutoStart(autoStart);
-    setPage('QUESTIONS');
+    setPage('SESSION');
   };
 
 
@@ -220,7 +219,7 @@ export function App() {
       { target: 'home-progress', title: 'تقدمك العام', text: 'راقب عدد إجاباتك ونسبة نجاحك أثناء المراجعة.' },
       { target: 'home-activity', title: 'نشاط المراجعة', text: 'تابع نشاطك يوميًا وأسبوعيًا وشهريًا، واختر بنكًا محددًا عند توفر أكثر من بنك.' },
       { target: 'home-start-session', title: 'ابدأ جلسة مراجعة', text: 'ابدأ جلسة جديدة للمراجعة من هنا.' },
-      { target: 'bottom-navigation', title: 'التنقل داخل التطبيق', text: 'استخدم هذا الشريط للوصول إلى الأسئلة والجلسات والمراجع والمزيد.' },
+      { target: 'bottom-navigation', title: 'التنقل داخل التطبيق', text: 'استخدم هذا الشريط للوصول إلى الأسئلة والمراجعة والذكاء الاصطناعي والمراجع والمزيد.' },
     ],
     QUESTIONS: [
       { target: 'questions-search', title: 'البحث في الأسئلة', text: 'ابحث عن سؤال أو محور داخل البنك النشط.' },
@@ -346,6 +345,13 @@ export function App() {
               initialCount={sessionCount}
               autoStart={sessionAutoStart}
               onActiveChange={setSessionFocus}
+              onSessionExit={() => {
+                setSessionTopic(null);
+                setSessionCount(null);
+                setSessionMode('classic');
+                setSessionAutoStart(false);
+                setPage('QUESTIONS');
+              }}
             />
           )}
 
@@ -407,6 +413,7 @@ export function App() {
                 const Icon = item.icon;
                 const isSelected =
                   page === item.p ||
+                  (item.p === 'QUESTIONS' && page === 'SESSION') ||
                   (item.p === 'MORE' &&
                     ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS', 'VOICE_SETTINGS'].includes(page));
 
