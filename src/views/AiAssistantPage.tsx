@@ -242,6 +242,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const [busy, setBusy] = useState(false);
   const [sourceBusy, setSourceBusy] = useState(false);
   const [showSources, setShowSources] = useState(false);
+  const [manualSourceOpen, setManualSourceOpen] = useState(false);
+  const [manualSourceUrl, setManualSourceUrl] = useState('');
+  const [manualSourceTitle, setManualSourceTitle] = useState('');
   const [candidates, setCandidates] = useState<WebReferenceCandidate[]>(() => {
     const saved = loadAiWorkspace().task;
     return saved.sourceUrls.map((url, index) => ({
@@ -321,6 +324,64 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setLocalSources((current) => current.filter((item) => item.id !== id));
   };
 
+  const addManualWebSource = () => {
+    const rawUrl = manualSourceUrl.trim();
+    let normalizedUrl = rawUrl;
+    try {
+      const parsed = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad protocol');
+      normalizedUrl = parsed.toString();
+    } catch {
+      setStatus('أدخل رابط مصدر صالحًا يبدأ بـ http:// أو https://');
+      return;
+    }
+
+    if (workspace.task.sourceUrls.length >= 5 && !workspace.task.sourceUrls.includes(normalizedUrl)) {
+      setStatus('يمكن اعتماد 5 روابط ويب كحد أقصى.');
+      return;
+    }
+
+    const title = manualSourceTitle.trim().slice(0, 180) || sourceDomain(normalizedUrl);
+    const item: WebReferenceCandidate = {
+      url: normalizedUrl,
+      title,
+      domain: sourceDomain(normalizedUrl),
+      note: 'مصدر أضافه المستخدم يدويًا',
+    };
+
+    setCandidates((current) => {
+      const withoutDuplicate = current.filter((candidate) => candidate.url !== normalizedUrl);
+      return [item, ...withoutDuplicate];
+    });
+
+    const existingUrls = workspace.task.sourceUrls;
+    const nextUrls = existingUrls.includes(normalizedUrl)
+      ? existingUrls
+      : [...existingUrls, normalizedUrl].slice(0, 5);
+    const nextTitles = nextUrls.map((url) =>
+      url === normalizedUrl
+        ? title
+        : workspace.task.sourceTitles[existingUrls.indexOf(url)] || sourceDomain(url)
+    );
+
+    updateWorkspace({
+      ...workspace,
+      task: {
+        ...workspace.task,
+        sourceIds: [],
+        sourceUrls: nextUrls,
+        sourceTitles: nextTitles,
+        status: 'collecting',
+        updatedAt: Date.now(),
+      },
+    });
+
+    setManualSourceUrl('');
+    setManualSourceTitle('');
+    setManualSourceOpen(false);
+    setStatus('تمت إضافة المصدر واختياره.');
+  };
+
   const searchSources = async (topicOverride?: string, baseState: AiWorkspaceState = workspace) => {
     const topic = (topicOverride || baseState.task.topic).trim();
     if (!topic) {
@@ -353,7 +414,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       setWorkspace(next);
       setStatus('');
     } catch (error: any) {
-      setStatus(error?.message || 'تعذر البحث عن المراجع.');
+      setCandidates([]);
+      setManualSourceOpen(true);
+      setStatus((error?.message || 'تعذر البحث عن المراجع.') + ' يمكنك إضافة مصدر يدويًا من الأسفل.');
     } finally {
       setSourceBusy(false);
     }
@@ -690,6 +753,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setPlayingYoutubeId(null);
     setStatus('');
     setShowSources(false);
+    setManualSourceOpen(false);
+    setManualSourceUrl('');
+    setManualSourceTitle('');
   };
 
   const startNewSession = () => {
@@ -1158,7 +1224,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                 Gemini يبحث عبر Google…
               </div>
             ) : candidates.length === 0 ? (
-              <div className="py-7 text-center text-xs text-gray-400">ابدأ البحث ليظهر هنا أفضل المصادر.</div>
+              <div className="py-7 text-center text-xs text-gray-400">
+                لم تظهر مصادر من المزود. يمكنك إضافة مصدر بنفسك من الأسفل.
+              </div>
             ) : (
               candidates.map((item) => {
                 const selected = workspace.task.sourceUrls.includes(item.url);
@@ -1195,11 +1263,63 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
             )}
           </div>
 
+          <div className="p-3 border-t border-[#EEEAF8] dark:border-[#352D43]">
+            {!manualSourceOpen ? (
+              <button
+                type="button"
+                onClick={() => setManualSourceOpen(true)}
+                className="w-full h-11 rounded-[13px] border border-[#D9D1EF] dark:border-[#4A4057] text-[#5B3FD6] dark:text-[#C8BAFF] text-xs font-black flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                إضافة مصدر
+              </button>
+            ) : (
+              <div className="rounded-[14px] bg-[#F8F9FD] dark:bg-[#191621] p-3 flex flex-col gap-2">
+                <div className="text-xs font-black">إضافة مصدر يدويًا</div>
+                <input
+                  value={manualSourceUrl}
+                  onChange={(e) => setManualSourceUrl(e.target.value.slice(0, 2000))}
+                  placeholder="https://example.com/source"
+                  inputMode="url"
+                  dir="ltr"
+                  className="w-full h-11 rounded-[11px] border border-gray-200 dark:border-[#40384D] bg-white dark:bg-[#211D2C] px-3 text-xs outline-none focus:border-[#6E50DD]"
+                />
+                <input
+                  value={manualSourceTitle}
+                  onChange={(e) => setManualSourceTitle(e.target.value.slice(0, 180))}
+                  placeholder="اسم المصدر — اختياري"
+                  className="w-full h-11 rounded-[11px] border border-gray-200 dark:border-[#40384D] bg-white dark:bg-[#211D2C] px-3 text-xs outline-none focus:border-[#6E50DD]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={addManualWebSource}
+                    disabled={!manualSourceUrl.trim()}
+                    className="flex-1 h-10 rounded-[11px] bg-[#5B3FD6] text-white text-xs font-black disabled:opacity-40"
+                  >
+                    إضافة واختيار المصدر
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualSourceOpen(false);
+                      setManualSourceUrl('');
+                      setManualSourceTitle('');
+                    }}
+                    className="h-10 px-4 rounded-[11px] bg-white dark:bg-[#292435] border border-gray-200 dark:border-[#40384D] text-xs font-bold"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {candidates.length > 0 && (
             <div className="p-3 border-t border-[#EEEAF8] dark:border-[#352D43]">
               <button
                 onClick={() => void acceptSources()}
-                disabled={workspace.task.sourceUrls.length === 0 || busy}
+                disabled={(workspace.task.sourceUrls.length === 0 && taskLocalSources.length === 0 && localSources.length === 0) || busy}
                 className="w-full h-12 rounded-[14px] bg-[#5B3FD6] text-white text-sm font-black disabled:opacity-40"
               >
                 اعتماد {workspace.task.sourceUrls.length || ''} مراجع مختارة
@@ -1279,7 +1399,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
               </div>
             )}
 
-            <div className="flex items-end gap-2">
+            <form
+              className="flex items-end gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void send();
+              }}
+            >
               <AiSourcePicker
                 disabled={busy || sourceBusy}
                 attachmentCount={localSources.length}
@@ -1298,7 +1424,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    void send();
+                    e.currentTarget.form?.requestSubmit();
                   }
                 }}
                 rows={1}
@@ -1307,13 +1433,15 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
               />
 
               <button
-                onClick={() => void send()}
-                disabled={busy || (!message.trim() && localSources.length === 0 && workspace.task.sourceUrls.length === 0)}
-                className="w-11 h-11 rounded-[14px] bg-[#5B3FD6] text-white flex items-center justify-center disabled:opacity-40 shrink-0"
+                type="submit"
+                disabled={busy || sourceBusy || (!message.trim() && localSources.length === 0)}
+                className="w-11 h-11 rounded-[14px] bg-[#5B3FD6] text-white flex items-center justify-center disabled:opacity-40 shrink-0 active:scale-95 transition-transform"
+                aria-label="إرسال الرسالة"
+                title="إرسال"
               >
-                {busy ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 rotate-180" />}
+                {busy ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
