@@ -51,6 +51,8 @@ permissions = [
     '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />',
     '<uses-permission android:name="android.permission.WAKE_LOCK" />',
     '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />',
+    '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />',
+    '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />',
 ]
 for permission in permissions:
     if permission not in s:
