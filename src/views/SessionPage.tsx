@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { db } from '../services/db';
 import { QuizQuestion, StudyStats } from '../types';
 import { ArabicText } from '../components/ArabicText';
+import { SpeakButton } from '../components/SpeakButton';
 import { CircularProgress } from '../components/CircularProgress';
 import { MetricCard } from '../components/MetricCard';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
@@ -365,7 +366,12 @@ export const SessionPage: React.FC<SessionPageProps> = ({
         </div>
 
         {/* Question Card */}
-        <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] flex items-center justify-center text-center">
+        <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] relative flex items-center justify-center text-center">
+          <SpeakButton
+            text={[currentQuestion.question, answered ? `الإجابة الصحيحة: ${currentQuestion.correctAnswer}` : '', answered && currentQuestion.explanation ? `الشرح: ${currentQuestion.explanation}` : ''].filter(Boolean).join('. ')}
+            title="قراءة السؤال"
+            className="absolute top-3 left-3 bg-[#F5F3FF] text-[#5B3FD6]"
+          />
           <ArabicText
             value={currentQuestion.question}
             as="p"
