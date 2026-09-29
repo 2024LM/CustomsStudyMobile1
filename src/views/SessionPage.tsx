@@ -368,7 +368,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
         {/* Question Card */}
         <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] relative flex items-center justify-center text-center">
           <SpeakButton
-            text={[currentQuestion.question, answered ? `الإجابة الصحيحة: ${currentQuestion.correctAnswer}` : '', answered && currentQuestion.explanation ? `الشرح: ${currentQuestion.explanation}` : ''].filter(Boolean).join('. ')}
+            text={[currentQuestion.question, isAnswered ? `الإجابة الصحيحة: ${currentQuestion.correctAnswer}` : '', isAnswered && currentQuestion.explanation ? `الشرح: ${currentQuestion.explanation}` : ''].filter(Boolean).join('. ')}
             title="قراءة السؤال"
             className="absolute top-3 left-3 bg-[#F5F3FF] text-[#5B3FD6]"
           />
