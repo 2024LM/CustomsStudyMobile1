@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpenCheck,
   CalendarDays,
@@ -9,15 +9,21 @@ import {
   Target,
   Upload,
   Volume2,
+  PlayCircle,
+  Square,
   XCircle,
 } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
   cancelStudyAlarm,
+  listDeviceAlarmSounds,
+  previewDeviceAlarmSound,
+  stopDeviceAlarmPreview,
   saveAlarmAudio,
   requestStudyAlarmPermission,
   scheduleStudyAlarm,
+  DeviceAlarmSound,
   StudyAlarmSound,
 } from '../services/studyAlarm';
 
@@ -40,10 +46,29 @@ export const StudyPlanPage: React.FC<{
   const [alarmSound, setAlarmSound] = useState<StudyAlarmSound>(() => (db.setting('study_alarm_sound', 'focus') as StudyAlarmSound));
   const [customPath, setCustomPath] = useState(() => db.setting('study_alarm_custom_path', ''));
   const [customName, setCustomName] = useState(() => db.setting('study_alarm_custom_name', ''));
+  const [customMessage, setCustomMessage] = useState(() => db.setting('study_alarm_custom_message', ''));
+  const [deviceSounds, setDeviceSounds] = useState<DeviceAlarmSound[]>([]);
+  const [deviceSoundUri, setDeviceSoundUri] = useState(() => db.setting('study_alarm_device_sound_uri', ''));
+  const [previewing, setPreviewing] = useState(false);
   const [repeatDaily, setRepeatDaily] = useState(() => db.setting('study_alarm_repeat_daily', '1') === '1');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void listDeviceAlarmSounds().then((items) => {
+      if (!active) return;
+      setDeviceSounds(items);
+      if (!deviceSoundUri && items.length > 0) {
+        setDeviceSoundUri(items[0].uri);
+      }
+    });
+    return () => {
+      active = false;
+      void stopDeviceAlarmPreview();
+    };
+  }, []);
 
   const bankId = scope === 'ALL' ? null : scope;
   const analytics = db.studyPlanAnalytics(bankId);
@@ -127,6 +152,8 @@ export const StudyPlanPage: React.FC<{
     db.setSetting('study_alarm_sound', alarmSound);
     db.setSetting('study_alarm_custom_path', customPath);
     db.setSetting('study_alarm_custom_name', customName);
+    db.setSetting('study_alarm_custom_message', customMessage.trim());
+    db.setSetting('study_alarm_device_sound_uri', deviceSoundUri);
     db.setSetting('study_alarm_repeat_daily', repeatDaily ? '1' : '0');
     return safeTarget;
   };
@@ -165,6 +192,8 @@ export const StudyPlanPage: React.FC<{
         time: alarmTime,
         sound: alarmSound === 'custom' && !customPath ? 'focus' : alarmSound,
         customPath: alarmSound === 'custom' ? customPath : '',
+        deviceSoundUri: alarmSound === 'device' ? deviceSoundUri : '',
+        customMessage: customMessage.trim(),
         repeatDaily: true,
         title: '🎓 خطة مراجعة اليوم',
         message: 'سيتم حساب هدف اليوم تلقائيًا عند وقت التذكير.',
@@ -205,6 +234,8 @@ export const StudyPlanPage: React.FC<{
         time: alarmTime,
         sound: alarmSound,
         customPath,
+        deviceSoundUri: alarmSound === 'device' ? deviceSoundUri : '',
+        customMessage: customMessage.trim(),
         repeatDaily: Boolean(examDate) ? true : repeatDaily,
         title: `🎓 وقت المراجعة: ${db.activeDomain().name}`,
         message: `هدف اليوم ${effectiveTarget} سؤال. المتبقي الآن ${todayRemaining}.`,
@@ -425,23 +456,82 @@ export const StudyPlanPage: React.FC<{
             </div>
 
             <div>
-              <div className="text-xs font-bold mb-2">صوت المنبّه</div>
-              <div className="grid grid-cols-2 gap-2">
-                {sounds.map((sound) => (
-                  <button
-                    key={sound.id}
-                    onClick={() => setAlarmSound(sound.id)}
-                    className={`rounded-[14px] border p-3 text-right ${alarmSound === sound.id ? 'border-[#5B3FD6] bg-[#F5F3FF]' : 'border-gray-100 bg-[#F8F9FD]'}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Volume2 className="w-4 h-4 text-[#5B3FD6]" />
-                      <span className="text-xs font-bold">{sound.title}</span>
-                    </div>
-                    <div className="text-[10px] text-gray-400 mt-1 truncate">{sound.subtitle}</div>
-                  </button>
-                ))}
+              <label className="text-xs font-bold">رسالة التنبيه</label>
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value.slice(0, 180))}
+                placeholder="اختياري — اتركه فارغًا لعرض خطة اليوم تلقائيًا"
+                rows={2}
+                className="mt-2 w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm resize-none"
+              />
+              <div className="text-[10px] text-gray-400 mt-1">
+                إذا كتبت رسالة هنا ستظهر بدل نص الخطة الديناميكي في الإشعار.
               </div>
             </div>
+
+            <div>
+              <div className="text-xs font-bold mb-2">صوت التنبيه</div>
+              <select
+                value={alarmSound}
+                onChange={(e) => {
+                  setAlarmSound(e.target.value as StudyAlarmSound);
+                  setPreviewing(false);
+                  void stopDeviceAlarmPreview();
+                }}
+                className="w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
+              >
+                <option value="device">نغمة من الهاتف</option>
+                <option value="focus">تركيز</option>
+                <option value="calm">هادئ</option>
+                <option value="bell">جرس</option>
+                <option value="custom">ملف صوتي خاص</option>
+              </select>
+            </div>
+
+            {alarmSound === 'device' && (
+              <div className="rounded-[16px] bg-[#F8F9FD] border border-gray-100 p-3">
+                <label className="text-xs font-bold">موسيقى / نغمة الهاتف</label>
+                <div className="flex gap-2 mt-2">
+                  <select
+                    value={deviceSoundUri}
+                    onChange={(e) => {
+                      setDeviceSoundUri(e.target.value);
+                      setPreviewing(false);
+                      void stopDeviceAlarmPreview();
+                    }}
+                    className="flex-1 min-w-0 rounded-[12px] bg-white border border-gray-100 p-2.5 text-xs"
+                  >
+                    {deviceSounds.length === 0 && <option value="">لم يتم العثور على نغمات</option>}
+                    {deviceSounds.map((sound) => (
+                      <option key={sound.id} value={sound.uri}>{sound.title}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!deviceSoundUri}
+                    onClick={async () => {
+                      if (previewing) {
+                        await stopDeviceAlarmPreview();
+                        setPreviewing(false);
+                      } else {
+                        await previewDeviceAlarmSound(deviceSoundUri);
+                        setPreviewing(true);
+                      }
+                    }}
+                    className="w-11 h-11 shrink-0 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center disabled:opacity-40"
+                    aria-label={previewing ? 'إيقاف المعاينة' : 'تشغيل المعاينة'}
+                  >
+                    {previewing ? <Square className="w-4 h-4 fill-current" /> : <PlayCircle className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {alarmSound !== 'device' && alarmSound !== 'custom' && (
+              <div className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-xs text-gray-500">
+                سيتم استخدام نغمة التطبيق: {sounds.find((sound) => sound.id === alarmSound)?.title || 'الافتراضية'}.
+              </div>
+            )}
 
             <input
               ref={audioInputRef}
