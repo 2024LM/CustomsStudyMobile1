@@ -1,6 +1,9 @@
 package com.nexus.customsstudy;
 
 import android.Manifest;
+import android.content.pm.PackageManager;
+import android.provider.MediaStore;
+import android.content.ContentUris;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -33,6 +36,10 @@ import java.util.Calendar;
         @Permission(
             alias = "notifications",
             strings = { Manifest.permission.POST_NOTIFICATIONS }
+        ),
+        @Permission(
+            alias = "audio",
+            strings = { Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE }
         )
     }
 )
@@ -61,26 +68,93 @@ public class NexusStudyAlarmPlugin extends Plugin {
 
 
     @PluginMethod
+    public void requestAudioPermission(PluginCall call) {
+        if (hasAudioPermission()) {
+            JSObject result = new JSObject();
+            result.put("granted", true);
+            call.resolve(result);
+            return;
+        }
+        requestPermissionForAlias("audio", call, "audioPermissionCallback");
+    }
+
+    @PermissionCallback
+    private void audioPermissionCallback(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", hasAudioPermission());
+        call.resolve(result);
+    }
+
+    private boolean hasAudioPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        }
+        return getContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @PluginMethod
     public void listDeviceSounds(PluginCall call) {
         try {
+            JSArray sounds = new JSArray();
+
             RingtoneManager manager = new RingtoneManager(getContext());
             manager.setType(RingtoneManager.TYPE_ALARM | RingtoneManager.TYPE_NOTIFICATION | RingtoneManager.TYPE_RINGTONE);
             Cursor cursor = manager.getCursor();
-            JSArray sounds = new JSArray();
             int index = 0;
-            while (cursor.moveToNext() && index < 200) {
+            while (cursor.moveToNext() && index < 100) {
                 Uri uri = manager.getRingtoneUri(cursor.getPosition());
                 String title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX);
                 JSObject item = new JSObject();
-                item.put("id", "device:" + uri.toString());
+                item.put("id", "ringtone:" + uri.toString());
                 item.put("title", title == null || title.trim().isEmpty() ? "نغمة " + (index + 1) : title);
                 item.put("uri", uri.toString());
+                item.put("kind", "ringtone");
                 sounds.put(item);
                 index++;
             }
             cursor.close();
+
+            if (hasAudioPermission()) {
+                String[] projection = {
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.TITLE,
+                    MediaStore.Audio.Media.ARTIST,
+                    MediaStore.Audio.Media.DURATION
+                };
+                String selection = MediaStore.Audio.Media.IS_MUSIC + "!=0";
+                try (Cursor media = getContext().getContentResolver().query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    null,
+                    MediaStore.Audio.Media.DATE_ADDED + " DESC"
+                )) {
+                    if (media != null) {
+                        int idCol = media.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);
+                        int titleCol = media.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
+                        int artistCol = media.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
+                        int count = 0;
+                        while (media.moveToNext() && count < 200) {
+                            long id = media.getLong(idCol);
+                            Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+                            String title = media.getString(titleCol);
+                            String artist = media.getString(artistCol);
+                            JSObject item = new JSObject();
+                            item.put("id", "music:" + id);
+                            item.put("title", (title == null || title.trim().isEmpty() ? "موسيقى " + (count + 1) : title)
+                                + (artist == null || artist.trim().isEmpty() ? "" : " — " + artist));
+                            item.put("uri", uri.toString());
+                            item.put("kind", "music");
+                            sounds.put(item);
+                            count++;
+                        }
+                    }
+                }
+            }
+
             JSObject result = new JSObject();
             result.put("sounds", sounds);
+            result.put("audioPermissionGranted", hasAudioPermission());
             call.resolve(result);
         } catch (Exception error) {
             call.reject("Unable to list device sounds", error);
