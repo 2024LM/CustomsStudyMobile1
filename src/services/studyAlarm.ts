@@ -26,6 +26,9 @@ interface NexusStudyAlarmPlugin {
     hour: number;
     minute: number;
   }): Promise<{ scheduled: boolean; exact?: boolean }>;
+  scheduleQuestionReminder(options: { triggerAt: number; intervalHours: number }): Promise<{ scheduled: boolean; exact?: boolean }>;
+  cancelQuestionReminder(): Promise<void>;
+  consumePendingQuestion(): Promise<{ rowId?: number; bankId?: string }>;
   cancel(): Promise<void>;
 }
 
@@ -140,4 +143,34 @@ export async function scheduleStudyAlarm(options: {
 
 export async function cancelStudyAlarm(): Promise<void> {
   await NexusStudyAlarm.cancel();
+}
+
+
+export function nextQuestionReminderTimestamp(time: string): number {
+  return nextAlarmTimestamp(time);
+}
+
+export async function scheduleQuestionReminder(options: {
+  startTime: string;
+  intervalHours: number;
+}): Promise<{ exact: boolean }> {
+  const triggerAt = nextQuestionReminderTimestamp(options.startTime);
+  if (!triggerAt) throw new Error('وقت بداية تذكير السؤال غير صالح');
+  const intervalHours = Math.min(24, Math.max(1, Math.floor(options.intervalHours || 1)));
+  const result = await NexusStudyAlarm.scheduleQuestionReminder({ triggerAt, intervalHours });
+  return { exact: result.exact !== false };
+}
+
+export async function cancelQuestionReminder(): Promise<void> {
+  try { await NexusStudyAlarm.cancelQuestionReminder(); } catch {}
+}
+
+export async function consumePendingQuestion(): Promise<{ rowId: number; bankId: string } | null> {
+  try {
+    const result = await NexusStudyAlarm.consumePendingQuestion();
+    const rowId = Number(result?.rowId);
+    const bankId = String(result?.bankId || '');
+    if (Number.isFinite(rowId) && rowId > 0 && bankId) return { rowId, bankId };
+  } catch {}
+  return null;
 }
