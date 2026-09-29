@@ -59,13 +59,14 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   const mistakesCount = db.mistakes().filter((q) => q.qcmStatus === 'READY').length;
   const favoritesCount = db.favorites().filter((q) => q.qcmStatus === 'READY').length;
   const smartCount = db.smartQuestionPool(500).length;
-  const sessionActive = questions.length > 0 && sessionId !== null && !done;
+  const sessionRunning = questions.length > 0 && sessionId !== null && !done;
+  const sessionFocused = questions.length > 0 && sessionId !== null;
   const autoStartHandled = useRef(false);
 
   useEffect(() => {
-    onActiveChange?.(sessionActive);
+    onActiveChange?.(sessionFocused);
     return () => onActiveChange?.(false);
-  }, [sessionActive, onActiveChange]);
+  }, [sessionFocused, onActiveChange]);
 
   // Check for open session to resume
   useEffect(() => {
@@ -195,33 +196,35 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   const currentQuestion = questions[index];
   const shuffledOptions = useMemo(() => {
     if (!currentQuestion) return [];
-    const options = [
-      currentQuestion.correctAnswer,
-      currentQuestion.wrong1,
-      currentQuestion.wrong2,
-      currentQuestion.wrong3,
-    ].filter(Boolean);
-    return shuffleOptions ? options.sort(() => 0.5 - Math.random()) : options;
+    const options = currentQuestion.questionType === 'TRUE_FALSE'
+      ? ['صحيح', 'خطأ']
+      : [
+          currentQuestion.correctAnswer,
+          currentQuestion.wrong1,
+          currentQuestion.wrong2,
+          currentQuestion.wrong3,
+        ].filter(Boolean);
+    return shuffleOptions ? [...options].sort(() => 0.5 - Math.random()) : options;
   }, [currentQuestion?.rowId, shuffleOptions]);
 
   useEffect(() => {
-    if (!sessionActive || !currentQuestion || questionTimeLimit <= 0 || selectedAnswer !== null) return;
+    if (!sessionRunning || !currentQuestion || questionTimeLimit <= 0 || selectedAnswer !== null) return;
     setRemainingSeconds(questionTimeLimit);
-  }, [sessionActive, currentQuestion?.rowId, questionTimeLimit]);
+  }, [sessionRunning, currentQuestion?.rowId, questionTimeLimit]);
 
   useEffect(() => {
-    if (!sessionActive || questionTimeLimit <= 0 || selectedAnswer !== null || remainingSeconds <= 0) return;
+    if (!sessionRunning || questionTimeLimit <= 0 || selectedAnswer !== null || remainingSeconds <= 0) return;
 
     const timer = window.setTimeout(() => {
       setRemainingSeconds((value) => Math.max(0, value - 1));
     }, 1000);
 
     return () => window.clearTimeout(timer);
-  }, [sessionActive, questionTimeLimit, selectedAnswer, remainingSeconds]);
+  }, [sessionRunning, questionTimeLimit, selectedAnswer, remainingSeconds]);
 
   useEffect(() => {
     if (
-      !sessionActive ||
+      !sessionRunning ||
       !currentQuestion ||
       questionTimeLimit <= 0 ||
       selectedAnswer !== null ||
@@ -233,17 +236,17 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     setSelectedAnswer('__TIMEOUT__');
     db.recordAnswer(currentQuestion.rowId, '__TIMEOUT__', sessionId);
     setStreak(0);
-  }, [sessionActive, currentQuestion?.rowId, questionTimeLimit, remainingSeconds, selectedAnswer, sessionId]);
+  }, [sessionRunning, currentQuestion?.rowId, questionTimeLimit, remainingSeconds, selectedAnswer, sessionId]);
 
   useEffect(() => {
-    if (!sessionActive || !autoAdvance || selectedAnswer === null) return;
+    if (!sessionRunning || !autoAdvance || selectedAnswer === null) return;
 
     const timer = window.setTimeout(() => {
       void handleNext();
     }, showExplanation ? 1800 : 900);
 
     return () => window.clearTimeout(timer);
-  }, [sessionActive, autoAdvance, selectedAnswer, showExplanation, index, questions.length]);
+  }, [sessionRunning, autoAdvance, selectedAnswer, showExplanation, index, questions.length]);
 
   // 1. Session Result Screen
   if (done && sessionId !== null) {
