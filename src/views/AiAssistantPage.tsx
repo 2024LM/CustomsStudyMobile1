@@ -43,6 +43,7 @@ import {
   generateRichWebResponse,
   GeneratedBankQuestion,
   MixedAiSource,
+  respondToStudyChat,
   runStudyAssistant,
   searchWebReferences,
   WebReferenceCandidate,
@@ -115,6 +116,86 @@ function dedupeSources(sources: MixedAiSource[]): MixedAiSource[] {
     seen.add(key);
     return true;
   }).slice(0, 8);
+}
+
+type LocalCommandRoute =
+  | { kind: 'rich'; webKinds: Array<'youtube' | 'images' | 'links'> }
+  | { kind: 'progress' }
+  | { kind: 'chat' }
+  | { kind: 'planner' };
+
+function normalizeCommandText(value: string): string {
+  return value
+    .toLocaleLowerCase('ar')
+    .replace(/[إأآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function localCommandRoute(
+  text: string,
+  hasAttachments: boolean,
+  task: AiWorkspaceState['task']
+): LocalCommandRoute {
+  const normalized = normalizeCommandText(text);
+  const bankSignal = /(بنك|بنوك|qcm|اسئل|سؤال.*اختيار|اختيار متعدد)/i.test(normalized);
+  const referenceBuildSignal = /(انش.*مرجع|مرجع دراسي|مراجع.*بناء|مصادر.*بناء)/i.test(normalized);
+  const activeWorkflow = ['bank', 'references'].includes(task.kind)
+    && !['idle', 'done', 'error'].includes(task.status);
+
+  const webKinds: Array<'youtube' | 'images' | 'links'> = [];
+  if (/(youtube|يوتيوب|فيديوهات?|فيديو\b|دروس? مرئي)/i.test(normalized)) webKinds.push('youtube');
+  if (/(images?|صور|صوره)/i.test(normalized)) webKinds.push('images');
+  if (/(links?|روابط|رابط|مواقع مفيده|مواقع موثوقه)/i.test(normalized)) webKinds.push('links');
+
+  // طلب الوسائط المستقل لا يحتاج Planner. إذا كان الطلب صريحًا لبناء بنك/مرجع
+  // نتركه للمخطط حتى يحافظ على دورة اختيار المصادر.
+  if (webKinds.length && !bankSignal && !referenceBuildSignal) {
+    return { kind: 'rich', webKinds: Array.from(new Set(webKinds)) };
+  }
+
+  if (
+    !hasAttachments &&
+    !bankSignal &&
+    !referenceBuildSignal &&
+    /(تقدمي|تقدم|احصائيات|نتائجي|نسبه نجاح|نقاط ضعفي|مستواي|ادائي|مراجعتي اليوم)/i.test(normalized)
+  ) {
+    return { kind: 'progress' };
+  }
+
+  if (
+    bankSignal ||
+    referenceBuildSignal ||
+    (activeWorkflow && /(اكمل|اعتمد|مصادر|مراجع|انش|ولد|حفظ|احفظ|اضف|اختار|اختر)/i.test(normalized))
+  ) {
+    return { kind: 'planner' };
+  }
+
+  // المحادثة العادية وتحليل المرفقات يذهبان مباشرة إلى Gemini دون طلب Planner إضافي.
+  return { kind: 'chat' };
+}
+
+function localProgressReply(analytics: ReturnType<typeof db.dashboardAnalytics>): string {
+  const stats = analytics.stats;
+  const weak = (analytics.weakTopics || [])
+    .slice(0, 3)
+    .map((item: any) => item?.topic || item?.name || item?.label)
+    .filter(Boolean);
+  const strong = (analytics.strongTopics || [])
+    .slice(0, 3)
+    .map((item: any) => item?.topic || item?.name || item?.label)
+    .filter(Boolean);
+
+  const lines = [
+    `أجبت عن ${stats.answered} سؤالًا: ${stats.correct} صحيحة و${stats.wrong} خاطئة.`,
+    `نسبة النجاح الحالية: ${stats.successRate}%، والمراجعات المستحقة: ${analytics.dueReview}، والأسئلة غير المجابة: ${analytics.unseen}.`,
+  ];
+  if (weak.length) lines.push(`أكثر المحاور التي تحتاج مراجعة: ${weak.join('، ')}.`);
+  if (strong.length) lines.push(`أقوى المحاور حاليًا: ${strong.join('، ')}.`);
+  return lines.join('\n');
 }
 
 function copyableMessageText(message: AiChatMessage): string {
@@ -400,7 +481,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         ...nextTaskLocalSources,
       ];
 
-      const decision = await runStudyAssistant({
+      const assistantContext = {
         message: userText,
         task: {
           kind: state.task.kind,
@@ -431,7 +512,46 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           references: [],
         },
         recentMessages: state.messages.slice(-8).map((item) => ({ role: item.role, text: item.text })),
-      }, activeSources);
+      };
+
+      const route = localCommandRoute(userText, activeSources.length > 0, state.task);
+
+      if (route.kind === 'rich') {
+        const freshState: AiWorkspaceState = {
+          ...state,
+          task: freshChatTask(state.task),
+        };
+        setWorkspace(freshState);
+        setCandidates([]);
+        setShowSources(false);
+        setGenerated([]);
+        setTaskLocalSources([]);
+        await runRichSearch(route.webKinds, userText, freshState);
+        return;
+      }
+
+      if (route.kind === 'progress') {
+        const next = addAiMessage(state, 'assistant', localProgressReply(analytics));
+        setWorkspace(next);
+        setStatus('');
+        return;
+      }
+
+      if (route.kind === 'chat') {
+        setStatus(activeSources.length ? 'Gemini يحلل الطلب والمرفقات…' : 'Gemini يجيب مباشرة…');
+        const reply = await respondToStudyChat(assistantContext, activeSources);
+        const next = addAiMessage(
+          { ...state, task: freshChatTask(state.task) },
+          'assistant',
+          reply || 'لم يُرجع Gemini نصًا قابلًا للعرض.'
+        );
+        setWorkspace(next);
+        setStatus('');
+        return;
+      }
+
+      // Planner محجوز للمهام المركبة: إنشاء بنك/مرجع، استكمال المصادر، أو توليد الناتج.
+      const decision = await runStudyAssistant(assistantContext, activeSources);
 
       if (decision.action === 'web_content') {
         const freshState: AiWorkspaceState = {
