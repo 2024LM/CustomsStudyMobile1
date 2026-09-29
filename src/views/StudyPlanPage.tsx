@@ -22,6 +22,7 @@ import {
   stopDeviceAlarmPreview,
   saveAlarmAudio,
   requestStudyAlarmPermission,
+  requestDeviceAudioPermission,
   scheduleStudyAlarm,
   DeviceAlarmSound,
   StudyAlarmSound,
@@ -57,13 +58,16 @@ export const StudyPlanPage: React.FC<{
 
   useEffect(() => {
     let active = true;
-    void listDeviceAlarmSounds().then((items) => {
+    const loadSounds = async () => {
+      await requestDeviceAudioPermission();
+      const items = await listDeviceAlarmSounds();
       if (!active) return;
       setDeviceSounds(items);
       if (!deviceSoundUri && items.length > 0) {
         setDeviceSoundUri(items[0].uri);
       }
-    });
+    };
+    void loadSounds();
     return () => {
       active = false;
       void stopDeviceAlarmPreview();
