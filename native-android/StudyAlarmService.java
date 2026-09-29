@@ -11,6 +11,9 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.ToneGenerator;
 import android.os.Build;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 
@@ -23,6 +26,7 @@ public class StudyAlarmService extends Service {
     private static final String CHANNEL_ID = "study_alarm_playback";
     private MediaPlayer player;
     private ToneGenerator toneGenerator;
+    private Ringtone deviceRingtone;
     private Handler handler;
 
     @Override
@@ -38,6 +42,7 @@ public class StudyAlarmService extends Service {
         String message = intent != null ? intent.getStringExtra("message") : null;
         String sound = intent != null ? intent.getStringExtra("sound") : "focus";
         String customPath = intent != null ? intent.getStringExtra("customPath") : "";
+        String deviceSoundUri = intent != null ? intent.getStringExtra("deviceSoundUri") : "";
 
         Intent open = new Intent(this, MainActivity.class);
         PendingIntent openApp = PendingIntent.getActivity(
@@ -63,14 +68,24 @@ public class StudyAlarmService extends Service {
             .build();
 
         startForeground(NOTIFICATION_ID, notification);
-        playSound(sound, customPath);
+        playSound(sound, customPath, deviceSoundUri);
 
         handler.postDelayed(this::stopSelf, 90_000);
         return START_NOT_STICKY;
     }
 
-    private void playSound(String sound, String customPath) {
+    private void playSound(String sound, String customPath, String deviceSoundUri) {
         stopPlayback();
+
+        if ("device".equals(sound) && deviceSoundUri != null && !deviceSoundUri.isEmpty()) {
+            try {
+                deviceRingtone = RingtoneManager.getRingtone(this, Uri.parse(deviceSoundUri));
+                if (deviceRingtone != null) {
+                    deviceRingtone.play();
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
 
         if ("custom".equals(sound) && customPath != null && !customPath.isEmpty()) {
             try {
@@ -136,6 +151,10 @@ public class StudyAlarmService extends Service {
             try { player.stop(); } catch (Exception ignored) {}
             player.release();
             player = null;
+        }
+        if (deviceRingtone != null) {
+            try { deviceRingtone.stop(); } catch (Exception ignored) {}
+            deviceRingtone = null;
         }
         if (toneGenerator != null) {
             toneGenerator.release();
