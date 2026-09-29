@@ -30,6 +30,8 @@ interface NexusTtsPlugin {
 const NexusTts = registerPlugin<NexusTtsPlugin>('NexusTts');
 const VOICE_KEY = 'tts_selected_voice_v1';
 const RATE_KEY = 'tts_rate_v1';
+const SOFT_TAA_KEY = 'tts_soft_taa_marbuta_v1';
+const SENTENCE_PAUSE_KEY = 'tts_sentence_pause_v1';
 
 export function selectedTtsVoiceId(): string {
   try { return localStorage.getItem(VOICE_KEY) || ''; } catch { return ''; }
@@ -45,15 +47,58 @@ export function saveSelectedTtsVoiceId(id: string): void {
 export function selectedTtsRate(): number {
   try {
     const value = Number(localStorage.getItem(RATE_KEY));
-    return Number.isFinite(value) ? Math.min(1.5, Math.max(0.5, value)) : 0.92;
+    return Number.isFinite(value) ? Math.min(1.5, Math.max(0.5, value)) : 1;
   } catch {
-    return 0.92;
+    return 1;
   }
 }
 
 export function saveSelectedTtsRate(rate: number): void {
   const safe = Math.min(1.5, Math.max(0.5, rate));
   try { localStorage.setItem(RATE_KEY, String(safe)); } catch {}
+}
+
+export function softenFinalTaaMarbuta(): boolean {
+  try {
+    const value = localStorage.getItem(SOFT_TAA_KEY);
+    return value === null ? false : value === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveSoftenFinalTaaMarbuta(enabled: boolean): void {
+  try { localStorage.setItem(SOFT_TAA_KEY, enabled ? '1' : '0'); } catch {}
+}
+
+export function sentencePauseEnabled(): boolean {
+  try {
+    const value = localStorage.getItem(SENTENCE_PAUSE_KEY);
+    return value === null ? true : value === '1';
+  } catch {
+    return true;
+  }
+}
+
+export function saveSentencePauseEnabled(enabled: boolean): void {
+  try { localStorage.setItem(SENTENCE_PAUSE_KEY, enabled ? '1' : '0'); } catch {}
+}
+
+function prepareTextForSpeech(text: string): string {
+  let prepared = text.trim();
+
+  if (softenFinalTaaMarbuta()) {
+    // TTS-only normalization: keep stored/displayed text untouched.
+    // Replacing final ة with ه encourages a pausal Arabic pronunciation instead of an audible "ت".
+    prepared = prepared.replace(/ة(?=(?:[\s.,!?؟؛،:)"'»\]}]|$))/g, 'ه');
+  }
+
+  if (!sentencePauseEnabled()) {
+    // When sentence pauses are disabled, soften sentence-ending punctuation into spaces.
+    prepared = prepared.replace(/[.!?؟؛]+/g, ' ');
+  }
+
+  return prepared.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function browserVoices(): SpeechSynthesisVoice[] {
@@ -208,7 +253,7 @@ function speakInBrowser(text: string, rate: number, selectedId: string): Promise
 }
 
 export async function speakArabic(text: string, rate = selectedTtsRate()): Promise<{ locale: string; voice: string }> {
-  const clean = text.trim();
+  const clean = prepareTextForSpeech(text);
   if (!clean) throw new Error('لا يوجد نص للقراءة.');
 
   const selectedId = selectedTtsVoiceId();
