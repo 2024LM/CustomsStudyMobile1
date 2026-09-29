@@ -131,6 +131,34 @@ export async function arabicTtsStatus() {
   };
 }
 
+function splitBrowserSpeech(text: string, limit = 900): string[] {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  const chunks: string[] = [];
+  let remaining = clean;
+
+  while (remaining.length > limit) {
+    const searchStart = Math.max(0, limit - 250);
+    let cut = -1;
+    for (let i = limit; i >= searchStart; i--) {
+      if (/[.!?؟؛،,;]/.test(remaining[i - 1] || '')) {
+        cut = i;
+        break;
+      }
+    }
+    if (cut < 0) {
+      const space = remaining.lastIndexOf(' ', limit);
+      cut = space > searchStart ? space : limit;
+    }
+    const part = remaining.slice(0, cut).trim();
+    if (part) chunks.push(part);
+    remaining = remaining.slice(cut).trim();
+  }
+
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
 function speakInBrowser(text: string, rate: number, selectedId: string): Promise<{ locale: string; voice: string }> {
   return new Promise(async (resolve, reject) => {
     if (!('speechSynthesis' in window)) {
@@ -142,17 +170,40 @@ function speakInBrowser(text: string, rate: number, selectedId: string): Promise
     const selected = voices.find((voice) => voice.voiceURI === selectedId)
       || voices.find((voice) => /^ar(?:-|$)/i.test(voice.lang))
       || voices[0];
+    const chunks = splitBrowserSpeech(text);
+
+    if (!chunks.length) {
+      reject(new Error('لا يوجد نص للقراءة.'));
+      return;
+    }
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    if (selected) {
-      utterance.voice = selected;
-      utterance.lang = selected.lang;
-    }
-    utterance.onerror = () => reject(new Error('تعذر تشغيل الصوت في المتصفح.'));
-    utterance.onstart = () => resolve({ locale: selected?.lang || '', voice: selected?.name || '' });
-    window.speechSynthesis.speak(utterance);
+    let started = false;
+    let index = 0;
+
+    const speakNext = () => {
+      if (index >= chunks.length) return;
+      const utterance = new SpeechSynthesisUtterance(chunks[index]);
+      utterance.rate = rate;
+      if (selected) {
+        utterance.voice = selected;
+        utterance.lang = selected.lang;
+      }
+      utterance.onerror = () => reject(new Error('تعذر تشغيل الصوت في المتصفح.'));
+      utterance.onstart = () => {
+        if (!started) {
+          started = true;
+          resolve({ locale: selected?.lang || '', voice: selected?.name || '' });
+        }
+      };
+      utterance.onend = () => {
+        index += 1;
+        if (index < chunks.length) speakNext();
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    speakNext();
   });
 }
 
