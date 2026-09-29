@@ -7,6 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Base64;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.database.Cursor;
+
+import com.getcapacitor.JSArray;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -32,6 +38,7 @@ import java.util.Calendar;
 )
 public class NexusStudyAlarmPlugin extends Plugin {
     private static final int REQUEST_CODE = 7401;
+    private Ringtone previewRingtone;
 
     @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
@@ -50,6 +57,68 @@ public class NexusStudyAlarmPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("granted", getPermissionState("notifications") == PermissionState.GRANTED);
         call.resolve(result);
+    }
+
+
+    @PluginMethod
+    public void listDeviceSounds(PluginCall call) {
+        try {
+            RingtoneManager manager = new RingtoneManager(getContext());
+            manager.setType(RingtoneManager.TYPE_ALARM | RingtoneManager.TYPE_NOTIFICATION | RingtoneManager.TYPE_RINGTONE);
+            Cursor cursor = manager.getCursor();
+            JSArray sounds = new JSArray();
+            int index = 0;
+            while (cursor.moveToNext() && index < 200) {
+                Uri uri = manager.getRingtoneUri(cursor.getPosition());
+                String title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX);
+                JSObject item = new JSObject();
+                item.put("id", "device:" + uri.toString());
+                item.put("title", title == null || title.trim().isEmpty() ? "نغمة " + (index + 1) : title);
+                item.put("uri", uri.toString());
+                sounds.put(item);
+                index++;
+            }
+            cursor.close();
+            JSObject result = new JSObject();
+            result.put("sounds", sounds);
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject("Unable to list device sounds", error);
+        }
+    }
+
+    @PluginMethod
+    public void previewSound(PluginCall call) {
+        try {
+            stopPreviewInternal();
+            String uriString = call.getString("uri", "");
+            if (uriString.isEmpty()) {
+                call.reject("Missing sound URI");
+                return;
+            }
+            previewRingtone = RingtoneManager.getRingtone(getContext(), Uri.parse(uriString));
+            if (previewRingtone == null) {
+                call.reject("Unable to open ringtone");
+                return;
+            }
+            previewRingtone.play();
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("Unable to preview sound", error);
+        }
+    }
+
+    @PluginMethod
+    public void stopPreview(PluginCall call) {
+        stopPreviewInternal();
+        call.resolve();
+    }
+
+    private void stopPreviewInternal() {
+        if (previewRingtone != null) {
+            try { previewRingtone.stop(); } catch (Exception ignored) {}
+            previewRingtone = null;
+        }
     }
 
     @PluginMethod
@@ -95,6 +164,8 @@ public class NexusStudyAlarmPlugin extends Plugin {
             String message = call.getString("message", "حان وقت جلسة المراجعة.");
             String sound = call.getString("sound", "focus");
             String customPath = call.getString("customPath", "");
+            String deviceSoundUri = call.getString("deviceSoundUri", "");
+            String customMessage = call.getString("customMessage", "");
             boolean repeatDaily = call.getBoolean("repeatDaily", false);
             int hour = call.getInt("hour", -1);
             int minute = call.getInt("minute", -1);
@@ -110,6 +181,8 @@ public class NexusStudyAlarmPlugin extends Plugin {
             intent.putExtra("message", message);
             intent.putExtra("sound", sound);
             intent.putExtra("customPath", customPath);
+            intent.putExtra("deviceSoundUri", deviceSoundUri);
+            intent.putExtra("customMessage", customMessage);
             intent.putExtra("repeatDaily", repeatDaily);
             intent.putExtra("hour", hour);
             intent.putExtra("minute", minute);
