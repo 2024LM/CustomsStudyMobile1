@@ -70,7 +70,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
   }, [blob, native]);
 
   useEffect(() => {
-    if (!native || !pages || loading || error) return;
+    if (!native || !pages || loading) return;
     const token = ++renderToken.current;
     setRendering(true);
     setError('');
@@ -88,7 +88,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
       .finally(() => {
         if (renderToken.current === token) setRendering(false);
       });
-  }, [native, page, pages, zoom, loading, error]);
+  }, [native, page, pages, zoom, loading]);
 
   const goPage = (next: number) => {
     if (!pages) return;
@@ -109,8 +109,8 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
 
   return (
     <div className={shellClass} dir="rtl">
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-2.5 py-2 flex items-center gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-2.5 py-2 flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1 basis-[150px]">
           <div className="text-[11px] font-bold text-[#2C2145] truncate">{title}</div>
           <div className="text-[10px] text-gray-400">
             {native ? (pages ? `الصفحة ${page} من ${pages}` : 'قارئ PDF') : 'قارئ PDF'}
@@ -118,7 +118,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         </div>
 
         {native && pages > 0 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 order-3 w-full sm:order-none sm:w-auto">
             <button
               onClick={() => goPage(page - 1)}
               disabled={page <= 1 || rendering}
@@ -151,7 +151,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
           </div>
         )}
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ms-auto">
           <button
             onClick={() => setSafeZoom(zoom - 0.15)}
             disabled={zoom <= 0.7}
@@ -201,13 +201,15 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         {!loading && !error && native && (
           <div className="min-h-[60vh] flex justify-center items-start">
             {imageUrl ? (
-              <div className="relative bg-white shadow-sm rounded-[8px] overflow-hidden max-w-none">
+              <div
+                className="relative bg-white shadow-sm rounded-[8px] overflow-hidden shrink-0"
+                style={{ width: `${Math.round(100 * zoom)}%`, minWidth: '100%' }}
+              >
                 <img
                   src={imageUrl}
                   alt={`${title} - الصفحة ${page}`}
                   draggable={false}
-                  className="block max-w-none h-auto select-none"
-                  style={{ width: `${Math.round(100 * zoom)}%`, minWidth: '100%' }}
+                  className="block w-full h-auto select-none"
                 />
                 {rendering && (
                   <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] flex items-center justify-center text-xs text-gray-500">
