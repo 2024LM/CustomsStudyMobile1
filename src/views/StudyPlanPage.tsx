@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  BellRing,
   BookOpenCheck,
   CalendarDays,
   CheckCircle2,
@@ -206,7 +205,7 @@ export const StudyPlanPage: React.FC<{
         time: alarmTime,
         sound: alarmSound,
         customPath,
-        repeatDaily,
+        repeatDaily: Boolean(examDate) ? true : repeatDaily,
         title: `🎓 وقت المراجعة: ${db.activeDomain().name}`,
         message: `هدف اليوم ${effectiveTarget} سؤال. المتبقي الآن ${todayRemaining}.`,
       });
@@ -419,10 +418,10 @@ export const StudyPlanPage: React.FC<{
                   className="mt-2 w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
                 />
               </div>
-              <label className="flex-1 rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 flex items-center gap-2 mt-6">
-                <input type="checkbox" checked={repeatDaily} onChange={(e) => setRepeatDaily(e.target.checked)} />
-                <span className="text-xs font-bold">يوميًا</span>
-              </label>
+              <div className="flex-1 rounded-[13px] bg-[#F5F3FF] border border-[#E7E2F8] p-3 flex items-center gap-2 mt-6">
+                <span className="w-5 h-5 rounded-full bg-[#5B3FD6] text-white text-[11px] flex items-center justify-center">✓</span>
+                <span className="text-xs font-bold text-[#5B3FD6]">يوميًا حتى الامتحان</span>
+              </div>
             </div>
 
             <div>
