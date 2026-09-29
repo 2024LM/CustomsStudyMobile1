@@ -365,6 +365,21 @@ public class NexusStudyAlarmPlugin extends Plugin {
         }
     }
 
+
+    @PluginMethod
+    public void consumePendingQuestion(PluginCall call) {
+        android.content.SharedPreferences prefs = getContext().getSharedPreferences("study_question_reminders", Context.MODE_PRIVATE);
+        long rowId = prefs.getLong("pending_question_row_id", -1L);
+        String bankId = prefs.getString("pending_question_bank_id", "");
+        JSObject result = new JSObject();
+        if (rowId > 0 && bankId != null && !bankId.isEmpty()) {
+            result.put("rowId", rowId);
+            result.put("bankId", bankId);
+            prefs.edit().remove("pending_question_row_id").remove("pending_question_bank_id").apply();
+        }
+        call.resolve(result);
+    }
+
     @PluginMethod
     public void cancelQuestionReminder(PluginCall call) {
         Intent intent = new Intent(getContext(), StudyAlarmReceiver.class);
