@@ -38,7 +38,8 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
         service.putExtras(intent);
         if (plan.available) {
             service.putExtra("title", plan.title);
-            service.putExtra("message", plan.message);
+            String customMessage = intent.getStringExtra("customMessage");
+            service.putExtra("message", customMessage != null && !customMessage.trim().isEmpty() ? customMessage.trim() : plan.message);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
