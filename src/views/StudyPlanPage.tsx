@@ -78,6 +78,28 @@ export const StudyPlanPage: React.FC<{
     ? 'كل البنوك'
     : banks.find((bank) => bank.id === scope)?.name || 'البنك المحدد';
 
+  const nextBankForReview = useMemo(() => {
+    if (bankId) return bankId;
+    const ranked = banks
+      .map((bank) => ({ bank, plan: db.studyPlanAnalytics(bank.id) }))
+      .filter((item) => item.plan.playable > 0)
+      .sort((a, b) =>
+        b.plan.unseenPlayable - a.plan.unseenPlayable
+        || b.plan.playable - a.plan.playable
+      );
+    return ranked[0]?.bank.id || db.activeBankId();
+  }, [bankId, banks]);
+
+  const nextBankAnalytics = db.studyPlanAnalytics(nextBankForReview);
+  const reviewSessionSize = Math.max(
+    1,
+    Math.min(
+      sessionSize,
+      nextBankAnalytics.playable || 1,
+      nextBankAnalytics.unseenPlayable || nextBankAnalytics.playable || 1
+    )
+  );
+
   const handleAudio = async (file: File | null) => {
     if (!file) return;
     setBusy(true);
@@ -153,8 +175,8 @@ export const StudyPlanPage: React.FC<{
 
   const startReview = () => {
     persistPlanSettings();
-    if (bankId) db.setActiveBank(bankId);
-    onStartReview(sessionSize);
+    db.setActiveBank(nextBankForReview);
+    onStartReview(reviewSessionSize);
   };
 
   const sounds: Array<{ id: StudyAlarmSound; title: string; subtitle: string }> = [
@@ -238,7 +260,7 @@ export const StudyPlanPage: React.FC<{
           className="w-full mt-4 py-3.5 rounded-[15px] bg-white text-[#5B3FD6] text-sm font-black flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Play className="w-4 h-4 fill-current" />
-          {todayRemaining === 0 ? `جلسة إضافية · ${sessionSize} سؤال` : `ابدأ المراجعة · ${sessionSize} سؤال`}
+          {todayRemaining === 0 ? `جلسة إضافية · ${reviewSessionSize} سؤال` : `ابدأ المراجعة · ${reviewSessionSize} سؤال`}
         </button>
       </section>
 
