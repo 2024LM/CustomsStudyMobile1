@@ -46,7 +46,9 @@ export function saveSelectedTtsVoiceId(id: string): void {
 
 export function selectedTtsRate(): number {
   try {
-    const value = Number(localStorage.getItem(RATE_KEY));
+    const stored = localStorage.getItem(RATE_KEY);
+    if (stored === null || stored.trim() === '') return 1;
+    const value = Number(stored);
     return Number.isFinite(value) ? Math.min(1.5, Math.max(0.5, value)) : 1;
   } catch {
     return 1;
