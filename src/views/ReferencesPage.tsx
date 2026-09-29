@@ -8,6 +8,7 @@ import { addLocalReference, deleteLocalReference, listLocalReferences, LocalRefe
 import { db } from '../services/db';
 import { AiReferenceTools } from '../components/AiReferenceTools';
 import { PdfReader } from '../components/PdfReader';
+import { SpeakButton } from '../components/SpeakButton';
 
 
 function htmlToPlainText(html: string): string {
@@ -315,10 +316,21 @@ export const ReferencesPage: React.FC = () => {
         </div>
 
         {!contentLoading && !contentError && localSelected.type !== 'pdf' && (
-          <AiReferenceTools
-            title={localSelected.name}
-            text={content || htmlToPlainText(wordHtml)}
-          />
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <AiReferenceTools
+                title={localSelected.name}
+                text={content || htmlToPlainText(wordHtml)}
+              />
+            </div>
+            <SpeakButton
+              text={content || htmlToPlainText(wordHtml)}
+              compact={false}
+              title="استماع"
+              onError={setLocalStatus}
+              className="shrink-0 bg-white border border-gray-100 shadow-xs"
+            />
+          </div>
         )}
 
         <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
@@ -351,10 +363,21 @@ export const ReferencesPage: React.FC = () => {
           </div>
         </div>
         {!contentLoading && !contentError && downloadableReferenceType(selected.type) !== 'pdf' && (
-          <AiReferenceTools
-            title={selected.title}
-            text={content || htmlToPlainText(wordHtml)}
-          />
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <AiReferenceTools
+                title={selected.title}
+                text={content || htmlToPlainText(wordHtml)}
+              />
+            </div>
+            <SpeakButton
+              text={content || htmlToPlainText(wordHtml)}
+              compact={false}
+              title="استماع"
+              onError={setContentError}
+              className="shrink-0 bg-white border border-gray-100 shadow-xs"
+            />
+          </div>
         )}
 
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
