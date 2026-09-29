@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NexusSecureSecretsPlugin.class);
         registerPlugin(NexusNanoAiPlugin.class);
         registerPlugin(NexusFileExportPlugin.class);
+        registerPlugin(NexusPdfPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
