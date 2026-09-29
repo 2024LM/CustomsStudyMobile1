@@ -1,13 +1,18 @@
 package com.nexus.customsstudy;
 
 import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
+
+import androidx.core.app.NotificationCompat;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -18,13 +23,24 @@ import java.util.Locale;
 public class StudyAlarmReceiver extends BroadcastReceiver {
     public static final String ACTION_FIRE = "com.nexus.customsstudy.STUDY_ALARM_FIRE";
     public static final String ACTION_STOP = "com.nexus.customsstudy.STUDY_ALARM_STOP";
+    public static final String ACTION_QUESTION_FIRE = "com.nexus.customsstudy.QUESTION_REMINDER_FIRE";
+
     private static final int REQUEST_CODE = 7401;
+    private static final int QUESTION_REQUEST_CODE = 7403;
+    private static final int QUESTION_NOTIFICATION_ID = 7420;
+    private static final String QUESTION_CHANNEL_ID = "study_question_reminders";
     private static final String DATABASE_NAME = "customs_study_core.db";
+    private static final String PREFS = "study_question_reminders";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (ACTION_STOP.equals(intent.getAction())) {
             context.stopService(new Intent(context, StudyAlarmService.class));
+            return;
+        }
+
+        if (ACTION_QUESTION_FIRE.equals(intent.getAction())) {
+            fireQuestionReminder(context, intent);
             return;
         }
 
@@ -52,6 +68,112 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
             int hour = intent.getIntExtra("hour", -1);
             int minute = intent.getIntExtra("minute", -1);
             if (hour >= 0 && minute >= 0) scheduleNextDaily(context, intent, hour, minute);
+        }
+    }
+
+    private void fireQuestionReminder(Context context, Intent intent) {
+        int intervalHours = Math.max(1, Math.min(intent.getIntExtra("intervalHours", 1), 24));
+        QuestionReminder question = readRandomQuestion(context);
+
+        if (question != null) {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            prefs.edit()
+                .putLong("pending_question_row_id", question.rowId)
+                .putString("pending_question_bank_id", question.bankId)
+                .apply();
+
+            Intent open = new Intent(context, MainActivity.class);
+            open.putExtra("questionRowId", question.rowId);
+            open.putExtra("questionBankId", question.bankId);
+            open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+            PendingIntent openApp = PendingIntent.getActivity(
+                context,
+                7421,
+                open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                    QUESTION_CHANNEL_ID,
+                    "أسئلة المراجعة الدورية",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                );
+                channel.enableVibration(true);
+                manager.createNotificationChannel(channel);
+            }
+
+            NotificationCompat.BigTextStyle style = new NotificationCompat.BigTextStyle()
+                .bigText(question.text);
+
+            manager.notify(
+                QUESTION_NOTIFICATION_ID,
+                new NotificationCompat.Builder(context, QUESTION_CHANNEL_ID)
+                    .setSmallIcon(context.getApplicationInfo().icon)
+                    .setContentTitle("🎓 سؤال مراجعة")
+                    .setContentText(question.text)
+                    .setStyle(style)
+                    .setAutoCancel(true)
+                    .setContentIntent(openApp)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .build()
+            );
+        }
+
+        scheduleNextQuestion(context, intervalHours);
+    }
+
+    private QuestionReminder readRandomQuestion(Context context) {
+        File dbFile = context.getDatabasePath(DATABASE_NAME);
+        if (!dbFile.exists()) return null;
+
+        SQLiteDatabase db = null;
+        try {
+            db = SQLiteDatabase.openDatabase(dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+            String activeBankId = setting(db, "active_bank_id", "");
+            if (activeBankId.isEmpty()) return null;
+
+            String sql = "SELECT q.row_id,q.bank_id,q.question FROM questions q "
+                + "JOIN banks b ON b.id=q.bank_id "
+                + "WHERE q.bank_id=? AND q.enabled=1 AND b.enabled=1 AND q.qcm_status='READY' AND "
+                + "((q.question_type='TRUE_FALSE' AND TRIM(LOWER(q.correct_answer)) IN ('صحيح','خطأ','true','false')) "
+                + "OR (q.question_type='QCM' AND q.wrong1<>'' AND q.wrong2<>'' AND q.wrong3<>'')) "
+                + "ORDER BY RANDOM() LIMIT 1";
+
+            try (Cursor c = db.rawQuery(sql, new String[]{activeBankId})) {
+                if (c.moveToFirst()) {
+                    return new QuestionReminder(c.getLong(0), c.getString(1), c.getString(2));
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (db != null) db.close();
+        }
+        return null;
+    }
+
+    private void scheduleNextQuestion(Context context, int intervalHours) {
+        long triggerAt = System.currentTimeMillis() + intervalHours * 60L * 60L * 1000L;
+        Intent again = new Intent(context, StudyAlarmReceiver.class);
+        again.setAction(ACTION_QUESTION_FIRE);
+        again.putExtra("intervalHours", intervalHours);
+
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context,
+            QUESTION_REQUEST_CODE,
+            again,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !manager.canScheduleExactAlarms()) {
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+        } else {
+            manager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pending);
         }
     }
 
@@ -229,6 +351,18 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
             AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             manager.cancel(pending);
             pending.cancel();
+        }
+    }
+
+    private static final class QuestionReminder {
+        final long rowId;
+        final String bankId;
+        final String text;
+
+        QuestionReminder(long rowId, String bankId, String text) {
+            this.rowId = rowId;
+            this.bankId = bankId;
+            this.text = text;
         }
     }
 
