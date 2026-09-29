@@ -47,6 +47,7 @@ import java.util.Calendar;
 )
 public class NexusStudyAlarmPlugin extends Plugin {
     private static final int REQUEST_CODE = 7401;
+    private static final int QUESTION_REQUEST_CODE = 7403;
     private Ringtone previewRingtone;
     private MediaPlayer previewPlayer;
 
@@ -322,6 +323,64 @@ public class NexusStudyAlarmPlugin extends Plugin {
         } catch (Exception error) {
             call.reject("Unable to schedule study alarm", error);
         }
+    }
+
+
+    @PluginMethod
+    public void scheduleQuestionReminder(PluginCall call) {
+        try {
+            long triggerAt = call.getLong("triggerAt", 0L);
+            int intervalHours = Math.max(1, Math.min(call.getInt("intervalHours", 1), 24));
+            if (triggerAt <= System.currentTimeMillis()) {
+                call.reject("Question reminder time must be in the future");
+                return;
+            }
+
+            Intent intent = new Intent(getContext(), StudyAlarmReceiver.class);
+            intent.setAction(StudyAlarmReceiver.ACTION_QUESTION_FIRE);
+            intent.putExtra("intervalHours", intervalHours);
+
+            PendingIntent pending = PendingIntent.getBroadcast(
+                getContext(),
+                QUESTION_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            AlarmManager manager = (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !manager.canScheduleExactAlarms()) {
+                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+            } else {
+                manager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+            }
+
+            JSObject result = new JSObject();
+            result.put("scheduled", true);
+            result.put("exact", Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms());
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject("Unable to schedule question reminder", error);
+        }
+    }
+
+    @PluginMethod
+    public void cancelQuestionReminder(PluginCall call) {
+        Intent intent = new Intent(getContext(), StudyAlarmReceiver.class);
+        intent.setAction(StudyAlarmReceiver.ACTION_QUESTION_FIRE);
+        PendingIntent pending = PendingIntent.getBroadcast(
+            getContext(),
+            QUESTION_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+        );
+        if (pending != null) {
+            AlarmManager manager = (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
+            manager.cancel(pending);
+            pending.cancel();
+        }
+        call.resolve();
     }
 
     @PluginMethod
