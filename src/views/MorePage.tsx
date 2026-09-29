@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   MoreHorizontal,
   Sparkles,
+  Volume2,
 } from 'lucide-react';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
@@ -24,6 +25,7 @@ interface MorePageProps {
   onGoToDownloads: () => void;
   onGoToAdvanced: () => void;
   onGoToAiSettings: () => void;
+  onGoToVoiceSettings: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -39,6 +41,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToDownloads,
   onGoToAdvanced,
   onGoToAiSettings,
+  onGoToVoiceSettings,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -73,6 +76,12 @@ export const MorePage: React.FC<MorePageProps> = ({
       title: 'الذكاء الاصطناعي',
       subtitle: 'Gemini API، التفعيل واختبار الاتصال',
       action: onGoToAiSettings,
+    },
+    {
+      icon: Volume2,
+      title: 'الصوت والقراءة',
+      subtitle: 'اختيار صوت الهاتف وسرعة القراءة في AI والأسئلة والمراجع',
+      action: onGoToVoiceSettings,
     },
     {
       icon: CalendarDays,
