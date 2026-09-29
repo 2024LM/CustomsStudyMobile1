@@ -50,7 +50,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 bg-white border border-[#E6E2F0] rounded-[16px] p-1.5 shadow-xs">
+          <div data-tour="study-mode-switch" className="grid grid-cols-2 gap-1.5 bg-white border border-[#E6E2F0] rounded-[16px] p-1.5 shadow-xs">
             <button
               type="button"
               onClick={() => setView('browse')}
