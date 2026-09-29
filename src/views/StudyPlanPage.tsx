@@ -117,9 +117,9 @@ export const StudyPlanPage: React.FC<{
     }
   };
 
-  const persistPlanSettings = () => {
+  const persistPlanSettings = (examDateOverride?: string) => {
     const safeTarget = Math.min(Math.max(dailyTarget, 1), 500);
-    db.setSetting('study_plan_exam_date', examDate);
+    db.setSetting('study_plan_exam_date', examDateOverride ?? examDate);
     db.setSetting('study_plan_daily_target', String(safeTarget));
     db.setSetting('study_plan_auto_target', autoTarget ? '1' : '0');
     db.setSetting('study_plan_scope', scope);
@@ -130,6 +130,53 @@ export const StudyPlanPage: React.FC<{
     db.setSetting('study_alarm_custom_name', customName);
     db.setSetting('study_alarm_repeat_daily', repeatDaily ? '1' : '0');
     return safeTarget;
+  };
+
+  const handleExamDateChange = async (value: string) => {
+    setExamDate(value);
+    persistPlanSettings(value);
+
+    if (!value) {
+      setAlarmEnabled(false);
+      db.setSetting('study_alarm_enabled', '0');
+      try { await cancelStudyAlarm(); } catch {}
+      setStatus('تم حذف موعد الامتحان وإيقاف إشعارات الخطة اليومية.');
+      return;
+    }
+
+    const examEnd = new Date(`${value}T23:59:59`);
+    if (Number.isNaN(examEnd.getTime()) || examEnd.getTime() < Date.now()) {
+      setStatus('تم حفظ التاريخ، لكنه تاريخ منتهٍ. اختر موعدًا قادمًا لتفعيل الخطة اليومية.');
+      return;
+    }
+
+    setAlarmEnabled(true);
+    setRepeatDaily(true);
+    db.setSetting('study_alarm_enabled', '1');
+    db.setSetting('study_alarm_repeat_daily', '1');
+
+    try {
+      const permissionGranted = await requestStudyAlarmPermission();
+      if (!permissionGranted) {
+        setStatus('تم حفظ موعد الامتحان والخطة، لكن يجب السماح بالإشعارات لتصلك خطة اليوم يوميًا.');
+        return;
+      }
+
+      const result = await scheduleStudyAlarm({
+        time: alarmTime,
+        sound: alarmSound === 'custom' && !customPath ? 'focus' : alarmSound,
+        customPath: alarmSound === 'custom' ? customPath : '',
+        repeatDaily: true,
+        title: '🎓 خطة مراجعة اليوم',
+        message: 'سيتم حساب هدف اليوم تلقائيًا عند وقت التذكير.',
+      });
+
+      setStatus(result.exact
+        ? 'تم حفظ موعد الامتحان وتفعيل إشعار خطة اليوم يوميًا.'
+        : 'تم حفظ الموعد وتفعيل إشعار يومي، وقد يؤخره Android قليلًا لعدم توفر الإذن الدقيق.');
+    } catch (error: any) {
+      setStatus(error?.message || 'تم حفظ الموعد، لكن تعذر جدولة إشعار الخطة اليومية.');
+    }
   };
 
   const savePlan = async () => {
@@ -204,7 +251,7 @@ export const StudyPlanPage: React.FC<{
         <input
           type="date"
           value={examDate}
-          onChange={(e) => setExamDate(e.target.value)}
+          onChange={(e) => void handleExamDateChange(e.target.value)}
           className="w-full rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm"
         />
 
