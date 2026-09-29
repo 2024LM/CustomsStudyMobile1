@@ -47,14 +47,14 @@ async function loadWebPdf(blob: Blob): Promise<WebPdfDocument> {
 }
 
 async function renderWebPdfPage(
-  document: WebPdfDocument,
+  pdfDocument: WebPdfDocument,
   pageNumber: number,
   zoom: number
 ): Promise<string> {
-  const pdfPage = await document.getPage(pageNumber);
+  const pdfPage = await pdfDocument.getPage(pageNumber);
   const viewport = pdfPage.getViewport({ scale: Math.max(0.8, Math.min(3, 1.45 * zoom)) });
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-  const canvas = document.createElement('canvas');
+  const canvas = window.document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
   canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
   const context = canvas.getContext('2d', { alpha: false });
