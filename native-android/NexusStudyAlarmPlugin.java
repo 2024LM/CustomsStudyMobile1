@@ -12,6 +12,8 @@ import android.os.Build;
 import android.util.Base64;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
+import android.media.MediaPlayer;
+import android.media.AudioAttributes;
 import android.net.Uri;
 import android.database.Cursor;
 
@@ -46,6 +48,7 @@ import java.util.Calendar;
 public class NexusStudyAlarmPlugin extends Plugin {
     private static final int REQUEST_CODE = 7401;
     private Ringtone previewRingtone;
+    private MediaPlayer previewPlayer;
 
     @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
@@ -183,6 +186,36 @@ public class NexusStudyAlarmPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void previewCustomSound(PluginCall call) {
+        try {
+            stopPreviewInternal();
+            String path = call.getString("path", "");
+            if (path.isEmpty()) {
+                call.reject("Missing custom sound path");
+                return;
+            }
+            File file = new File(path);
+            if (!file.exists()) {
+                call.reject("Custom sound file not found");
+                return;
+            }
+            previewPlayer = new MediaPlayer();
+            previewPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build());
+            previewPlayer.setDataSource(file.getAbsolutePath());
+            previewPlayer.setLooping(false);
+            previewPlayer.prepare();
+            previewPlayer.start();
+            call.resolve();
+        } catch (Exception error) {
+            stopPreviewInternal();
+            call.reject("Unable to preview custom sound", error);
+        }
+    }
+
+    @PluginMethod
     public void stopPreview(PluginCall call) {
         stopPreviewInternal();
         call.resolve();
@@ -192,6 +225,11 @@ public class NexusStudyAlarmPlugin extends Plugin {
         if (previewRingtone != null) {
             try { previewRingtone.stop(); } catch (Exception ignored) {}
             previewRingtone = null;
+        }
+        if (previewPlayer != null) {
+            try { previewPlayer.stop(); } catch (Exception ignored) {}
+            previewPlayer.release();
+            previewPlayer = null;
         }
     }
 
