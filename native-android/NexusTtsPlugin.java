@@ -3,12 +3,16 @@ package com.nexus.customsstudy;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -34,6 +38,8 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
     }
 
     private void selectBestArabicVoice() {
+        if (!ready || tts == null) return;
+
         Locale[] preferred = new Locale[] {
             new Locale("ar", "MA"),
             new Locale("ar", "SA"),
@@ -72,6 +78,67 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         } catch (Exception ignored) {}
     }
 
+    private Voice findVoice(String name) {
+        if (!ready || tts == null || name == null || name.trim().isEmpty()) return null;
+        try {
+            Set<Voice> voices = tts.getVoices();
+            if (voices == null) return null;
+            for (Voice voice : voices) {
+                if (name.equals(voice.getName())) return voice;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void applyVoice(Voice voice) {
+        if (voice == null || tts == null) return;
+        tts.setVoice(voice);
+        activeVoice = voice;
+        activeLocale = voice.getLocale();
+    }
+
+    @PluginMethod
+    public void voices(PluginCall call) {
+        JSObject result = new JSObject();
+        JSArray output = new JSArray();
+
+        if (!ready || tts == null) {
+            result.put("ready", false);
+            result.put("voices", output);
+            call.resolve(result);
+            return;
+        }
+
+        try {
+            Set<Voice> voiceSet = tts.getVoices();
+            List<Voice> voices = new ArrayList<>();
+            if (voiceSet != null) voices.addAll(voiceSet);
+            voices.sort(Comparator
+                .comparing((Voice v) -> v.getLocale() != null ? v.getLocale().toLanguageTag() : "")
+                .thenComparing(Voice::getName));
+
+            for (Voice voice : voices) {
+                JSObject item = new JSObject();
+                Locale locale = voice.getLocale();
+                String tag = locale != null ? locale.toLanguageTag() : "";
+                item.put("name", voice.getName());
+                item.put("locale", tag);
+                item.put("language", locale != null ? locale.getLanguage() : "");
+                item.put("country", locale != null ? locale.getCountry() : "");
+                item.put("networkRequired", voice.isNetworkConnectionRequired());
+                item.put("quality", voice.getQuality());
+                item.put("latency", voice.getLatency());
+                output.put(item);
+            }
+
+            result.put("ready", true);
+            result.put("voices", output);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Unable to list TTS voices", e);
+        }
+    }
+
     @PluginMethod
     public void status(PluginCall call) {
         JSObject result = new JSObject();
@@ -88,15 +155,19 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             call.reject("TTS engine is not ready");
             return;
         }
+
         String text = call.getString("text", "").trim();
         if (text.isEmpty()) {
             call.reject("Missing text");
             return;
         }
-        selectBestArabicVoice();
-        if (activeLocale == null || !"ar".equalsIgnoreCase(activeLocale.getLanguage())) {
-            call.reject("Arabic voice is not installed on this device");
-            return;
+
+        String requestedVoice = call.getString("voice", "");
+        Voice selected = findVoice(requestedVoice);
+        if (selected != null) {
+            applyVoice(selected);
+        } else if (activeVoice == null) {
+            selectBestArabicVoice();
         }
 
         Double rate = call.getDouble("rate", 0.92);
@@ -104,15 +175,15 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         tts.setSpeechRate(safeRate);
 
         String utteranceId = "nexus_" + System.currentTimeMillis();
-        int result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
-        if (result == TextToSpeech.ERROR) {
+        int speakResult = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+        if (speakResult == TextToSpeech.ERROR) {
             call.reject("Unable to speak text");
             return;
         }
 
         JSObject response = new JSObject();
         response.put("started", true);
-        response.put("locale", activeLocale.toLanguageTag());
+        response.put("locale", activeLocale != null ? activeLocale.toLanguageTag() : "");
         response.put("voice", activeVoice != null ? activeVoice.getName() : "");
         call.resolve(response);
     }
