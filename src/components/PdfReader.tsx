@@ -20,13 +20,58 @@ interface PdfReaderProps {
   title: string;
 }
 
+const PDFJS_VERSION = '4.10.38';
+const PDFJS_MODULE = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
+const PDFJS_WORKER = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
+
+type WebPdfDocument = {
+  numPages: number;
+  getPage(pageNumber: number): Promise<{
+    getViewport(options: { scale: number }): { width: number; height: number };
+    render(options: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: { width: number; height: number };
+    }): { promise: Promise<void>; cancel?: () => void };
+  }>;
+  destroy?: () => Promise<void>;
+};
+
+async function loadWebPdf(blob: Blob): Promise<WebPdfDocument> {
+  const pdfjs: any = await import(/* @vite-ignore */ PDFJS_MODULE);
+  if (pdfjs?.GlobalWorkerOptions) {
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  }
+  const data = new Uint8Array(await blob.arrayBuffer());
+  const task = pdfjs.getDocument({ data });
+  return await task.promise as WebPdfDocument;
+}
+
+async function renderWebPdfPage(
+  document: WebPdfDocument,
+  pageNumber: number,
+  zoom: number
+): Promise<string> {
+  const pdfPage = await document.getPage(pageNumber);
+  const viewport = pdfPage.getViewport({ scale: Math.max(0.8, Math.min(3, 1.45 * zoom)) });
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
+  canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) throw new Error('تعذر تجهيز لوحة عرض PDF.');
+
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  await pdfPage.render({ canvasContext: context, viewport }).promise;
+  return canvas.toDataURL('image/png', 0.96);
+}
+
 export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
   const native = useMemo(() => nativePdfReaderAvailable(), []);
+  const webDocumentRef = useRef<WebPdfDocument | null>(null);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [imageUrl, setImageUrl] = useState('');
-  const [webUrl, setWebUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState('');
@@ -42,41 +87,70 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     setError('');
     setLoading(true);
 
-    if (!native) {
-      const url = URL.createObjectURL(blob);
-      setWebUrl(url);
-      setLoading(false);
-      return () => URL.revokeObjectURL(url);
-    }
+    const open = async () => {
+      try {
+        if (native) {
+          const count = await openNativePdf(blob);
+          if (!count) throw new Error('PDF لا يحتوي على صفحات قابلة للعرض.');
+          if (active) setPages(count);
+          return;
+        }
 
-    void openNativePdf(blob)
-      .then((count) => {
-        if (!active) return;
-        if (!count) throw new Error('PDF لا يحتوي على صفحات قابلة للعرض.');
-        setPages(count);
-      })
-      .catch((err: any) => {
-        if (!active) return;
-        setError(err?.message || 'تعذر فتح ملف PDF.');
-      })
-      .finally(() => {
+        const doc = await loadWebPdf(blob);
+        if (!active) {
+          await doc.destroy?.();
+          return;
+        }
+        webDocumentRef.current = doc;
+        if (!doc.numPages) throw new Error('PDF لا يحتوي على صفحات قابلة للعرض.');
+        setPages(doc.numPages);
+      } catch (err: any) {
+        if (active) {
+          const message = String(err?.message || '');
+          setError(
+            message.includes('Failed to fetch dynamically imported module')
+              ? 'تعذر تحميل محرك PDF للويب. تحقق من الاتصال ثم أعد المحاولة.'
+              : (message || 'تعذر فتح ملف PDF.')
+          );
+        }
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    };
+
+    void open();
 
     return () => {
       active = false;
-      void closeNativePdf();
+      renderToken.current += 1;
+      if (native) {
+        void closeNativePdf();
+      } else {
+        const doc = webDocumentRef.current;
+        webDocumentRef.current = null;
+        void doc?.destroy?.();
+      }
     };
   }, [blob, native]);
 
   useEffect(() => {
-    if (!native || !pages || loading) return;
+    if (!pages || loading) return;
     const token = ++renderToken.current;
     setRendering(true);
     setError('');
 
-    const width = Math.round(960 * zoom);
-    void renderNativePdfPage(page - 1, width)
+    const render = async () => {
+      if (native) {
+        const width = Math.round(960 * zoom);
+        return await renderNativePdfPage(page - 1, width);
+      }
+
+      const doc = webDocumentRef.current;
+      if (!doc) throw new Error('محرك PDF غير جاهز.');
+      return await renderWebPdfPage(doc, page, zoom);
+    };
+
+    void render()
       .then((url) => {
         if (renderToken.current === token) setImageUrl(url);
       })
@@ -92,7 +166,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
 
   const goPage = (next: number) => {
     if (!pages) return;
-    setPage(Math.min(Math.max(1, next), pages));
+    setPage(Math.min(Math.max(1, Math.floor(next)), pages));
   };
 
   const setSafeZoom = (value: number) => {
@@ -103,21 +177,17 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     ? 'fixed inset-0 z-[100] bg-[#EEF0F5] flex flex-col'
     : 'rounded-[18px] overflow-hidden border border-gray-100 bg-[#EEF0F5] min-h-[72vh] flex flex-col';
 
-  const webSrc = webUrl
-    ? `${webUrl}#page=${page}&zoom=${Math.round(zoom * 100)}`
-    : '';
-
   return (
     <div className={shellClass} dir="rtl">
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-2.5 py-2 flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1 basis-[150px]">
           <div className="text-[11px] font-bold text-[#2C2145] truncate">{title}</div>
           <div className="text-[10px] text-gray-400">
-            {native ? (pages ? `الصفحة ${page} من ${pages}` : 'قارئ PDF') : 'قارئ PDF'}
+            {pages ? `الصفحة ${page} من ${pages}` : 'قارئ PDF'}
           </div>
         </div>
 
-        {native && pages > 0 && (
+        {pages > 0 && (
           <div className="flex items-center gap-1 order-3 w-full sm:order-none sm:w-auto">
             <button
               onClick={() => goPage(page - 1)}
@@ -154,7 +224,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         <div className="flex items-center gap-1 ms-auto">
           <button
             onClick={() => setSafeZoom(zoom - 0.15)}
-            disabled={zoom <= 0.7}
+            disabled={zoom <= 0.7 || !pages}
             className="w-9 h-9 rounded-[11px] bg-[#F8F9FD] text-gray-600 flex items-center justify-center disabled:opacity-35"
             aria-label="تصغير"
           >
@@ -162,14 +232,15 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
           </button>
           <button
             onClick={() => setSafeZoom(1)}
-            className="w-9 h-9 rounded-[11px] bg-[#F8F9FD] text-gray-600 flex items-center justify-center"
+            disabled={!pages}
+            className="w-9 h-9 rounded-[11px] bg-[#F8F9FD] text-gray-600 flex items-center justify-center disabled:opacity-35"
             aria-label="إعادة التكبير"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setSafeZoom(zoom + 0.15)}
-            disabled={zoom >= 2.25}
+            disabled={zoom >= 2.25 || !pages}
             className="w-9 h-9 rounded-[11px] bg-[#F8F9FD] text-gray-600 flex items-center justify-center disabled:opacity-35"
             aria-label="تكبير"
           >
@@ -198,18 +269,19 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
           </div>
         )}
 
-        {!loading && !error && native && (
+        {!loading && !error && (
           <div className="min-h-[60vh] flex justify-center items-start">
             {imageUrl ? (
               <div
                 className="relative bg-white shadow-sm rounded-[8px] overflow-hidden shrink-0"
-                style={{ width: `${Math.round(100 * zoom)}%`, minWidth: '100%' }}
+                style={{ width: native ? `${Math.round(100 * zoom)}%` : 'auto', minWidth: native ? '100%' : undefined }}
               >
                 <img
                   src={imageUrl}
                   alt={`${title} - الصفحة ${page}`}
                   draggable={false}
-                  className="block w-full h-auto select-none"
+                  className={native ? 'block w-full h-auto select-none' : 'block max-w-none h-auto select-none'}
+                  style={!native ? { width: `${Math.max(100, Math.round(100 * zoom))}%`, maxWidth: 'none' } : undefined}
                 />
                 {rendering && (
                   <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] flex items-center justify-center text-xs text-gray-500">
@@ -222,18 +294,9 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
             )}
           </div>
         )}
-
-        {!loading && !error && !native && webSrc && (
-          <iframe
-            key={webSrc}
-            title={title}
-            src={webSrc}
-            className="w-full min-h-[72vh] border-0 rounded-[12px] bg-white"
-          />
-        )}
       </div>
 
-      {native && pages > 1 && (
+      {pages > 1 && (
         <div className="bg-white/95 border-t border-gray-100 px-3 py-2 flex items-center gap-3">
           <input
             type="range"
