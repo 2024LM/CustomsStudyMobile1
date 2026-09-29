@@ -3,6 +3,7 @@ import { ChevronDown, Heart } from 'lucide-react';
 import { QuizQuestion } from '../types';
 import { db } from '../services/db';
 import { ArabicText } from './ArabicText';
+import { SpeakButton } from './SpeakButton';
 
 interface QuestionCardProps {
   question: QuizQuestion;
@@ -109,6 +110,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <SpeakButton
+            text={[question.question, expanded ? `الإجابة الصحيحة: ${question.correctAnswer}` : '', expanded && showExplanation && question.explanation ? `الشرح: ${question.explanation}` : ''].filter(Boolean).join('. ')}
+            className="hover:bg-[#F5F3FF]"
+            title="قراءة السؤال"
+          />
           <button
             onClick={toggleFavorite}
             className="w-8 h-8 rounded-full hover:bg-gray-100 transition-colors active:scale-90 flex items-center justify-center"
