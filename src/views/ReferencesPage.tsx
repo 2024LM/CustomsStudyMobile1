@@ -7,6 +7,7 @@ import { showReferenceInterstitial } from '../services/ads';
 import { addLocalReference, deleteLocalReference, listLocalReferences, LocalReference, saveDownloadedReference } from '../services/localReferences';
 import { db } from '../services/db';
 import { AiReferenceTools } from '../components/AiReferenceTools';
+import { PdfReader } from '../components/PdfReader';
 
 
 function htmlToPlainText(html: string): string {
@@ -113,7 +114,7 @@ export const ReferencesPage: React.FC = () => {
   const [wordHtml, setWordHtml] = useState('');
   const [localItems, setLocalItems] = useState<LocalReference[]>([]);
   const [localSelected, setLocalSelected] = useState<LocalReference | null>(null);
-  const [localPdfUrl, setLocalPdfUrl] = useState('');
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [localStatus, setLocalStatus] = useState('');
   const [sourceTab, setSourceTab] = useState<'online' | 'downloaded' | 'uploaded'>('online');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -140,12 +141,6 @@ export const ReferencesPage: React.FC = () => {
     void load();
     void loadLocal();
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (localPdfUrl) URL.revokeObjectURL(localPdfUrl);
-    };
-  }, [localPdfUrl]);
 
   const uploadedItems = useMemo(() => localItems.filter((item) => item.source === 'upload'), [localItems]);
   const downloadedItems = useMemo(() => localItems.filter((item) => item.source === 'download'), [localItems]);
@@ -184,17 +179,13 @@ export const ReferencesPage: React.FC = () => {
     setLocalSelected(item);
     setContent('');
     setWordHtml('');
+    setPdfBlob(null);
     setContentError('');
     setContentLoading(true);
 
-    if (localPdfUrl) {
-      URL.revokeObjectURL(localPdfUrl);
-      setLocalPdfUrl('');
-    }
-
     try {
       if (item.type === 'pdf') {
-        setLocalPdfUrl(URL.createObjectURL(item.data));
+        setPdfBlob(item.data);
       } else if (item.type === 'docx') {
         const result = await mammoth.convertToHtml(
           { arrayBuffer: await item.data.arrayBuffer() },
@@ -218,10 +209,7 @@ export const ReferencesPage: React.FC = () => {
       await deleteLocalReference(item.id);
       if (localSelected?.id === item.id) {
         setLocalSelected(null);
-        if (localPdfUrl) {
-          URL.revokeObjectURL(localPdfUrl);
-          setLocalPdfUrl('');
-        }
+        setPdfBlob(null);
       }
       await loadLocal();
       setLocalStatus('تم حذف المرجع.');
@@ -267,21 +255,35 @@ export const ReferencesPage: React.FC = () => {
 
   const openItem = async (item: ReferenceItem) => {
     await showReferenceInterstitial();
-    if (!isInlineReadable(item.type)) {
+    const referenceType = downloadableReferenceType(item.type);
+    if (!isInlineReadable(item.type) && referenceType !== 'pdf') {
       window.open(item.url, '_blank', 'noopener,noreferrer');
       return;
     }
-    setSelected(item); setContent(''); setWordHtml(''); setContentError(''); setContentLoading(true);
+
+    setSelected(item);
+    setLocalSelected(null);
+    setContent('');
+    setWordHtml('');
+    setPdfBlob(null);
+    setContentError('');
+    setContentLoading(true);
+
     try {
-      const word = /docx|word/i.test(item.type);
-      if (word) {
-        const result = await mammoth.convertToHtml(
-          { arrayBuffer: await fetchReferenceDocx(item) },
-          { convertImage: mammoth.images.imgElement(async (image: { contentType: string; read: (encoding: string) => Promise<string> }) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
-        );
-        setWordHtml(sanitizeWordHtml(result.value));
+      if (referenceType === 'pdf') {
+        const downloaded = await fetchReferenceDownload(item);
+        setPdfBlob(downloaded.blob);
       } else {
-        setContent(await fetchReferenceContent(item));
+        const word = /docx|word/i.test(item.type);
+        if (word) {
+          const result = await mammoth.convertToHtml(
+            { arrayBuffer: await fetchReferenceDocx(item) },
+            { convertImage: mammoth.images.imgElement(async (image: { contentType: string; read: (encoding: string) => Promise<string> }) => ({ src: await image.read('base64').then((b: string) => `data:${image.contentType};base64,${b}`) })) }
+          );
+          setWordHtml(sanitizeWordHtml(result.value));
+        } else {
+          setContent(await fetchReferenceContent(item));
+        }
       }
     }
     catch { setContentError('تعذر قراءة هذا المستند داخل التطبيق. تحقق من صلاحية الرابط وإتاحة الملف للقراءة.'); }
@@ -296,10 +298,7 @@ export const ReferencesPage: React.FC = () => {
             <button
               onClick={() => {
                 setLocalSelected(null);
-                if (localPdfUrl) {
-                  URL.revokeObjectURL(localPdfUrl);
-                  setLocalPdfUrl('');
-                }
+                setPdfBlob(null);
               }}
               className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs"
             >
@@ -309,13 +308,13 @@ export const ReferencesPage: React.FC = () => {
               <h1 className="font-bold text-base text-[#2C2145] truncate">{localSelected.name}</h1>
               <p className="text-[11px] text-gray-400">مرجع محلي • {localSelected.type.toUpperCase()}</p>
             </div>
-            <button onClick={() => setLocalSelected(null)} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center">
+            <button onClick={() => { setLocalSelected(null); setPdfBlob(null); }} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {!contentLoading && !contentError && (
+        {!contentLoading && !contentError && localSelected.type !== 'pdf' && (
           <AiReferenceTools
             title={localSelected.name}
             text={content || htmlToPlainText(wordHtml)}
@@ -325,12 +324,8 @@ export const ReferencesPage: React.FC = () => {
         <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري فتح المرجع...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
-          {!contentLoading && !contentError && localSelected.type === 'pdf' && localPdfUrl && (
-            <iframe
-              title={localSelected.name}
-              src={localPdfUrl}
-              className="w-full min-h-[72vh] rounded-[14px] border-0 bg-white"
-            />
+          {!contentLoading && !contentError && localSelected.type === 'pdf' && pdfBlob && (
+            <PdfReader blob={pdfBlob} title={localSelected.name} />
           )}
           {!contentLoading && !contentError && localSelected.type === 'docx' && wordHtml && (
             <div className="reference-document word-document p-2" dangerouslySetInnerHTML={{ __html: wordHtml }} />
@@ -350,12 +345,12 @@ export const ReferencesPage: React.FC = () => {
       <div className="flex flex-col gap-3 pb-8 text-right">
         <div className="sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md py-1">
           <div className="flex items-center justify-between gap-3">
-            <button onClick={() => setSelected(null)} className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs cursor-pointer"><ChevronLeft className="w-5 h-5 rotate-180" /></button>
+            <button onClick={() => { setSelected(null); setPdfBlob(null); }} className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs cursor-pointer"><ChevronLeft className="w-5 h-5 rotate-180" /></button>
             <div className="flex-1 min-w-0"><h1 className="font-bold text-base text-[#2C2145] truncate">{selected.title}</h1><p className="text-[11px] text-gray-400">{selected.type}</p></div>
-            <button onClick={() => setSelected(null)} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
+            <button onClick={() => { setSelected(null); setPdfBlob(null); }} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
           </div>
         </div>
-        {!contentLoading && !contentError && (
+        {!contentLoading && !contentError && downloadableReferenceType(selected.type) !== 'pdf' && (
           <AiReferenceTools
             title={selected.title}
             text={content || htmlToPlainText(wordHtml)}
@@ -365,8 +360,11 @@ export const ReferencesPage: React.FC = () => {
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
-          {!contentLoading && !contentError && wordHtml && <div className="reference-document word-document" dangerouslySetInnerHTML={{ __html: wordHtml }} />}
-          {!contentLoading && !contentError && !wordHtml && <DocumentReader text={content} type={selected.type} />}
+          {!contentLoading && !contentError && downloadableReferenceType(selected.type) === 'pdf' && pdfBlob && (
+            <PdfReader blob={pdfBlob} title={selected.title} />
+          )}
+          {!contentLoading && !contentError && downloadableReferenceType(selected.type) !== 'pdf' && wordHtml && <div className="reference-document word-document" dangerouslySetInnerHTML={{ __html: wordHtml }} />}
+          {!contentLoading && !contentError && downloadableReferenceType(selected.type) !== 'pdf' && !wordHtml && <DocumentReader text={content} type={selected.type} />}
         </div>
       </div>
     );
