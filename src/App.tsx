@@ -35,6 +35,7 @@ import { AdvancedStudyPage } from './views/AdvancedStudyPage';
 import { AiSettingsPage } from './views/AiSettingsPage';
 import { AiAssistantPage } from './views/AiAssistantPage';
 import { VoiceSettingsPage } from './views/VoiceSettingsPage';
+import { consumePendingQuestion } from './services/studyAlarm';
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -73,6 +74,33 @@ export function App() {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!ready || !onboardingComplete) return;
+
+    let active = true;
+    const openPendingQuestion = async () => {
+      const pending = await consumePendingQuestion();
+      if (!active || !pending) return;
+      const question = db.questionByRowId(pending.rowId, pending.bankId);
+      if (question) {
+        setDirectQuestion(question);
+      }
+    };
+
+    void openPendingQuestion();
+    const onFocus = () => void openPendingQuestion();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void openPendingQuestion();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [ready, onboardingComplete]);
 
   // Show one interstitial after the splash screen for returning users only.
   // First-run onboarding stays ad-free so setup cannot be interrupted.
