@@ -1410,6 +1410,105 @@ function parseJsonObject(raw: string): any {
   catch { throw new Error('تعذر فهم استجابة المساعد. أعد المحاولة.'); }
 }
 
+export async function respondToStudyChat(
+  context: StudyAssistantContext,
+  sources: MixedAiSource[] = []
+): Promise<string> {
+  const cleanMessage = String(context.message || '').trim().slice(0, 4000);
+  if (!cleanMessage) throw new Error('اكتب طلبًا واضحًا للمساعد.');
+
+  const recent = (context.recentMessages || [])
+    .slice(-8)
+    .map((item) => `${item.role === 'user' ? 'المستخدم' : 'المساعد'}: ${String(item.text || '').slice(0, 1200)}`)
+    .join('\n');
+
+  const prompt = `أنت مساعد دراسة عربي داخل تطبيق مراجعة.
+أجب مباشرة عن رسالة المستخدم دون JSON ودون وصف خطوات داخلية.
+كن دقيقًا ومختصرًا، واستفد من سياق التطبيق عند الحاجة.
+إذا لم تكن المعلومة موجودة في السياق أو المرفقات فلا تدّع أنها موجودة.
+لا تقل إنك نفذت بحثًا في الويب ما لم تكن أداة بحث مستخدمة فعليًا في هذا الطلب.
+
+رسالة المستخدم:
+${cleanMessage}
+
+سياق التطبيق:
+${JSON.stringify({
+  activeDomain: context.app.activeDomain,
+  activeBank: context.app.activeBank,
+  stats: context.app.stats,
+})}
+
+آخر المحادثة:
+${recent || 'لا يوجد'}`;
+
+  if (!sources.length) {
+    return generate(prompt, 1400, 'محادثة مباشرة');
+  }
+
+  assertMixedSourcePayload(sources);
+  const onlyTextSources = sources.every((source) => source.kind === 'text');
+
+  if (onlyTextSources) {
+    const sourceText = sources
+      .map((source) => `[مصدر مرفق: ${source.title}]\n${cleanReferenceText(source.text || '')}`)
+      .join('\n\n');
+    return generate(`${prompt}\n\n${sourceText}`, 1800, 'محادثة مباشرة + مرفقات نصية');
+  }
+
+  await assertCloudAiReady('تحليل المرفقات');
+  const model = geminiModel();
+  const parts: any[] = [{ text: prompt }];
+  let needsUrlContext = false;
+
+  for (const source of sources.slice(0, 8)) {
+    if (source.kind === 'text' && source.text?.trim()) {
+      parts.push({ text: `\n\n[مصدر مرفق: ${source.title}]\n${cleanReferenceText(source.text)}` });
+    } else if (source.kind === 'url' && source.url) {
+      needsUrlContext = true;
+      parts.push({ text: `\n[رابط مصدر مرفق: ${source.title}] ${source.url}` });
+    } else if (source.kind === 'inline' && source.base64 && source.mimeType) {
+      parts.push({
+        inlineData: {
+          mimeType: source.mimeType,
+          data: source.base64,
+        },
+      });
+      parts.push({ text: `[المرفق السابق بعنوان: ${source.title}. حلله للإجابة عن رسالة المستخدم.]` });
+    }
+  }
+
+  const body: any = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 1800,
+    },
+  };
+  if (needsUrlContext) body.tools = [{ url_context: {} }];
+
+  const { response, payload } = await geminiFetchWithFailover((activeKey) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': activeKey,
+        },
+        body: JSON.stringify(body),
+      }
+    ),
+    { operation: 'محادثة مباشرة + مرفقات', requestSummary: cleanMessage, model }
+  );
+
+  if (!response.ok) {
+    const apiMessage = payload?.error?.message || '';
+    throw new Error(apiMessage || 'تعذر إرسال الطلب إلى Gemini.');
+  }
+
+  return responseText(payload).trim();
+}
+
 export async function runStudyAssistant(
   context: StudyAssistantContext,
   sources: MixedAiSource[] = []
