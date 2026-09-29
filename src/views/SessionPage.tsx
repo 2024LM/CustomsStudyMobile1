@@ -18,6 +18,7 @@ interface SessionPageProps {
   autoStart?: boolean;
   onActiveChange?: (active: boolean) => void;
   onExit?: () => void;
+  embedded?: boolean;
 }
 
 export const SessionPage: React.FC<SessionPageProps> = ({
@@ -27,6 +28,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   autoStart = false,
   onActiveChange,
   onExit,
+  embedded = false,
 }) => {
   const initialTopics = Array.isArray(initialTopic) ? initialTopic : initialTopic ? [initialTopic] : [];
   const [count, setCount] = useState<number>(initialCount || 20);
@@ -479,17 +481,19 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   // 3. Setup Screen
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
-            <PlayCircle className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-bold text-lg">جلسة المراجعة</h1>
-            <p className="text-xs text-[#DDD5FF] mt-0.5">اختر نوع الجلسة وعدد الأسئلة والمحاور</p>
+      {!embedded && (
+        <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
+              <PlayCircle className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-bold text-lg">جلسة المراجعة</h1>
+              <p className="text-xs text-[#DDD5FF] mt-0.5">اختر نوع الجلسة وعدد الأسئلة والمحاور</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Session Mode */}
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
