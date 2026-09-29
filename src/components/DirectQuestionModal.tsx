@@ -15,6 +15,9 @@ export const DirectQuestionModal: React.FC<DirectQuestionModalProps> = ({
   const [selected, setSelected] = useState<string | null>(null);
 
   const options = useMemo(() => {
+    if (question.questionType === 'TRUE_FALSE') {
+      return ['صحيح', 'خطأ'].sort(() => 0.5 - Math.random());
+    }
     return [
       question.correctAnswer,
       question.wrong1,
@@ -23,7 +26,7 @@ export const DirectQuestionModal: React.FC<DirectQuestionModalProps> = ({
     ]
       .filter(Boolean)
       .sort(() => 0.5 - Math.random());
-  }, [question.rowId]);
+  }, [question.rowId, question.questionType]);
 
   const handleSelect = (option: string) => {
     if (selected !== null) return;
