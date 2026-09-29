@@ -72,6 +72,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const renderToken = useRef(0);
   const renderingPages = useRef<Set<number>>(new Set());
+  const loadedPages = useRef<Set<number>>(new Set());
 
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
@@ -90,6 +91,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     setError('');
     setLoading(true);
     renderingPages.current.clear();
+    loadedPages.current.clear();
 
     const open = async () => {
       try {
@@ -142,7 +144,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     if (
       pageNumber < 1 ||
       pageNumber > pages ||
-      pageImages[pageNumber] ||
+      loadedPages.current.has(pageNumber) ||
       renderingPages.current.has(pageNumber)
     ) return;
 
@@ -158,6 +160,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         url = await renderWebPdfPage(doc, pageNumber, zoom);
       }
       if (renderToken.current !== token) return;
+      loadedPages.current.add(pageNumber);
       setPageImages((current) => current[pageNumber] ? current : { ...current, [pageNumber]: url });
     } catch (err: any) {
       if (renderToken.current === token) {
@@ -173,6 +176,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     const token = ++renderToken.current;
     setPageImages({});
     renderingPages.current.clear();
+    loadedPages.current.clear();
 
     const root = scrollRef.current;
     if (!root) return;
