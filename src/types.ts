@@ -11,6 +11,7 @@ export type Page =
   | 'DOWNLOADS'
   | 'ADVANCED'
   | 'AI_SETTINGS'
+  | 'VOICE_SETTINGS'
   | 'AI_ASSISTANT'
   | 'MORE';
 
