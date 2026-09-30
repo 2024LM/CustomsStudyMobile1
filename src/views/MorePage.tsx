@@ -12,6 +12,10 @@ import {
   MoreHorizontal,
   Sparkles,
   Volume2,
+  Facebook,
+  Instagram,
+  Youtube,
+  Globe2,
 } from 'lucide-react';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
@@ -129,7 +133,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   ];
 
   return (
-    <div className="flex flex-col gap-3 pb-8 text-right">
+    <div className="min-h-full flex flex-col gap-3 pb-8 text-right">
       <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
@@ -177,10 +181,31 @@ export const MorePage: React.FC<MorePageProps> = ({
         })}
       </div>
 
-      {/* App branding */}
-      <div className="sm:col-span-2 p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-1">
-        <span className="font-bold text-sm text-[#5B3FD6]">{appConfig.appName}</span>
-        <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
+      {/* App footer */}
+      <div className="mt-auto pt-3 shrink-0">
+        <div className="p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-2.5">
+          <span className="font-bold text-sm text-[#5B3FD6]">{appConfig.appName}</span>
+          <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
+
+          <div className="flex items-center justify-center gap-2 pt-1" aria-label="التواصل الاجتماعي">
+            {[
+              { icon: Facebook, label: 'Facebook' },
+              { icon: Instagram, label: 'Instagram' },
+              { icon: Youtube, label: 'YouTube' },
+              { icon: Globe2, label: 'الموقع' },
+            ].map(({ icon: Icon, label }) => (
+              <button
+                key={label}
+                type="button"
+                className="w-9 h-9 rounded-full bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center border border-[#E9E3FB]"
+                aria-label={label}
+                title={`${label} — سيتم ربطه عند إضافة الرابط`}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
