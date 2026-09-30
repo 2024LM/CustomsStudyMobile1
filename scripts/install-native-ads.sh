@@ -9,6 +9,7 @@ cp native-android/NexusStudyAlarmPlugin.java "$JAVA_DIR/NexusStudyAlarmPlugin.ja
 cp native-android/StudyAlarmReceiver.java "$JAVA_DIR/StudyAlarmReceiver.java"
 cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
+cp native-android/NexusTtsService.java "$JAVA_DIR/NexusTtsService.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
 cp native-android/NexusNanoAiPlugin.java "$JAVA_DIR/NexusNanoAiPlugin.java"
 cp native-android/NexusFileExportPlugin.java "$JAVA_DIR/NexusFileExportPlugin.java"
@@ -65,8 +66,15 @@ service = '''        <service
             android:name=".StudyAlarmService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />'''
+tts_service = '''        <service
+            android:name=".NexusTtsService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false" />'''
 if receiver not in s:
-    s=s.replace("</application>", receiver + "\n" + service + "\n    </application>", 1)
+    s=s.replace("</application>", receiver + "\n" + service + "\n" + tts_service + "\n    </application>", 1)
+elif tts_service not in s:
+    s=s.replace("</application>", tts_service + "\n    </application>", 1)
 
 p.write_text(s)
 PY
