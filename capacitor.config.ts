@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.nexus.customsstudy',
-  appName: 'منصة المراجعة',
+  appName: 'Raje3',
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {
