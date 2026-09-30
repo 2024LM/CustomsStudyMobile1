@@ -291,11 +291,11 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
       <PurpleSubpageHeader title="مركز الدراسة" subtitle="أدوات التعلم والتحليل وإدارة المحتوى" onBack={onBack} />
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        {groups.map(({ id, label, icon: Icon, defaultSection }) => (
+        {groups.map(({ id, label, icon: Icon, defaultSection }, index) => (
           <button
             key={id}
             onClick={() => { setSection(defaultSection); setStatus(''); }}
-            className={`rounded-[17px] border p-3.5 flex items-center gap-3 text-right transition-all ${
+            className={`rounded-[17px] border p-3.5 flex items-center gap-3 text-right transition-all ${index === groups.length - 1 ? 'col-span-2 sm:col-span-1 ' : ''}${
               activeGroup === id ? 'bg-[#F5F3FF] border-[#5B3FD6] text-[#5B3FD6]' : 'bg-white border-gray-100 text-[#2C2145]'
             }`}
           >
