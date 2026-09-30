@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor, registerPlugin, PluginListenerHandle } from '@capacitor/core';
 
 export type AdFormat = 'banner' | 'rectangle';
 export interface AdRect {
@@ -14,6 +14,7 @@ export interface AdRect {
   clipBottom?: number;
 }
 interface NexusAdsPlugin {
+  addListener(eventName: 'ads-resumed', listener: () => void): Promise<PluginListenerHandle>;
   initializeAds(options: { personalized: boolean }): Promise<void>;
   showInterstitial(options: { placementId: string }): Promise<void>;
   showBanner(options: AdRect & { placementId: string; slot: string; format: AdFormat }): Promise<{ loaded?: boolean; height?: number }>;
@@ -73,3 +74,7 @@ export async function hideBanner(slot: string): Promise<void> {
   try { await NexusAds.hideBanner({ slot }); } catch {}
 }
 export const showReferenceInterstitial = showInterstitial;
+
+export function onAdsResumed(listener: () => void): Promise<PluginListenerHandle> {
+  return NexusAds.addListener('ads-resumed', listener);
+}

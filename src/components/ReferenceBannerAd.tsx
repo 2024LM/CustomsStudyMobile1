@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { AdFormat, adsAvailable, hideBanner, showBanner, updateBanner } from '../services/ads';
+import { AdFormat, adsAvailable, hideBanner, onAdsResumed, showBanner, updateBanner } from '../services/ads';
 
 interface ReferenceBannerAdProps { slot: string; format?: AdFormat; }
 
@@ -22,6 +22,7 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
     let hasAd = false;
     let retry: number | undefined;
     let frame = 0;
+    let lastPosition = '';
     let failures = 0;
     let generation = 0;
     const host = hostRef.current;
@@ -82,14 +83,21 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
     };
     const position = () => {
       frame = 0;
-      if (active && hasAd) void updateBanner(adSlot, rect());
+      if (active && hasAd) {
+        const bounds = rect();
+        const signature = bounds.visible ? JSON.stringify(bounds) : 'hidden';
+        if (signature === lastPosition) return;
+        lastPosition = signature;
+        void updateBanner(adSlot, bounds);
+      }
     };
     const schedulePosition = () => {
-      if (!frame) frame = window.requestAnimationFrame(position);
+      if (!frame) frame = window.setTimeout(position, 80);
     };
     const reset = () => {
       generation += 1;
       hasAd = false;
+      lastPosition = '';
       setLoaded(false);
       clearRetry();
       void hideBanner(adSlot);
@@ -103,6 +111,12 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
       if (document.visibilityState !== 'visible') reset();
       else { failures = 0; void activate(); schedulePosition(); }
     };
+    const resumed = onAdsResumed(() => {
+      if (!active) return;
+      reset();
+      failures = 0;
+      void activate();
+    }).catch(() => null);
     const observer = new IntersectionObserver((entries) => {
       near = entries.some(entry => entry.isIntersecting);
       if (near) void activate();
@@ -124,7 +138,8 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
       active = false;
       generation += 1;
       clearRetry();
-      window.cancelAnimationFrame(frame);
+      window.clearTimeout(frame);
+      void resumed.then(listener => listener?.remove());
       observer.disconnect();
       resize.disconnect();
       mutations.disconnect();

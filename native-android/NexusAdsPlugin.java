@@ -291,6 +291,7 @@ public class NexusAdsPlugin extends Plugin {
     @Override protected void handleOnStart() {
         foreground = true;
         super.handleOnStart();
+        notifyListeners("ads-resumed", new JSObject());
     }
 
     @Override protected void handleOnStop() {
