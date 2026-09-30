@@ -35,12 +35,23 @@ import { AiAssistantPage } from './views/AiAssistantPage';
 import { VoiceSettingsPage } from './views/VoiceSettingsPage';
 import { consumePendingQuestion } from './services/studyAlarm';
 
+type ThemeMode = 'system' | 'light' | 'dark';
+
+function getSystemDark(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+}
+
 export function App() {
   const [ready, setReady] = useState(false);
   const [username, setUsername] = useState(() => localStorage.getItem('profile_username')?.trim() || '');
   const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('onboarding_version') === '1' && Boolean(localStorage.getItem('profile_username')?.trim()));
   const [tourRefresh, setTourRefresh] = useState(0);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') === 'dark');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const stored = localStorage.getItem('app_theme');
+    return stored === 'light' || stored === 'dark' ? stored : 'system';
+  });
+  const [systemDark, setSystemDark] = useState(() => getSystemDark());
+  const darkMode = themeMode === 'dark' || (themeMode === 'system' && systemDark);
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
@@ -56,9 +67,19 @@ export function App() {
   const [sessionFocus, setSessionFocus] = useState(false);
 
   useEffect(() => {
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!media) return;
+    const sync = () => setSystemDark(media.matches);
+    sync();
+    media.addEventListener?.('change', sync);
+    return () => media.removeEventListener?.('change', sync);
+  }, []);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('app_theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+    localStorage.setItem('app_theme', themeMode);
+  }, [darkMode, themeMode]);
 
   // Subscribe to DB changes so any child updates trigger fresh reads
   useEffect(() => {
@@ -372,7 +393,8 @@ export function App() {
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
               darkMode={darkMode}
-              onToggleDarkMode={() => setDarkMode((value) => !value)}
+              themeMode={themeMode}
+              onCycleTheme={() => setThemeMode((mode) => mode === 'system' ? 'light' : mode === 'light' ? 'dark' : 'system')}
               username={username}
             />
           )}
