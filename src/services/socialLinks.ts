@@ -8,7 +8,7 @@ export interface SocialLinks {
   website?: string;
 }
 
-const REMOTE_SOCIAL_URL = 'https://raw.githubusercontent.com/2024LM/CustomsStudyMobile1/main/public/social_links.json';
+const REMOTE_SOCIAL_URL = 'https://raw.githubusercontent.com/2024LM/-Lm/BOT-SCRFY/social_links.json';
 const LOCAL_SOCIAL_URL = `${import.meta.env.BASE_URL}social_links.json`;
 
 function normalizeUrl(value: unknown): string {
