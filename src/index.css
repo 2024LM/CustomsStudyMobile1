@@ -225,3 +225,27 @@ html.dark .app-shell .from-\[\#FBFAFF\].to-white {
 html.dark .app-shell .bg-\[\#F8F9FD\]\/95 {
   background-color: rgb(23 20 31 / 0.95) !important;
 }
+
+/* Hide scroll indicators while preserving touch, wheel and keyboard scrolling. */
+html, body, .app-shell, .app-shell * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.app-shell::-webkit-scrollbar,
+.app-shell *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Readable secondary copy and keyboard focus in both themes. */
+.app-shell .text-gray-400 { color: #6b7280; }
+html.dark .app-shell .text-gray-400 { color: #b9b2c8; }
+html.dark .app-shell .text-\\[\\#77717F\\] { color: #b9b2c8; }
+.app-shell :focus-visible {
+  outline: 3px solid #5b3fd6;
+  outline-offset: 3px;
+}
+html.dark .app-shell :focus-visible { outline-color: #b9a8ff; }

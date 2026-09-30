@@ -1,5 +1,5 @@
 import initialQuestionsRaw from '../data/questions.json';
-import { loadNativeSnapshot, saveNativeSnapshot } from './nativeStorage';
+import { isNativeAndroidStorage, loadNativeSnapshot, saveNativeSnapshot } from './nativeStorage';
 import { appConfig } from '../config/appConfig';
 import {
   ActivityBucket,
@@ -243,8 +243,12 @@ class StudyDatabaseService {
     // Keep this recovery copy for the web build and for safe rollback during migration.
     try {
       localStorage.setItem(STORAGE_KEY, serialized);
+      window.dispatchEvent(new CustomEvent('raje3-storage-status', { detail: true }));
     } catch (e) {
       console.warn('Storage quota exceeded or storage error:', e);
+      if (!isNativeAndroidStorage()) {
+        window.dispatchEvent(new CustomEvent('raje3-storage-status', { detail: false }));
+      }
     }
 
     if (this.nativePersistenceReady) {

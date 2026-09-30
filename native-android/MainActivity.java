@@ -17,6 +17,10 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NexusFileExportPlugin.class);
         registerPlugin(NexusPdfPlugin.class);
         super.onCreate(savedInstanceState);
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().setVerticalScrollBarEnabled(false);
+            getBridge().getWebView().setHorizontalScrollBarEnabled(false);
+        }
         captureReminderQuestion(getIntent());
     }
 

@@ -62,7 +62,8 @@ export function App() {
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [directQuestion, setDirectQuestion] = useState<QuizQuestion | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
-  const [, setDbVersion] = useState(0);
+  const [dbVersion, setDbVersion] = useState(0);
+  const [storageWarning, setStorageWarning] = useState(false);
   const [showRatingPrompt, setShowRatingPrompt] = useState(false);
   const [sessionFocus, setSessionFocus] = useState(false);
 
@@ -80,6 +81,14 @@ export function App() {
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
     localStorage.setItem('app_theme', themeMode);
   }, [darkMode, themeMode]);
+
+  useEffect(() => {
+    const onStorageStatus = (event: Event) => {
+      setStorageWarning(!(event as CustomEvent<boolean>).detail);
+    };
+    window.addEventListener('raje3-storage-status', onStorageStatus);
+    return () => window.removeEventListener('raje3-storage-status', onStorageStatus);
+  }, []);
 
   // Subscribe to DB changes so any child updates trigger fresh reads
   useEffect(() => {
@@ -384,9 +393,15 @@ export function App() {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 min-h-0 p-4 pb-24 overflow-y-auto overscroll-contain">
+        {storageWarning && (
+          <div role="alert" className="shrink-0 bg-red-50 text-red-600 px-4 py-3 text-sm font-semibold">
+            تعذر حفظ آخر تغييراتك على هذا الجهاز. قد تفقدها عند إغلاق التطبيق. حرر مساحة تخزين وحاول مجددًا.
+          </div>
+        )}
+        <main className="flex-1 min-h-0 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain">
           {page === 'HOME' && (
             <HomePage
+              dataVersion={dbVersion}
               onStartSession={startSessionWithTopic}
               onViewQuestions={() => setPage('QUESTIONS')}
               onViewMistakes={() => setPage('MISTAKES')}
@@ -477,7 +492,7 @@ export function App() {
 
         {/* Bottom Navigation Bar */}
         {!sessionFocus && (
-          <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 py-1 px-1 z-40 shadow-sm">
+          <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] px-1 z-40 shadow-sm">
             <div className="flex items-center justify-around">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -506,7 +521,7 @@ export function App() {
                     }`}>
                       <Icon className={`w-5 h-5 ${item.p === 'AI_ASSISTANT' ? 'stroke-[2.3]' : ''}`} />
                     </div>
-                    <span className={`text-[9px] sm:text-[10px] font-semibold tracking-tight mt-0.5 truncate max-w-full ${
+                    <span className={`text-[12px] sm:text-[12px] font-semibold tracking-tight mt-0.5 truncate max-w-full ${
                       isSelected ? 'text-[#5B3FD6] font-bold' : 'text-gray-400'
                     }`}>
                       {item.title}

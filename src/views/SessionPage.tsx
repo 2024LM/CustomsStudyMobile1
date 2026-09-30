@@ -351,7 +351,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
             {showProgress && <span className="font-bold text-sm text-[#2C2145]">{index + 1} / {questions.length}</span>}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">{
+            <span className="text-[12px] text-gray-500">{
               sessionMode === 'review' ? '🧠 مراجعة مستحقة'
                 : sessionMode === 'mistakes' ? '❌ مراجعة الأخطاء'
                   : sessionMode === 'favorites' ? '❤️ المفضلة'
@@ -424,13 +424,13 @@ export const SessionPage: React.FC<SessionPageProps> = ({
 
                 {isAnswered && correct && (
                   <div className="mt-3 pt-3 border-t border-[#31A866]/20">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#16864B]">
-                      <span className="w-5 h-5 rounded-full bg-[#31A866] text-white flex items-center justify-center text-[10px]">✓</span>
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-[#16864B]">
+                      <span className="w-5 h-5 rounded-full bg-[#31A866] text-white flex items-center justify-center text-[12px]">✓</span>
                       <span>الإجابة الصحيحة</span>
                     </div>
                     {showExplanation && currentQuestion.explanation && (
                       <div className="mt-2 rounded-[12px] bg-white/65 px-3 py-2.5 text-[#315F43]">
-                        <div className="text-[10px] font-bold mb-1">الشرح</div>
+                        <div className="text-[12px] font-bold mb-1">الشرح</div>
                         <ArabicText
                           value={currentQuestion.explanation}
                           as="p"
@@ -502,7 +502,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm text-[#2C2145]">نوع الجلسة</h3>
-          <span className="text-[11px] text-gray-400">اختر المصدر الأنسب للمراجعة</span>
+          <span className="text-[12px] text-gray-400">اختر المصدر الأنسب للمراجعة</span>
         </div>
         <div className="grid grid-cols-2 gap-2">
           {[
@@ -529,7 +529,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                 }`}
               >
                 <span className="block text-sm font-bold">{title}</span>
-                <span className="block text-[11px] mt-1 opacity-70">{subtitle}</span>
+                <span className="block text-[12px] mt-1 opacity-70">{subtitle}</span>
               </button>
             );
           })}
@@ -563,7 +563,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
       <div className="bg-white rounded-[20px] p-4.5 shadow-xs border border-gray-100 flex flex-col gap-4">
         <div>
           <h3 className="font-bold text-sm text-[#2C2145]">إعدادات الأسئلة</h3>
-          <p className="text-[11px] text-gray-400 mt-1">تُحفظ اختياراتك تلقائيًا للجلسات القادمة</p>
+          <p className="text-[12px] text-gray-400 mt-1">تُحفظ اختياراتك تلقائيًا للجلسات القادمة</p>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -634,7 +634,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-[#2C2145]">{title}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">{description}</div>
+                <div className="text-[12px] text-gray-400 mt-0.5">{description}</div>
               </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors shrink-0 ${
@@ -653,7 +653,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-0.5">
             <h3 className="font-bold text-sm text-[#2C2145]">المحاور</h3>
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[12px] text-gray-400">
               {selectedTopics.length === 0 ? 'كل المحاور' : `${selectedTopics.length} محدد`}
             </span>
           </div>

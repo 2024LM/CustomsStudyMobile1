@@ -24,6 +24,7 @@ import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { focusMinutesToday } from '../services/advancedStudyTools';
 
 interface HomePageProps {
+  dataVersion: number;
   onStartSession: (topic?: string | string[], count?: number, mode?: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart', autoStart?: boolean) => void;
   onViewQuestions: () => void;
   onViewMistakes: () => void;
@@ -54,6 +55,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   themeMode = 'system',
   onCycleTheme,
   username = '',
+  dataVersion,
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [statsBankId, setStatsBankId] = useState<string>('ALL');
@@ -63,7 +65,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const selectedBankId = statsBankId === 'ALL' ? null : statsBankId;
   const analytics = useMemo(
     () => db.dashboardAnalytics(selectedBankId),
-    [selectedBankId]
+    [selectedBankId, dataVersion]
   );
 
   const activityBuckets = db.getActivityStats(period, selectedBankId);
@@ -103,7 +105,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 >
                   <Bell className="w-5 h-5" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E11D48] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#392080]">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E11D48] text-white text-[12px] font-bold rounded-full flex items-center justify-center border-2 border-[#392080]">
                       {unreadNotificationsCount}
                     </span>
                   )}
@@ -131,7 +133,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       <div className="sm:col-span-2 bg-white rounded-[20px] p-3 border border-gray-100">
-        <label className="text-[11px] font-bold text-gray-500">إحصائيات</label>
+        <label className="text-[12px] font-bold text-gray-500">إحصائيات</label>
         <select
           value={statsBankId}
           onChange={(e) => setStatsBankId(e.target.value)}
@@ -150,7 +152,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span className="text-4xl font-black text-[#2C2145]">{analytics.stats.successRate}%</span>
               <span className="text-xs font-bold text-[#5B3FD6] mb-1">{rateLabel(analytics.stats.successRate)}</span>
             </div>
-            <div className="text-[11px] text-gray-400 mt-1">{analytics.stats.answered} إجابة مسجلة</div>
+            <div className="text-[12px] text-gray-400 mt-1">{analytics.stats.answered} إجابة مسجلة</div>
           </div>
 
           <div className={`px-3 py-2 rounded-[12px] text-xs font-bold flex items-center gap-1.5 ${
@@ -167,14 +169,14 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div className="rounded-[14px] bg-[#F8F9FD] p-3">
-            <div className="text-[10px] text-gray-400">هذا الأسبوع</div>
+            <div className="text-[12px] text-gray-400">هذا الأسبوع</div>
             <div className="font-bold text-lg">{analytics.currentWeek.rate}%</div>
-            <div className="text-[10px] text-gray-400">{analytics.currentWeek.total} إجابة</div>
+            <div className="text-[12px] text-gray-400">{analytics.currentWeek.total} إجابة</div>
           </div>
           <div className="rounded-[14px] bg-[#F8F9FD] p-3">
-            <div className="text-[10px] text-gray-400">الأسبوع السابق</div>
+            <div className="text-[12px] text-gray-400">الأسبوع السابق</div>
             <div className="font-bold text-lg">{analytics.previousWeek.rate}%</div>
-            <div className="text-[10px] text-gray-400">{analytics.previousWeek.total} إجابة</div>
+            <div className="text-[12px] text-gray-400">{analytics.previousWeek.total} إجابة</div>
           </div>
         </div>
       </div>
@@ -189,7 +191,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div key={label} className={`rounded-[16px] p-3 text-center ${className}`}>
             <Icon className="w-4 h-4 mx-auto mb-1" />
             <div className="text-lg font-black">{value}</div>
-            <div className="text-[9px] font-bold">{label}</div>
+            <div className="text-[12px] font-bold">{label}</div>
           </div>
         ))}
       </div>
@@ -197,9 +199,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div className="sm:col-span-2 bg-gradient-to-l from-[#2F1A73] to-[#5B3FD6] rounded-[22px] p-4 text-white shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] text-[#DDD5FF] font-bold">المراجعة المقترحة الآن</div>
+            <div className="text-[12px] text-[#DDD5FF] font-bold">المراجعة المقترحة الآن</div>
             <h3 className="text-base font-black mt-1">ماذا أراجع الآن؟</h3>
-            <p className="text-[11px] text-[#E7E1FF] mt-1 leading-5">
+            <p className="text-[12px] text-[#E7E1FF] mt-1 leading-5">
               جلسة ذكية من {smartPlan.questions.length} سؤال حسب أخطائك ومواعيد المراجعة والأسئلة الجديدة.
             </p>
           </div>
@@ -209,19 +211,19 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="grid grid-cols-4 gap-1.5 mt-3 text-center">
           <div className="rounded-[10px] bg-white/10 p-2">
             <div className="text-base font-black">{smartPlan.mistakes}</div>
-            <div className="text-[9px] text-[#E7E1FF]">أخطاء</div>
+            <div className="text-[12px] text-[#E7E1FF]">أخطاء</div>
           </div>
           <div className="rounded-[10px] bg-white/10 p-2">
             <div className="text-base font-black">{smartPlan.due}</div>
-            <div className="text-[9px] text-[#E7E1FF]">مستحقة</div>
+            <div className="text-[12px] text-[#E7E1FF]">مستحقة</div>
           </div>
           <div className="rounded-[10px] bg-white/10 p-2">
             <div className="text-base font-black">{smartPlan.unseen}</div>
-            <div className="text-[9px] text-[#E7E1FF]">جديدة</div>
+            <div className="text-[12px] text-[#E7E1FF]">جديدة</div>
           </div>
           <div className="rounded-[10px] bg-white/10 p-2">
             <div className="text-base font-black">{smartPlan.other}</div>
-            <div className="text-[9px] text-[#E7E1FF]">تعزيز</div>
+            <div className="text-[12px] text-[#E7E1FF]">تعزيز</div>
           </div>
         </div>
 
@@ -248,7 +250,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div className="bg-white rounded-[20px] p-4 border border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-sm">نشاط آخر 28 يومًا</h3>
-          <div className="flex items-center gap-1 text-[10px] text-gray-400">
+          <div className="flex items-center gap-1 text-[12px] text-gray-400">
             <Flame className="w-3.5 h-3.5 text-orange-500" />
             {streak} يوم متتالٍ
           </div>
@@ -266,11 +268,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div className="rounded-[12px] bg-[#F8F9FD] p-3">
-            <div className="text-[10px] text-gray-400">وقت التركيز اليوم</div>
+            <div className="text-[12px] text-gray-400">وقت التركيز اليوم</div>
             <div className="font-bold text-base">{focusToday} دقيقة</div>
           </div>
           <div className="rounded-[12px] bg-[#F8F9FD] p-3">
-            <div className="text-[10px] text-gray-400">أسئلة جاهزة</div>
+            <div className="text-[12px] text-gray-400">أسئلة جاهزة</div>
             <div className="font-bold text-base">{analytics.playableQuestions} / {analytics.totalQuestions}</div>
           </div>
         </div>
@@ -288,11 +290,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               >
                 <div className="min-w-0">
                   <div className="text-xs font-bold truncate">{item.topic}</div>
-                  <div className="text-[10px] text-gray-400 mt-1">{item.wrong} خطأ من {item.attempts} محاولة</div>
+                  <div className="text-[12px] text-gray-400 mt-1">{item.wrong} خطأ من {item.attempts} محاولة</div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="font-bold text-red-500">{item.successRate}%</div>
-                  <div className="text-[9px] text-[#5B3FD6]">راجع الآن</div>
+                  <div className="text-[12px] text-[#5B3FD6]">راجع الآن</div>
                 </div>
               </button>
             ))}
@@ -308,7 +310,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div key={item.topic} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
                 <div className="min-w-0">
                   <div className="text-xs font-bold truncate">{item.topic}</div>
-                  <div className="text-[10px] text-gray-400">{item.attempts} محاولة</div>
+                  <div className="text-[12px] text-gray-400">{item.attempts} محاولة</div>
                 </div>
                 <div className="text-emerald-600 font-bold text-sm">{item.successRate}%</div>
               </div>
@@ -321,13 +323,13 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="bg-white rounded-[20px] p-4 border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-sm">أكثر الأسئلة خطأ</h3>
-            <button onClick={onViewMistakes} className="text-[10px] font-bold text-[#5B3FD6]">عرض الكل</button>
+            <button onClick={onViewMistakes} className="text-[12px] font-bold text-[#5B3FD6]">عرض الكل</button>
           </div>
           <div className="flex flex-col gap-2">
             {analytics.topMistakes.map((item) => (
               <div key={item.question.rowId} className="rounded-[13px] bg-red-50/50 p-3">
                 <div className="text-xs font-bold leading-5">{item.question.question}</div>
-                <div className="text-[10px] text-red-500 mt-1">{item.wrongCount} مرات خطأ</div>
+                <div className="text-[12px] text-red-500 mt-1">{item.wrongCount} مرات خطأ</div>
               </div>
             ))}
           </div>
