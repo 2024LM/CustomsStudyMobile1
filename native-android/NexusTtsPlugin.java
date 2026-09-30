@@ -2,7 +2,6 @@ package com.nexus.customsstudy;
 
 import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
@@ -256,6 +255,11 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     @PermissionCallback
     private void speakPermissionCallback(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && getPermissionState("notifications") != PermissionState.GRANTED) {
+            call.reject("Notification permission is required for background TTS controls");
+            return;
+        }
         startSpeechService(call);
     }
 
