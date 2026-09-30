@@ -19,6 +19,13 @@ import {
 } from 'lucide-react';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
+import { fetchSocialLinks, SocialLinks } from '../services/socialLinks';
+
+const DiscordIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+    <path d="M19.54 5.34A16.6 16.6 0 0 0 15.44 4l-.2.4c1.5.45 2.2.9 3.12 1.55a12.7 12.7 0 0 0-12.72 0A12.7 12.7 0 0 1 8.76 4.4L8.56 4a16.6 16.6 0 0 0-4.1 1.34C1.86 9.2 1.15 12.95 1.5 16.65A16.8 16.8 0 0 0 6.55 19.2l1.22-1.68a10.8 10.8 0 0 1-1.92-.92l.47-.36c3.7 1.72 7.7 1.72 11.36 0l.47.36a10.8 10.8 0 0 1-1.92.92l1.22 1.68a16.8 16.8 0 0 0 5.05-2.55c.42-4.28-.72-7.98-2.96-11.31ZM8.25 14.65c-1.1 0-2-1.02-2-2.28s.88-2.28 2-2.28 2.02 1.03 2 2.28c0 1.26-.9 2.28-2 2.28Zm7.5 0c-1.1 0-2-1.02-2-2.28s.88-2.28 2-2.28 2.02 1.03 2 2.28c0 1.26-.9 2.28-2 2.28Z" />
+  </svg>
+);
 
 interface MorePageProps {
   onGoToMistakes: () => void;
@@ -53,6 +60,24 @@ export const MorePage: React.FC<MorePageProps> = ({
 }) => {
   const [checkingUpdate, setCheckingUpdate] = React.useState(false);
   const [checkStatus, setCheckStatus] = React.useState<string | null>(null);
+  const [socialLinks, setSocialLinks] = React.useState<SocialLinks>({});
+
+  React.useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      const links = await fetchSocialLinks();
+      if (active) setSocialLinks(links);
+    };
+
+    void load();
+    const onFocus = () => void load();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   const handleCheckUpdate = async () => {
     if (!onRefreshRemote || checkingUpdate) return;
@@ -190,24 +215,31 @@ export const MorePage: React.FC<MorePageProps> = ({
               <div className="text-[11px] text-gray-400 font-medium mt-1">طريقك نحو النجاح • الإصدار 1.0</div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0" aria-label="التواصل الاجتماعي">
-              {[
-                { icon: Facebook, label: 'Facebook' },
-                { icon: Instagram, label: 'Instagram' },
-                { icon: Youtube, label: 'YouTube' },
-                { icon: Globe2, label: 'الموقع' },
-              ].map(({ icon: Icon, label }) => (
-                <button
-                  key={label}
-                  type="button"
-                  className="w-8 h-8 rounded-[10px] text-[#6A55C7] hover:bg-[#F5F3FF] active:bg-[#EEE9FF] flex items-center justify-center transition-colors"
-                  aria-label={label}
-                  title={`${label} — سيتم ربطه عند إضافة الرابط`}
-                >
-                  <Icon className="w-[15px] h-[15px]" />
-                </button>
-              ))}
-            </div>
+            {Object.values(socialLinks).some(Boolean) && (
+              <div className="flex items-center gap-1.5 shrink-0" aria-label="التواصل الاجتماعي">
+                {[
+                  { key: 'facebook', icon: Facebook, label: 'Facebook' },
+                  { key: 'instagram', icon: Instagram, label: 'Instagram' },
+                  { key: 'youtube', icon: Youtube, label: 'YouTube' },
+                  { key: 'discord', icon: DiscordIcon, label: 'Discord' },
+                  { key: 'website', icon: Globe2, label: 'الموقع' },
+                ]
+                  .filter((item) => Boolean(socialLinks[item.key as keyof SocialLinks]))
+                  .map(({ key, icon: Icon, label }) => (
+                    <a
+                      key={key}
+                      href={socialLinks[key as keyof SocialLinks]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-[10px] text-[#6A55C7] hover:bg-[#F5F3FF] active:bg-[#EEE9FF] flex items-center justify-center transition-colors"
+                      aria-label={label}
+                      title={label}
+                    >
+                      <Icon className="w-[15px] h-[15px]" />
+                    </a>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
