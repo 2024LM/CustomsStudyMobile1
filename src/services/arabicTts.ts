@@ -91,8 +91,9 @@ function prepareTextForSpeech(text: string): string {
 
   if (softenFinalTaaMarbuta()) {
     // TTS-only normalization: keep stored/displayed text untouched.
-    // Replacing final ة with ه encourages a pausal Arabic pronunciation instead of an audible "ت".
-    prepared = prepared.replace(/ة(?=(?:[\s.,!?؟؛،:)"'»\]}]|$))/g, 'ه');
+    // Soften ة only at a real sentence boundary, not after commas/colons or ordinary spaces.
+    // Supported endings: . ! ? ؟ ؛ … line break, end of text, with optional closing quotes/brackets.
+    prepared = prepared.replace(/ة(?=(?:["'»”’\)\]\}]*[.!?؟؛…]+|["'»”’\)\]\}]*\n|["'»”’\)\]\}]*$))/g, 'ه');
   }
 
   if (!sentencePauseEnabled()) {
