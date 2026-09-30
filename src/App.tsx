@@ -258,9 +258,9 @@ export function App() {
   ];
 
   return (
-    <div className="app-shell min-h-screen bg-[#F8F9FD] flex justify-center text-[#2C2145]">
+    <div className="app-shell h-[100dvh] min-h-0 overflow-hidden bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
-      <div className="w-full max-w-md sm:max-w-none min-h-screen bg-[#F8F9FD] flex flex-col relative pb-20 shadow-md sm:shadow-none border-x sm:border-x-0 border-gray-100">
+      <div className="w-full max-w-md sm:max-w-none h-[100dvh] min-h-0 bg-[#F8F9FD] flex flex-col relative shadow-md sm:shadow-none border-x sm:border-x-0 border-gray-100">
         {shouldShowCurrentTour && currentTourSteps && (
           <GuidedTour
             key={`${page}-${tourRefresh}`}
@@ -317,7 +317,7 @@ export function App() {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 overflow-y-auto">
+        <main className="flex-1 min-h-0 p-4 pb-24 overflow-y-auto overscroll-contain">
           {page === 'HOME' && (
             <HomePage
               onStartSession={startSessionWithTopic}
