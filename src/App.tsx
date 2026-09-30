@@ -391,6 +391,7 @@ export function App() {
               onViewQuestions={() => setPage('QUESTIONS')}
               onViewMistakes={() => setPage('MISTAKES')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
+              onOpenStudyCenter={() => setPage('ADVANCED')}
               unreadNotificationsCount={unreadNotificationsCount}
               darkMode={darkMode}
               themeMode={themeMode}
