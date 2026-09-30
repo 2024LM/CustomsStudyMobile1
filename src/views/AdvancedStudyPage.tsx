@@ -4,6 +4,12 @@ import {
   Brain,
   Layers3,
   ChartNoAxesCombined,
+  CheckCircle2,
+  XCircle,
+  Target,
+  BookOpen,
+  TrendingUp,
+  TrendingDown,
   Clock3,
   Database,
   Download,
@@ -42,6 +48,7 @@ import {
 } from '../services/advancedStudyTools';
 import { QuizQuestion } from '../types';
 import { arabicTtsStatus, speakArabic, stopArabicTts } from '../services/arabicTts';
+import { ActivityBarChart } from '../components/ActivityBarChart';
 
 type Section =
   | 'tools'
@@ -108,6 +115,8 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const [compareA, setCompareA] = useState(() => db.banks()[0]?.id || '');
   const [compareB, setCompareB] = useState(() => db.banks()[1]?.id || db.banks()[0]?.id || '');
   const [listening, setListening] = useState(false);
+  const [analyticsBankId, setAnalyticsBankId] = useState<string>('ALL');
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
   const backupInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,6 +163,16 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const activity = db.activityCalendar(84);
   const streak = db.studyStreak();
   const banks = db.banks();
+  const selectedAnalyticsBankId = analyticsBankId === 'ALL' ? null : analyticsBankId;
+  const analytics = db.dashboardAnalytics(selectedAnalyticsBankId);
+  const analyticsActivity = db.getActivityStats(analyticsPeriod, selectedAnalyticsBankId);
+  const analyticsSessions = selectedAnalyticsBankId
+    ? sessions.filter((session) => session.bankId === selectedAnalyticsBankId)
+    : sessions;
+  const totalSessionMinutes = analyticsSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
+  const averageSessionRate = analyticsSessions.length
+    ? Math.round(analyticsSessions.reduce((sum, session) => sum + session.successRate, 0) / analyticsSessions.length)
+    : 0;
   const toolResults = useMemo(
     () => toolQuery.trim().length >= 2 ? db.searchAcrossActiveDomain(toolQuery) : [],
     [toolQuery, section]
@@ -851,42 +870,174 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
       {section === 'analytics' && (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="bg-white rounded-[20px] p-3 border border-gray-100">
+            <label className="text-[11px] font-bold text-gray-500">نطاق الإحصائيات</label>
+            <select
+              value={analyticsBankId}
+              onChange={(e) => setAnalyticsBankId(e.target.value)}
+              className="w-full mt-2 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm font-semibold"
+            >
+              <option value="ALL">كل بنوك المجال</option>
+              {banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+            </select>
+          </div>
+
+          <div className="bg-white rounded-[22px] p-4 border border-gray-100">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-gray-400">نسبة النجاح العامة</div>
+                <div className="text-4xl font-black text-[#2C2145] mt-1">{analytics.stats.successRate}%</div>
+                <div className="text-[10px] text-gray-400 mt-1">{analytics.stats.answered} إجابة مسجلة</div>
+              </div>
+              <div className={`px-3 py-2 rounded-[12px] text-xs font-bold flex items-center gap-1.5 ${
+                analytics.weeklyDelta > 0
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : analytics.weeklyDelta < 0
+                    ? 'bg-red-50 text-red-600'
+                    : 'bg-gray-100 text-gray-500'
+              }`}>
+                {analytics.weeklyDelta > 0
+                  ? <TrendingUp className="w-4 h-4" />
+                  : analytics.weeklyDelta < 0
+                    ? <TrendingDown className="w-4 h-4" />
+                    : <RotateCcw className="w-4 h-4" />}
+                {analytics.weeklyDelta > 0 ? '+' : ''}{analytics.weeklyDelta}%
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="rounded-[13px] bg-[#F8F9FD] p-3">
+                <div className="text-[10px] text-gray-400">هذا الأسبوع</div>
+                <div className="font-black text-lg">{analytics.currentWeek.rate}%</div>
+                <div className="text-[10px] text-gray-400">{analytics.currentWeek.total} إجابة</div>
+              </div>
+              <div className="rounded-[13px] bg-[#F8F9FD] p-3">
+                <div className="text-[10px] text-gray-400">الأسبوع السابق</div>
+                <div className="font-black text-lg">{analytics.previousWeek.rate}%</div>
+                <div className="text-[10px] text-gray-400">{analytics.previousWeek.total} إجابة</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { icon: CheckCircle2, label: 'صحيح', value: analytics.stats.correct, cls: 'bg-emerald-50 text-emerald-700' },
+              { icon: XCircle, label: 'خطأ', value: analytics.stats.wrong, cls: 'bg-red-50 text-red-600' },
+              { icon: Target, label: 'مستحق', value: analytics.dueReview, cls: 'bg-amber-50 text-amber-700' },
+              { icon: BookOpen, label: 'جديد', value: analytics.unseen, cls: 'bg-[#F5F3FF] text-[#5B3FD6]' },
+            ].map(({ icon: Icon, label, value, cls }) => (
+              <div key={label} className={`rounded-[14px] p-2.5 text-center ${cls}`}>
+                <Icon className="w-4 h-4 mx-auto mb-1" />
+                <div className="text-base font-black">{value}</div>
+                <div className="text-[9px] font-bold">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <ActivityBarChart
+            buckets={analyticsActivity}
+            period={analyticsPeriod}
+            onPeriodChange={setAnalyticsPeriod}
+            banks={banks}
+            selectedBankId={analyticsBankId}
+            onBankChange={setAnalyticsBankId}
+          />
+
+          <div className="grid grid-cols-2 gap-2">
             <div className="bg-white rounded-[18px] p-4 border border-gray-100">
-              <div className="text-xs text-gray-400">Streak الحالي</div>
-              <div className="text-3xl font-bold text-[#5B3FD6] mt-1">{streak}</div>
-              <div className="text-[10px] text-gray-400">يوم متتالٍ</div>
+              <div className="text-[10px] text-gray-400">Streak الحالي</div>
+              <div className="text-2xl font-black text-[#5B3FD6] mt-1">{streak}</div>
+              <div className="text-[9px] text-gray-400">يوم متتالٍ</div>
             </div>
             <div className="bg-white rounded-[18px] p-4 border border-gray-100">
-              <div className="text-xs text-gray-400">جلسات مسجلة</div>
-              <div className="text-3xl font-bold mt-1">{sessions.length}</div>
+              <div className="text-[10px] text-gray-400">جلسات مسجلة</div>
+              <div className="text-2xl font-black mt-1">{analyticsSessions.length}</div>
+              <div className="text-[9px] text-gray-400">{totalSessionMinutes} دقيقة إجمالًا</div>
+            </div>
+            <div className="bg-white rounded-[18px] p-4 border border-gray-100">
+              <div className="text-[10px] text-gray-400">متوسط نتائج الجلسات</div>
+              <div className="text-2xl font-black mt-1">{averageSessionRate}%</div>
+            </div>
+            <div className="bg-white rounded-[18px] p-4 border border-gray-100">
+              <div className="text-[10px] text-gray-400">الأسئلة الجاهزة</div>
+              <div className="text-2xl font-black mt-1">{analytics.playableQuestions}</div>
+              <div className="text-[9px] text-gray-400">من {analytics.totalQuestions}</div>
             </div>
           </div>
 
           <div className="bg-white rounded-[20px] p-4 border border-gray-100">
-            <div className="font-bold text-sm mb-3">Heatmap آخر 12 أسبوعًا</div>
+            <div className="font-bold text-sm mb-3">نشاط آخر 12 أسبوعًا</div>
             <div className="grid grid-cols-14 gap-1">
               {activity.map((day) => (
-                <div key={day.date} title={`${day.date}: ${day.total}`}
-                  className={`aspect-square rounded-[4px] ${day.total === 0 ? 'bg-gray-100' : day.total < 10 ? 'bg-[#DDD5FF]' : day.total < 30 ? 'bg-[#A58EF4]' : 'bg-[#5B3FD6]'}`} />
+                <div
+                  key={day.date}
+                  title={`${day.date}: ${day.total}`}
+                  className={`aspect-square rounded-[4px] ${
+                    day.total === 0 ? 'bg-gray-100' : day.total < 10 ? 'bg-[#DDD5FF]' : day.total < 30 ? 'bg-[#A58EF4]' : 'bg-[#5B3FD6]'
+                  }`}
+                />
               ))}
             </div>
           </div>
 
-          <div className="bg-white rounded-[20px] p-4 border border-gray-100">
-            <div className="font-bold text-sm mb-3">أداء المحاور</div>
-            {weakTopics.map((item) => (
-              <div key={item.topic} className="mb-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold truncate">{item.topic}</span>
-                  <span>{item.successRate}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full bg-[#5B3FD6] rounded-full" style={{ width: `${item.successRate}%` }} />
-                </div>
+          {analytics.weakTopics.length > 0 && (
+            <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+              <div className="font-bold text-sm mb-3">أضعف المحاور</div>
+              <div className="flex flex-col gap-3">
+                {analytics.weakTopics.map((item) => (
+                  <div key={item.topic}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <div className="min-w-0">
+                        <span className="font-bold truncate block">{item.topic}</span>
+                        <span className="text-[9px] text-gray-400">{item.wrong} خطأ من {item.attempts} محاولة</span>
+                      </div>
+                      <span className="font-black text-red-500">{item.successRate}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full bg-red-400 rounded-full" style={{ width: `${item.successRate}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {analytics.strongTopics.length > 0 && (
+            <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+              <div className="font-bold text-sm mb-3">أقوى المحاور</div>
+              <div className="flex flex-col gap-2">
+                {analytics.strongTopics.map((item) => (
+                  <div key={item.topic} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate">{item.topic}</div>
+                      <div className="text-[9px] text-gray-400">{item.attempts} محاولة</div>
+                    </div>
+                    <div className="text-emerald-600 font-black text-sm">{item.successRate}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analytics.topMistakes.length > 0 && (
+            <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+              <div className="font-bold text-sm mb-3">أكثر الأسئلة خطأ</div>
+              <div className="flex flex-col gap-2">
+                {analytics.topMistakes.map((item) => (
+                  <div key={item.question.rowId} className="rounded-[13px] bg-red-50/60 p-3">
+                    <div className="text-xs font-bold leading-5">{item.question.question}</div>
+                    <div className="text-[10px] text-red-500 mt-1">{item.wrongCount} مرات خطأ</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analytics.stats.answered === 0 && (
+            <div className="bg-white rounded-[18px] p-5 border border-gray-100 text-center text-xs text-gray-400">
+              ابدأ الإجابة عن الأسئلة والجلسات ليظهر تحليل الأداء التفصيلي هنا.
+            </div>
+          )}
         </div>
       )}
 
