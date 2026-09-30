@@ -76,7 +76,7 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
           storeUrl: isTrustedUpdateUrl(String(ratingObj.store_url || '').trim()) ? String(ratingObj.store_url || '').trim() : '',
           title: String(ratingObj.title || 'ما رأيك في التطبيق؟').trim().slice(0, 200),
           message: String(ratingObj.message || 'ساعدنا بتقييم التطبيق.').trim().slice(0, 1000),
-          minUsageDays: Math.max(1, Math.min(365, Number(ratingObj.min_usage_days) || 3)),
+          minUsageDays: Math.max(0.5, Math.min(365, Number(ratingObj.min_usage_days) || 3)),
           minLaunches: Math.max(1, Math.min(1000, Number(ratingObj.min_launches) || 5)),
           repeatAfterDays: Math.max(1, Math.min(365, Number(ratingObj.repeat_after_days) || 14)),
         },
@@ -90,7 +90,7 @@ export async function fetchRemoteConfig(): Promise<RemoteState | null> {
   };
 
   // 1. Try remote GitHub repository raw URL first
-  const remoteResult = await tryFetch(CONFIG_URL);
+  const remoteResult = await tryFetch(`${CONFIG_URL}?t=${Date.now()}`);
   if (remoteResult) {
     return remoteResult;
   }
