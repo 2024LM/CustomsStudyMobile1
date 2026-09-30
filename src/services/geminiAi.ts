@@ -702,12 +702,86 @@ export async function summarizeReference(title: string, text: string): Promise<s
   );
 }
 
-export async function questionsFromReference(title: string, text: string): Promise<string> {
+export interface GeneratedReferenceQuestion {
+  type: 'QCM' | 'TRUE_FALSE';
+  question: string;
+  correctAnswer: string;
+  wrongAnswers: string[];
+  explanation: string;
+  topic: string;
+}
+
+export async function questionsFromReference(title: string, text: string): Promise<GeneratedReferenceQuestion[]> {
   const source = cleanReferenceText(text);
-  return generate(
-    `أنشئ 10 أسئلة مراجعة من المرجع التالي فقط. اجعلها مناسبة للاختبارات، وامزج بين QCM وصح/خطأ عندما يكون ذلك منطقيًا. لكل سؤال اكتب: السؤال، الإجابة الصحيحة، ثلاثة خيارات خاطئة عند QCM، وشرحًا قصيرًا. لا تستخدم معلومات من خارج النص.\n\nالعنوان: ${title}\n\nالمحتوى:\n${source}`,
-    2200
+  const raw = await generate(
+    `أنشئ 10 أسئلة مراجعة من المرجع التالي فقط. اجعلها مناسبة للاختبارات، وامزج بين QCM وصح/خطأ عندما يكون ذلك منطقيًا.
+
+أعد JSON صالحًا فقط بدون Markdown وبدون أي نص خارجي بهذه البنية:
+[
+  {
+    "type": "QCM",
+    "question": "نص السؤال",
+    "correctAnswer": "الإجابة الصحيحة",
+    "wrongAnswers": ["خيار خاطئ 1", "خيار خاطئ 2", "خيار خاطئ 3"],
+    "explanation": "شرح قصير مبني على المرجع",
+    "topic": "المحور"
+  }
+]
+
+لقسم صح/خطأ استخدم:
+"type": "TRUE_FALSE"
+واجعل correctAnswer إما "صحيح" أو "خطأ"، واترك wrongAnswers مصفوفة فارغة.
+لا تستخدم معلومات من خارج المرجع ولا تكرر الخيارات.
+
+العنوان: ${title}
+
+المحتوى:
+${source}`,
+    3200
   );
+
+  const cleaned = raw.replace(/^\`\`\`json\s*/i, '').replace(/^\`\`\`\s*/i, '').replace(/\s*\`\`\`$/i, '').trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error('أعاد Gemini الأسئلة بصيغة غير صالحة. أعد المحاولة.');
+  }
+
+  if (!Array.isArray(parsed)) throw new Error('صيغة الأسئلة غير صالحة.');
+
+  const questions = parsed.map((item: any) => {
+    const type = String(item?.type || 'QCM').toUpperCase() === 'TRUE_FALSE' ? 'TRUE_FALSE' : 'QCM';
+    const question = String(item?.question || '').trim().slice(0, 2000);
+    let correctAnswer = String(item?.correctAnswer || '').trim().slice(0, 2000);
+    let wrongAnswers = Array.isArray(item?.wrongAnswers)
+      ? item.wrongAnswers.map((value: unknown) => String(value || '').trim().slice(0, 2000)).filter(Boolean)
+      : [];
+
+    if (type === 'TRUE_FALSE') {
+      const normalized = correctAnswer.toLowerCase();
+      if (normalized === 'true') correctAnswer = 'صحيح';
+      if (normalized === 'false') correctAnswer = 'خطأ';
+      if (!['صحيح', 'خطأ'].includes(correctAnswer)) return null;
+      wrongAnswers = [];
+    } else {
+      wrongAnswers = Array.from(new Set(wrongAnswers.filter((value: string) => value !== correctAnswer))).slice(0, 3);
+      if (wrongAnswers.length !== 3) return null;
+    }
+
+    if (!question || !correctAnswer) return null;
+    return {
+      type,
+      question,
+      correctAnswer,
+      wrongAnswers,
+      explanation: String(item?.explanation || '').trim().slice(0, 2000),
+      topic: String(item?.topic || title).trim().slice(0, 200),
+    } as GeneratedReferenceQuestion;
+  }).filter((item): item is GeneratedReferenceQuestion => Boolean(item)).slice(0, 10);
+
+  if (!questions.length) throw new Error('لم يتم توليد أسئلة صالحة من هذا المرجع.');
+  return questions;
 }
 
 export interface GeneratedFlashcard {
