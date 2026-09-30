@@ -10,6 +10,7 @@ import {
   FolderOpen,
   GraduationCap,
   Moon,
+  Monitor,
   RotateCcw,
   Sun,
   Target,
@@ -29,7 +30,8 @@ interface HomePageProps {
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   darkMode?: boolean;
-  onToggleDarkMode?: () => void;
+  themeMode?: 'system' | 'light' | 'dark';
+  onCycleTheme?: () => void;
   username?: string;
 }
 
@@ -47,7 +49,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenNotifications,
   unreadNotificationsCount = 0,
   darkMode = false,
-  onToggleDarkMode,
+  themeMode = 'system',
+  onCycleTheme,
   username = '',
 }) => {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -75,14 +78,18 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-white">الرئيسية</h2>
             <div className="flex items-center gap-2">
-              {onToggleDarkMode && (
+              {onCycleTheme && (
                 <button
-                  onClick={onToggleDarkMode}
-                  title={darkMode ? 'الوضع النهاري' : 'الوضع الليلي'}
-                  aria-label={darkMode ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'}
+                  onClick={onCycleTheme}
+                  title={themeMode === 'system' ? 'المظهر: حسب الهاتف' : themeMode === 'light' ? 'المظهر: نهاري' : 'المظهر: ليلي'}
+                  aria-label={themeMode === 'system' ? 'المظهر يتبع إعداد الهاتف' : themeMode === 'light' ? 'الوضع النهاري' : 'الوضع الليلي'}
                   className="w-11 h-11 rounded-[14px] bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer shadow-xs"
                 >
-                  {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  {themeMode === 'system'
+                    ? <Monitor className="w-5 h-5" />
+                    : darkMode
+                      ? <Moon className="w-5 h-5" />
+                      : <Sun className="w-5 h-5" />}
                 </button>
               )}
 
