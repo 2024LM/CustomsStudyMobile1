@@ -1464,7 +1464,19 @@ class StudyDatabaseService {
     return this.data.settings[key] ?? defaultValue;
   }
 
+  public setSettings(values: Record<string, string>): void {
+    let changed = false;
+    for (const [key, value] of Object.entries(values)) {
+      if (this.data.settings[key] !== value) {
+        this.data.settings[key] = value;
+        changed = true;
+      }
+    }
+    if (changed) this.notify();
+  }
+
   public setSetting(key: string, value: string) {
+    if (this.data.settings[key] === value) return;
     this.data.settings[key] = value;
     this.notify();
   }
@@ -1812,27 +1824,28 @@ class StudyDatabaseService {
 
   public saveRemote(s: RemoteState) {
     this.syncRemoteNotifications(s);
-    this.setSetting('remote_latest', s.latest.toString());
-    this.setSetting('remote_minimum', s.minimum.toString());
-    this.setSetting('remote_update_url', s.updateUrl);
-    this.setSetting('remote_update_title', s.updateTitle);
-    this.setSetting('remote_update_message', s.updateMessage);
-    this.setSetting('remote_announcement_id', s.announcementId);
-    this.setSetting('remote_announcement_title', s.announcementTitle);
-    this.setSetting('remote_announcement_message', s.announcementMessage);
-    this.setSetting('remote_announcement_enabled', s.announcementEnabled ? '1' : '0');
+    this.data.settings['remote_latest'] = s.latest.toString();
+    this.data.settings['remote_minimum'] = s.minimum.toString();
+    this.data.settings['remote_update_url'] = s.updateUrl;
+    this.data.settings['remote_update_title'] = s.updateTitle;
+    this.data.settings['remote_update_message'] = s.updateMessage;
+    this.data.settings['remote_announcement_id'] = s.announcementId;
+    this.data.settings['remote_announcement_title'] = s.announcementTitle;
+    this.data.settings['remote_announcement_message'] = s.announcementMessage;
+    this.data.settings['remote_announcement_enabled'] = s.announcementEnabled ? '1' : '0';
     if (s.ratingPrompt) {
-      this.setSetting('remote_rating_prompt', JSON.stringify(s.ratingPrompt));
+      this.data.settings['remote_rating_prompt'] = JSON.stringify(s.ratingPrompt);
     }
     if (s.notifications) {
-      this.setSetting('remote_notifications', JSON.stringify(s.notifications));
+      this.data.settings['remote_notifications'] = JSON.stringify(s.notifications);
     }
     if (s.lastCheckedAt) {
-      this.setSetting('remote_last_checked', s.lastCheckedAt.toString());
+      this.data.settings['remote_last_checked'] = s.lastCheckedAt.toString();
     }
     if (s.source) {
-      this.setSetting('remote_source', s.source);
+      this.data.settings['remote_source'] = s.source;
     }
+    this.notify();
   }
 
   public storedNotifications(): StoredNotification[] {

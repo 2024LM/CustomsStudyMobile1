@@ -11,9 +11,11 @@ cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
 cp native-android/NexusTtsService.java "$JAVA_DIR/NexusTtsService.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
-cp native-android/NexusNanoAiPlugin.java "$JAVA_DIR/NexusNanoAiPlugin.java"
 cp native-android/NexusFileExportPlugin.java "$JAVA_DIR/NexusFileExportPlugin.java"
 cp native-android/NexusPdfPlugin.java "$JAVA_DIR/NexusPdfPlugin.java"
+TEST_JAVA_DIR="android/app/src/test/java/com/nexus/customsstudy"
+mkdir -p "$TEST_JAVA_DIR"
+cp native-android/tests/NexusStorageTest.java "$TEST_JAVA_DIR/NexusStorageTest.java"
 
 
 python3 - <<'PY'
@@ -34,10 +36,12 @@ needle="dependencies {"
 deps = []
 if "com.unity3d.ads:unity-ads" not in s:
     deps.append("    implementation 'com.unity3d.ads:unity-ads:4.19.0'\n")
-if "com.google.mlkit:genai-prompt" not in s:
-    deps.append("    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'\n")
+if "org.robolectric:robolectric" not in s:
+    deps.append("    testImplementation 'org.robolectric:robolectric:4.14.1'\n")
+    deps.append("    testImplementation 'junit:junit:4.13.2'\n")
 if deps:
     s=s.replace(needle, needle+"\n"+"".join(deps), 1)
+s += "\nandroid { testOptions { unitTests.includeAndroidResources = true } }\n"
 p.write_text(s)
 PY
 
@@ -47,6 +51,7 @@ p=Path("android/app/src/main/AndroidManifest.xml")
 s=p.read_text()
 
 permissions = [
+    '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
     '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
     '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
     '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />',

@@ -7,6 +7,8 @@ on:
         description: "Manual rebuild marker"
         required: false
         default: "manual"
+  pull_request:
+    branches: [ "main" ]
   push:
     branches: [ "main" ]
 
@@ -37,6 +39,9 @@ jobs:
         env:
           VITE_BUILD_SHA: ${{ github.sha }}
 
+      - name: Verify resource regressions
+        run: node tests/resource-regressions.mjs
+
       - name: Create Android project
         run: npx cap add android
 
@@ -57,7 +62,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

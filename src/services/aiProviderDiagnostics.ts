@@ -5,7 +5,7 @@ export type AiProviderLogStatus = 'success' | 'error' | 'retry' | 'info';
 export interface AiProviderLogEntry {
   id: string;
   at: number;
-  provider: 'gemini-api' | 'gemini-nano';
+  provider: 'gemini-api';
   operation: string;
   model?: string;
   keyNumber?: number;

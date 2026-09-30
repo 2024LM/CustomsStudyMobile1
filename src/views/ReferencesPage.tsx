@@ -414,7 +414,7 @@ export const ReferencesPage: React.FC = () => {
         </div>
       </div>
 
-      <ReferenceBannerAd slot="top" />
+      <ReferenceBannerAd slot="top" format="banner" />
 
       <div className="grid grid-cols-3 gap-2">
         {[
