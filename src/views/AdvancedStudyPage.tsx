@@ -539,28 +539,16 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </div>
           </div>
 
-          <div className="bg-white rounded-[20px] p-4 border border-gray-100 flex flex-col gap-2">
-            <textarea value={cardFront} onChange={(e) => setCardFront(e.target.value)} placeholder="وجه البطاقة: السؤال أو المصطلح"
-              className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm min-h-20" />
-            <textarea value={cardBack} onChange={(e) => setCardBack(e.target.value)} placeholder="ظهر البطاقة: الإجابة أو التعريف"
-              className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm min-h-20" />
-            <button onClick={() => {
-              try {
-                addFlashcard(cardFront, cardBack);
-                setCardFront(''); setCardBack('');
-                setRefresh((v) => v + 1);
-                setStatus('تمت إضافة البطاقة.');
-              } catch (error: any) { setStatus(error?.message || 'تعذر إضافة البطاقة.'); }
-            }} className="py-3 rounded-[13px] bg-[#5B3FD6] text-white text-sm font-bold flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4" /> إضافة بطاقة
-            </button>
-          </div>
-
-          {selectedCard && (
+          {selectedCard ? (
             <div className="bg-white rounded-[22px] p-5 border border-gray-100 text-center min-h-56 flex flex-col justify-between">
-              <button onClick={() => setCardFlipped((v) => !v)} className="flex-1 flex items-center justify-center text-lg font-bold leading-8">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[10px] text-gray-400">مراجعة البطاقات</span>
+                <span className="text-[10px] font-bold text-[#5B3FD6]">{Math.min(cardIndex + 1, dueCards.length || cards.length)} / {dueCards.length || cards.length}</span>
+              </div>
+              <button onClick={() => setCardFlipped((v) => !v)} className="flex-1 flex items-center justify-center text-lg font-bold leading-8 px-2">
                 {cardFlipped ? selectedCard.back : selectedCard.front}
               </button>
+              <div className="text-[10px] text-gray-400 mt-2">اضغط على البطاقة لقلبها</div>
               <div className="flex justify-center gap-2 mt-4">
                 <button onClick={() => void speakArabic(cardFlipped ? selectedCard.back : selectedCard.front).catch((error) => setStatus(error?.message || 'تعذر تشغيل الصوت العربي.'))}
                   className="w-10 h-10 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center">
@@ -592,7 +580,30 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 </div>
               )}
             </div>
+          ) : (
+            <div className="bg-white rounded-[20px] p-6 border border-gray-100 text-center">
+              <div className="text-sm font-bold text-[#2C2145]">لا توجد بطاقات للمراجعة</div>
+              <div className="text-[11px] text-gray-400 mt-1">أضف بطاقة جديدة من النموذج بالأسفل.</div>
+            </div>
           )}
+
+          <div className="bg-white rounded-[20px] p-4 border border-gray-100 flex flex-col gap-2">
+            <textarea value={cardFront} onChange={(e) => setCardFront(e.target.value)} placeholder="وجه البطاقة: السؤال أو المصطلح"
+              className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm min-h-20" />
+            <textarea value={cardBack} onChange={(e) => setCardBack(e.target.value)} placeholder="ظهر البطاقة: الإجابة أو التعريف"
+              className="rounded-[13px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm min-h-20" />
+            <button onClick={() => {
+              try {
+                addFlashcard(cardFront, cardBack);
+                setCardFront(''); setCardBack('');
+                setRefresh((v) => v + 1);
+                setStatus('تمت إضافة البطاقة.');
+              } catch (error: any) { setStatus(error?.message || 'تعذر إضافة البطاقة.'); }
+            }} className="py-3 rounded-[13px] bg-[#5B3FD6] text-white text-sm font-bold flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" /> إضافة بطاقة
+            </button>
+          </div>
+
         </div>
       )}
 
