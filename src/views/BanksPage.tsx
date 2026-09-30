@@ -158,6 +158,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected, onBack }) 
 
       {/* Import Button / Card */}
       <div
+        data-tour="banks-import"
         onClick={() => void handleImportClick()}
         className={`w-full bg-[#F5F3FF] rounded-[22px] p-4.5 border border-[#D9D0FA] flex items-center justify-between gap-3 cursor-pointer transition-all hover:bg-[#EFEAFF] active:scale-98 ${
           importing ? 'opacity-60 cursor-wait' : ''
