@@ -139,3 +139,50 @@ html.dark .app-shell .word-document h3,
 html.dark .app-shell .word-document h4 { color: #f2eef9 !important; }
 html.dark .app-shell .word-document td,
 html.dark .app-shell .word-document th { border-color: #3a3348; }
+
+
+/* Dark-mode semantic surfaces: keep status colors readable without bright cards. */
+html.dark .app-shell .bg-gray-50,
+html.dark .app-shell .bg-gray-100 {
+  background-color: #292531 !important;
+}
+
+html.dark .app-shell .bg-red-50,
+html.dark .app-shell .bg-red-50\/50,
+html.dark .app-shell .bg-\[\#FFEEED\] {
+  background-color: #382126 !important;
+}
+
+html.dark .app-shell .bg-emerald-50 {
+  background-color: #173229 !important;
+}
+
+html.dark .app-shell .bg-amber-50,
+html.dark .app-shell .bg-yellow-50 {
+  background-color: #352d1e !important;
+}
+
+html.dark .app-shell .text-red-600,
+html.dark .app-shell .text-red-500,
+html.dark .app-shell .text-\[\#C62828\] {
+  color: #ff8e8e !important;
+}
+
+html.dark .app-shell .text-emerald-700,
+html.dark .app-shell .text-emerald-600 {
+  color: #76ddb0 !important;
+}
+
+html.dark .app-shell .text-amber-700,
+html.dark .app-shell .text-amber-600 {
+  color: #f2c96d !important;
+}
+
+html.dark .app-shell .border-gray-50 {
+  border-color: #2d2837 !important;
+}
+
+html.dark .app-shell ::selection {
+  background: #6841e8;
+  color: #ffffff;
+}
