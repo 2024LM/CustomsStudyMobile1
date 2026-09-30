@@ -28,6 +28,7 @@ interface HomePageProps {
   onViewQuestions: () => void;
   onViewMistakes: () => void;
   onOpenNotifications?: () => void;
+  onOpenStudyCenter?: () => void;
   unreadNotificationsCount?: number;
   darkMode?: boolean;
   themeMode?: 'system' | 'light' | 'dark';
@@ -47,6 +48,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onViewQuestions,
   onViewMistakes,
   onOpenNotifications,
+  onOpenStudyCenter,
   unreadNotificationsCount = 0,
   darkMode = false,
   themeMode = 'system',
@@ -108,9 +110,16 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </button>
               )}
 
-              <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+              {onOpenStudyCenter && (
+                <button
+                  onClick={onOpenStudyCenter}
+                  title="مركز الدراسة"
+                  aria-label="فتح مركز الدراسة"
+                  className="w-11 h-11 rounded-[14px] bg-white/15 hover:bg-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer shadow-xs"
+                >
+                  <GraduationCap className="w-6 h-6 text-white" />
+                </button>
+              )}
             </div>
           </div>
 
