@@ -309,6 +309,14 @@ export const ReferencesPage: React.FC = () => {
               <h1 className="font-bold text-base text-[#2C2145] truncate">{localSelected.name}</h1>
               <p className="text-[11px] text-gray-400">مرجع محلي • {localSelected.type.toUpperCase()}</p>
             </div>
+            {localSelected.type !== 'pdf' && !contentLoading && !contentError && (
+              <SpeakButton
+                text={content || htmlToPlainText(wordHtml)}
+                title="استماع"
+                onError={setLocalStatus}
+                className="shrink-0 bg-white border border-gray-100 shadow-xs"
+              />
+            )}
             <button onClick={() => { setLocalSelected(null); setPdfBlob(null); }} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center">
               <X className="w-5 h-5" />
             </button>
@@ -316,21 +324,10 @@ export const ReferencesPage: React.FC = () => {
         </div>
 
         {!contentLoading && !contentError && localSelected.type !== 'pdf' && (
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0">
-              <AiReferenceTools
-                title={localSelected.name}
-                text={content || htmlToPlainText(wordHtml)}
-              />
-            </div>
-            <SpeakButton
-              text={content || htmlToPlainText(wordHtml)}
-              compact={false}
-              title="استماع"
-              onError={setLocalStatus}
-              className="shrink-0 bg-white border border-gray-100 shadow-xs"
-            />
-          </div>
+          <AiReferenceTools
+            title={localSelected.name}
+            text={content || htmlToPlainText(wordHtml)}
+          />
         )}
 
         <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
@@ -358,26 +355,26 @@ export const ReferencesPage: React.FC = () => {
         <div className="sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md py-1">
           <div className="flex items-center justify-between gap-3">
             <button onClick={() => { setSelected(null); setPdfBlob(null); }} className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs cursor-pointer"><ChevronLeft className="w-5 h-5 rotate-180" /></button>
-            <div className="flex-1 min-w-0"><h1 className="font-bold text-base text-[#2C2145] truncate">{selected.title}</h1><p className="text-[11px] text-gray-400">{selected.type}</p></div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-base text-[#2C2145] truncate">{selected.title}</h1>
+              <p className="text-[11px] text-gray-400">{selected.type}</p>
+            </div>
+            {downloadableReferenceType(selected.type) !== 'pdf' && !contentLoading && !contentError && (
+              <SpeakButton
+                text={content || htmlToPlainText(wordHtml)}
+                title="استماع"
+                onError={setContentError}
+                className="shrink-0 bg-white border border-gray-100 shadow-xs"
+              />
+            )}
             <button onClick={() => { setSelected(null); setPdfBlob(null); }} className="w-9 h-9 rounded-full text-gray-400 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
           </div>
         </div>
         {!contentLoading && !contentError && downloadableReferenceType(selected.type) !== 'pdf' && (
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0">
-              <AiReferenceTools
-                title={selected.title}
-                text={content || htmlToPlainText(wordHtml)}
-              />
-            </div>
-            <SpeakButton
-              text={content || htmlToPlainText(wordHtml)}
-              compact={false}
-              title="استماع"
-              onError={setContentError}
-              className="shrink-0 bg-white border border-gray-100 shadow-xs"
-            />
-          </div>
+          <AiReferenceTools
+            title={selected.title}
+            text={content || htmlToPlainText(wordHtml)}
+          />
         )}
 
         <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
