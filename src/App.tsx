@@ -336,7 +336,7 @@ export function App() {
   return (
     <div className="app-shell h-[100dvh] min-h-0 overflow-hidden bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
-      <div className="w-full max-w-md sm:max-w-none h-[100dvh] min-h-0 bg-[#F8F9FD] flex flex-col relative shadow-md sm:shadow-none border-x sm:border-x-0 border-gray-100">
+      <div className="w-full h-[100dvh] min-h-0 bg-[#F8F9FD] flex flex-col relative">
         {shouldShowCurrentTour && currentTourSteps && (
           <GuidedTour
             key={`${page}-${tourRefresh}`}
@@ -494,7 +494,7 @@ export function App() {
 
         {/* Bottom Navigation Bar */}
         {!sessionFocus && (
-          <nav data-tour="bottom-navigation" className="fixed bottom-0 max-w-md sm:max-w-none w-full bg-white/95 backdrop-blur-md border-t border-gray-100 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] px-1 z-40 shadow-sm">
+          <nav data-tour="bottom-navigation" className="fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-gray-100 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] px-1 z-40 shadow-sm">
             <div className="flex items-center justify-around">
               {navItems.map((item) => {
                 const Icon = item.icon;

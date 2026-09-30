@@ -38,6 +38,7 @@ public class NexusAdsPlugin extends Plugin {
     private static class BannerState {
         String slot;
         String placement;
+        String fallbackPlacement;
         boolean rectangle;
         int adWidth;
         int adHeight;
@@ -53,8 +54,7 @@ public class NexusAdsPlugin extends Plugin {
         ConnectivityManager manager = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (manager == null) return false;
         NetworkCapabilities capabilities = manager.getNetworkCapabilities(manager.getActiveNetwork());
-        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     @PluginMethod
@@ -147,6 +147,7 @@ public class NexusAdsPlugin extends Plugin {
             BannerState state = new BannerState();
             state.slot = slot;
             state.placement = call.getString("placementId", "BP_Banner_Android");
+            state.fallbackPlacement = call.getString("fallbackPlacementId", "BP_Banner_Android");
             state.rectangle = "rectangle".equals(call.getString("format", "banner"));
             state.adWidth = state.rectangle ? 300 : 320;
             state.adHeight = state.rectangle ? 250 : 50;
@@ -155,20 +156,32 @@ public class NexusAdsPlugin extends Plugin {
             readPosition(state, call);
             banners.put(slot, state);
             getActivity().addContentView(state.container, new FrameLayout.LayoutParams(1, 1));
-            state.timeout = () -> {
-                if (banners.get(slot) == state && state.pending != null) {
-                    PluginCall pending = state.pending;
-                    state.pending = null;
-                    hideBannerInternal(slot);
-                    pending.reject("Banner load timed out");
-                }
-            };
-            handler.postDelayed(state.timeout, 20000);
             loadBanner(state);
         });
     }
 
+    private void fallbackBanner(BannerState state) {
+        state.rectangle = false;
+        state.placement = state.fallbackPlacement;
+        state.adWidth = 320;
+        state.adHeight = 50;
+        state.container.removeView(state.view);
+        state.view.destroy();
+        loadBanner(state);
+    }
+
     private void loadBanner(BannerState state) {
+        if (state.timeout != null) handler.removeCallbacks(state.timeout);
+        state.timeout = () -> {
+            if (banners.get(state.slot) != state || state.pending == null) return;
+            if (state.rectangle) { fallbackBanner(state); return; }
+            PluginCall pending = state.pending;
+            state.pending = null;
+            hideBannerInternal(state.slot);
+            android.util.Log.w("NexusAds", "Banner " + state.placement + " timed out");
+            pending.reject("Banner load timed out");
+        };
+        handler.postDelayed(state.timeout, state.rectangle ? 8000 : 15000);
         BannerView view = new BannerView(getActivity(), state.placement, new UnityBannerSize(state.adWidth, state.adHeight));
         state.view = view;
         view.setListener(new BannerView.IListener() {
@@ -189,21 +202,18 @@ public class NexusAdsPlugin extends Plugin {
             @Override public void onBannerFailedToLoad(BannerView failedView, BannerErrorInfo errorInfo) {
                 handler.post(() -> {
                     if (banners.get(state.slot) != state || state.view != failedView) return;
-                    if (state.rectangle) {
-                        // Existing Unity placements may serve only standard banners.
-                        // Keep the placement monetized when MREC is not supported.
-                        state.rectangle = false;
-                        state.adWidth = 320;
-                        state.adHeight = 50;
-                        state.container.removeView(failedView);
-                        failedView.destroy();
-                        loadBanner(state);
+                    if (state.rectangle && state.pending != null) {
+                        fallbackBanner(state);
                         return;
                     }
                     PluginCall pending = state.pending;
                     state.pending = null;
                     hideBannerInternal(state.slot);
+                    android.util.Log.w("NexusAds", "Banner " + state.placement + ": " + errorInfo.errorMessage);
                     if (pending != null) pending.reject("Banner failed to load: " + errorInfo.errorMessage);
+                    JSObject event = new JSObject();
+                    event.put("slot", state.slot);
+                    notifyListeners("banner-failed", event);
                 });
             }
             @Override public void onBannerClick(BannerView view) {}
@@ -244,18 +254,23 @@ public class NexusAdsPlugin extends Plugin {
         int clipTop = Math.max(top, webRect.top + Math.round((float) state.clipTop * scale));
         int clipRight = Math.min(left + adWidth, Math.min(webRect.right, webRect.left + Math.round((float) state.clipRight * scale)));
         int clipBottom = Math.min(top + adHeight, Math.min(webRect.bottom, webRect.top + Math.round((float) state.clipBottom * scale)));
+        FrameLayout.LayoutParams child = new FrameLayout.LayoutParams(adWidth, adHeight);
+        child.leftMargin = left - clipLeft;
+        child.topMargin = top - clipTop;
+        state.view.setLayoutParams(child);
         boolean visible = foreground && state.visible && clipRight > clipLeft && clipBottom > clipTop;
         state.container.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
-        if (!visible) return;
+        if (!visible) {
+            // Keep the SDK view measured while loading, without exposing an
+            // overlay before React has allocated the successful ad's space.
+            state.container.setLayoutParams(new FrameLayout.LayoutParams(adWidth, adHeight));
+            return;
+        }
         FrameLayout.LayoutParams container = new FrameLayout.LayoutParams(clipRight - clipLeft, clipBottom - clipTop);
         container.gravity = Gravity.TOP | Gravity.LEFT;
         container.leftMargin = clipLeft - activityRect.left;
         container.topMargin = clipTop - activityRect.top;
         state.container.setLayoutParams(container);
-        FrameLayout.LayoutParams child = new FrameLayout.LayoutParams(adWidth, adHeight);
-        child.leftMargin = left - clipLeft;
-        child.topMargin = top - clipTop;
-        state.view.setLayoutParams(child);
     }
 
     @PluginMethod

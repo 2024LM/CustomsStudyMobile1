@@ -14,16 +14,16 @@ export interface AdRect {
   clipBottom?: number;
 }
 interface NexusAdsPlugin {
-  addListener(eventName: 'ads-resumed', listener: () => void): Promise<PluginListenerHandle>;
+  addListener(eventName: 'ads-resumed' | 'banner-failed', listener: (event: { slot?: string }) => void): Promise<PluginListenerHandle>;
   initializeAds(options: { personalized: boolean }): Promise<void>;
   showInterstitial(options: { placementId: string }): Promise<void>;
-  showBanner(options: AdRect & { placementId: string; slot: string; format: AdFormat }): Promise<{ loaded?: boolean; height?: number }>;
+  showBanner(options: AdRect & { placementId: string; fallbackPlacementId: string; slot: string; format: AdFormat }): Promise<{ loaded?: boolean; height?: number }>;
   updateBanner(options: AdRect & { slot: string }): Promise<void>;
   hideBanner(options: { slot: string }): Promise<void>;
 }
 const NexusAds = registerPlugin<NexusAdsPlugin>('NexusAds');
 const BANNER_PLACEMENT = import.meta.env.VITE_UNITY_BANNER_PLACEMENT || 'BP_Banner_Android';
-const RECTANGLE_PLACEMENT = import.meta.env.VITE_UNITY_RECTANGLE_PLACEMENT || BANNER_PLACEMENT;
+const RECTANGLE_PLACEMENT = String(import.meta.env.VITE_UNITY_RECTANGLE_PLACEMENT || '').trim();
 let initialized = false;
 let initialization: Promise<boolean> | null = null;
 let interstitial: Promise<void> | null = null;
@@ -58,11 +58,15 @@ export function showInterstitial(): Promise<void> {
 export async function showBanner(slot: string, rect: AdRect, format: AdFormat): Promise<{ loaded: boolean; height: number }> {
   try {
     if (!(await ensureInitialized()) || !adsAvailable()) return { loaded: false, height: 0 };
+    // A banner placement must not be asked for an unsupported rectangle size.
+    const effectiveFormat = format === 'rectangle' && RECTANGLE_PLACEMENT && RECTANGLE_PLACEMENT !== BANNER_PLACEMENT
+      ? 'rectangle' : 'banner';
     const result = await NexusAds.showBanner({
-      placementId: format === 'rectangle' ? RECTANGLE_PLACEMENT : BANNER_PLACEMENT,
-      slot, format, ...rect,
+      placementId: effectiveFormat === 'rectangle' ? RECTANGLE_PLACEMENT : BANNER_PLACEMENT,
+      fallbackPlacementId: BANNER_PLACEMENT,
+      slot, format: effectiveFormat, ...rect,
     });
-    return { loaded: result?.loaded === true, height: result?.height || (format === 'rectangle' ? 250 : 50) };
+    return { loaded: result?.loaded === true, height: result?.height || (effectiveFormat === 'rectangle' ? 250 : 50) };
   } catch {
     return { loaded: false, height: 0 };
   }
@@ -77,4 +81,8 @@ export const showReferenceInterstitial = showInterstitial;
 
 export function onAdsResumed(listener: () => void): Promise<PluginListenerHandle> {
   return NexusAds.addListener('ads-resumed', listener);
+}
+
+export function onBannerFailed(slot: string, listener: () => void): Promise<PluginListenerHandle> {
+  return NexusAds.addListener('banner-failed', event => { if (event.slot === slot) listener(); });
 }

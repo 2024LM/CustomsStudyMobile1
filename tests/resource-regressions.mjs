@@ -59,6 +59,7 @@ assert.ok(saved.notifications.some(n => n.id === 'sys_announcement_a1'));
 
 let initCalls = 0;
 const slots = [];
+const bannerRequests = [];
 const hidden = [];
 let rejectInit = true;
 const navigator = { onLine: true };
@@ -68,7 +69,7 @@ const ads = loadModule('src/services/ads.ts', {
     Capacitor: { getPlatform: () => 'android' },
     registerPlugin: () => ({
       initializeAds: async () => { initCalls++; if (rejectInit) throw new Error('offline'); },
-      showBanner: async args => { slots.push(args.slot); return { loaded: true, height: 250 }; },
+      showBanner: async args => { slots.push(args.slot); bannerRequests.push(args); return { loaded: true, height: 50 }; },
       updateBanner: async () => {},
       hideBanner: async args => { hidden.push(args.slot); },
       showInterstitial: async () => {},
@@ -81,6 +82,10 @@ rejectInit = false;
 await Promise.all([ads.showBanner('first', rect, 'rectangle'), ads.showBanner('second', rect, 'rectangle')]);
 assert.equal(initCalls, 2, 'Concurrent slots must share one initialization and retry failures');
 assert.deepEqual(slots, ['first', 'second']);
+assert.ok(bannerRequests.every(request => request.format === 'banner'), 'No configured rectangle unit: use the supported standard banner');
+assert.ok(bannerRequests.every(request => request.fallbackPlacementId === 'BP_Banner_Android'));
+assert.equal((await ads.showBanner('height-check', rect, 'banner')).height, 50);
+slots.pop();
 await ads.hideBanner('first');
 assert.deepEqual(hidden, ['first'], 'Removing one slot must not hide another');
 navigator.onLine = false;

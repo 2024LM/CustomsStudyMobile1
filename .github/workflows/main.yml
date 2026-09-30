@@ -32,7 +32,7 @@ jobs:
         run: npm install
 
       - name: Install Capacitor Android
-        run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+        run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @playwright/test@1.58.2
 
       - name: Build web application
         run: npm run build
@@ -43,6 +43,12 @@ jobs:
 
       - name: Verify resource regressions
         run: node tests/resource-regressions.mjs
+
+      - name: Install browser for layout checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify banner layout
+        run: node tests/banner-layout.mjs
 
       - name: Create Android project
         run: npx cap add android
