@@ -32,6 +32,7 @@ const { db } = loadModule('src/services/db.ts', {
   window: { dispatchEvent: () => {} },
   CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
 });
+writes = 0; // Initial database creation writes a recovery copy.
 db.subscribe(() => notifications++);
 db.setSetting('daily_goal', '20');
 assert.equal(writes, 0, 'Unchanged settings should not write');

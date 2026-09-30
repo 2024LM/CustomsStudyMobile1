@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Home,
   BookOpen,
@@ -20,19 +20,19 @@ import { GuidedTour, TourStep } from './components/GuidedTour';
 import { RatingPrompt } from './components/RatingPrompt';
 
 import { HomePage } from './views/HomePage';
-import { StudyPage } from './views/StudyPage';
-import { MistakesPage } from './views/MistakesPage';
-import { FavoritesPage } from './views/FavoritesPage';
-import { BanksPage } from './views/BanksPage';
-import { DomainsPage } from './views/DomainsPage';
-import { MorePage } from './views/MorePage';
-import { ReferencesPage } from './views/ReferencesPage';
-import { StudyPlanPage } from './views/StudyPlanPage';
-import { DownloadsPage } from './views/DownloadsPage';
-import { AdvancedStudyPage } from './views/AdvancedStudyPage';
-import { AiSettingsPage } from './views/AiSettingsPage';
-import { AiAssistantPage } from './views/AiAssistantPage';
-import { VoiceSettingsPage } from './views/VoiceSettingsPage';
+const StudyPage = lazy(() => import('./views/StudyPage').then(module => ({ default: module.StudyPage })));
+const MistakesPage = lazy(() => import('./views/MistakesPage').then(module => ({ default: module.MistakesPage })));
+const FavoritesPage = lazy(() => import('./views/FavoritesPage').then(module => ({ default: module.FavoritesPage })));
+const BanksPage = lazy(() => import('./views/BanksPage').then(module => ({ default: module.BanksPage })));
+const DomainsPage = lazy(() => import('./views/DomainsPage').then(module => ({ default: module.DomainsPage })));
+const MorePage = lazy(() => import('./views/MorePage').then(module => ({ default: module.MorePage })));
+const ReferencesPage = lazy(() => import('./views/ReferencesPage').then(module => ({ default: module.ReferencesPage })));
+const StudyPlanPage = lazy(() => import('./views/StudyPlanPage').then(module => ({ default: module.StudyPlanPage })));
+const DownloadsPage = lazy(() => import('./views/DownloadsPage').then(module => ({ default: module.DownloadsPage })));
+const AdvancedStudyPage = lazy(() => import('./views/AdvancedStudyPage').then(module => ({ default: module.AdvancedStudyPage })));
+const AiSettingsPage = lazy(() => import('./views/AiSettingsPage').then(module => ({ default: module.AiSettingsPage })));
+const AiAssistantPage = lazy(() => import('./views/AiAssistantPage').then(module => ({ default: module.AiAssistantPage })));
+const VoiceSettingsPage = lazy(() => import('./views/VoiceSettingsPage').then(module => ({ default: module.VoiceSettingsPage })));
 import { consumePendingQuestion } from './services/studyAlarm';
 
 type ThemeMode = 'system' | 'light' | 'dark';
@@ -399,6 +399,7 @@ export function App() {
           </div>
         )}
         <main className="flex-1 min-h-0 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain">
+          <Suspense fallback={<div className="py-12 text-center text-sm text-gray-400" role="status">جارٍ التحميل…</div>}>
           {page === 'HOME' && (
             <HomePage
               dataVersion={dbVersion}
@@ -488,6 +489,7 @@ export function App() {
               onRefreshRemote={refreshRemote}
             />
           )}
+          </Suspense>
         </main>
 
         {/* Bottom Navigation Bar */}

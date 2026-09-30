@@ -45,7 +45,7 @@ public class NexusAdsPlugin extends Plugin {
         BannerView view;
         PluginCall pending;
         Runnable timeout;
-        double x, y, width, height, viewportWidth;
+        double x, y, width, height, viewportWidth, clipLeft, clipTop, clipRight, clipBottom;
         boolean visible;
     }
 
@@ -221,6 +221,10 @@ public class NexusAdsPlugin extends Plugin {
         state.width = call.getDouble("width", 320.0);
         state.height = call.getDouble("height", 50.0);
         state.viewportWidth = call.getDouble("viewportWidth", 0.0);
+        state.clipLeft = call.getDouble("clipLeft", 0.0);
+        state.clipTop = call.getDouble("clipTop", 0.0);
+        state.clipRight = call.getDouble("clipRight", state.viewportWidth);
+        state.clipBottom = call.getDouble("clipBottom", 100000.0);
         state.visible = Boolean.TRUE.equals(call.getBoolean("visible", false));
     }
 
@@ -229,17 +233,17 @@ public class NexusAdsPlugin extends Plugin {
         Rect webRect = new Rect();
         Rect activityRect = new Rect();
         webView.getGlobalVisibleRect(webRect);
-        getActivity().getWindow().getDecorView().getGlobalVisibleRect(activityRect);
+        getActivity().findViewById(android.R.id.content).getGlobalVisibleRect(activityRect);
         float scale = state.viewportWidth > 0 ? (float) (webRect.width() / state.viewportWidth)
             : getContext().getResources().getDisplayMetrics().density;
         int adWidth = Math.round(state.adWidth * scale);
         int adHeight = Math.round(state.adHeight * scale);
         int left = webRect.left + Math.round((float) (state.x + (state.width - state.adWidth) / 2) * scale);
         int top = webRect.top + Math.round((float) state.y * scale);
-        int clipLeft = Math.max(left, webRect.left);
-        int clipTop = Math.max(top, webRect.top);
-        int clipRight = Math.min(left + adWidth, webRect.right);
-        int clipBottom = Math.min(top + adHeight, webRect.bottom);
+        int clipLeft = Math.max(left, webRect.left + Math.round((float) state.clipLeft * scale));
+        int clipTop = Math.max(top, webRect.top + Math.round((float) state.clipTop * scale));
+        int clipRight = Math.min(left + adWidth, Math.min(webRect.right, webRect.left + Math.round((float) state.clipRight * scale)));
+        int clipBottom = Math.min(top + adHeight, Math.min(webRect.bottom, webRect.top + Math.round((float) state.clipBottom * scale)));
         boolean visible = foreground && state.visible && clipRight > clipLeft && clipBottom > clipTop;
         state.container.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
         if (!visible) return;

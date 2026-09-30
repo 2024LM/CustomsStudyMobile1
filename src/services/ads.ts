@@ -8,6 +8,10 @@ export interface AdRect {
   height: number;
   viewportWidth: number;
   visible: boolean;
+  clipLeft?: number;
+  clipTop?: number;
+  clipRight?: number;
+  clipBottom?: number;
 }
 interface NexusAdsPlugin {
   initializeAds(options: { personalized: boolean }): Promise<void>;

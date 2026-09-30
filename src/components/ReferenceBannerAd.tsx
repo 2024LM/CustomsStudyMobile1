@@ -29,11 +29,29 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
 
     const rect = () => {
       const box = host.getBoundingClientRect();
-      // Convert CSS pixels to physical pixels in the native bridge.
+      let clipLeft = 0, clipTop = 0, clipRight = window.innerWidth, clipBottom = window.innerHeight;
+      for (let parent = host.parentElement; parent; parent = parent.parentElement) {
+        const style = window.getComputedStyle(parent);
+        const bounds = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+          clipTop = Math.max(clipTop, bounds.top);
+          clipBottom = Math.min(clipBottom, bounds.bottom);
+        }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+          clipLeft = Math.max(clipLeft, bounds.left);
+          clipRight = Math.min(clipRight, bounds.right);
+        }
+      }
+      const navigation = document.querySelector('[data-tour="bottom-navigation"]');
+      if (navigation) clipBottom = Math.min(clipBottom, navigation.getBoundingClientRect().top);
+      const top = Math.max(box.top, clipTop), bottom = Math.min(box.bottom, clipBottom);
+      const left = Math.max(box.left, clipLeft), right = Math.min(box.right, clipRight);
+      const hit = bottom > top && right > left ? document.elementFromPoint((left + right) / 2, (top + bottom) / 2) : null;
       return {
         x: box.left, y: box.top, width: box.width, height: box.height,
         viewportWidth: window.innerWidth,
-        visible: adsAvailable() && box.bottom > 0 && box.top < window.innerHeight,
+        visible: adsAvailable() && !!hit && (hit === host || host.contains(hit)),
+        clipLeft, clipTop, clipRight, clipBottom,
       };
     };
     const clearRetry = () => { window.clearTimeout(retry); retry = undefined; };
@@ -94,6 +112,9 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
     observer.observe(host);
     const resize = new ResizeObserver(schedulePosition);
     resize.observe(host);
+    // Native overlays must not cover web dialogs or navigation.
+    const mutations = new MutationObserver(schedulePosition);
+    mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     window.addEventListener('scroll', schedulePosition, true);
     window.addEventListener('resize', schedulePosition);
     window.addEventListener('online', connectivity);
@@ -106,6 +127,7 @@ export const ReferenceBannerAd: React.FC<ReferenceBannerAdProps> = ({ slot, form
       window.cancelAnimationFrame(frame);
       observer.disconnect();
       resize.disconnect();
+      mutations.disconnect();
       window.removeEventListener('scroll', schedulePosition, true);
       window.removeEventListener('resize', schedulePosition);
       window.removeEventListener('online', connectivity);
