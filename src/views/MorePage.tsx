@@ -171,7 +171,7 @@ export const MorePage: React.FC<MorePageProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div data-tour="more-menu" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {menuItems.map((item, idx) => {
           const Icon = item.icon;
           return (
