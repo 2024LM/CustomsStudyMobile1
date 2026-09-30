@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 
 export interface TourStep { target: string; title: string; text: string; }
@@ -8,12 +8,29 @@ interface GuidedTourProps { steps: TourStep[]; onComplete: () => void; }
 export const GuidedTour: React.FC<GuidedTourProps> = ({ steps, onComplete }) => {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const retryRef = useRef(0);
   const step = steps[index];
+
+  const advance = () => {
+    retryRef.current = 0;
+    if (index >= steps.length - 1) onComplete();
+    else setIndex((i) => i + 1);
+  };
 
   const measure = () => {
     if (!step) return onComplete();
     const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
-    if (!el) { setRect(null); return; }
+    if (!el) {
+      setRect(null);
+      if (retryRef.current < 8) {
+        retryRef.current += 1;
+        window.setTimeout(measure, 120);
+      } else {
+        advance();
+      }
+      return;
+    }
+    retryRef.current = 0;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     requestAnimationFrame(() => setTimeout(() => setRect(el.getBoundingClientRect()), 180));
   };
@@ -31,7 +48,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ steps, onComplete }) => 
   }, [step?.target]);
 
   if (!step) return null;
-  const next = () => index >= steps.length - 1 ? onComplete() : setIndex((i) => i + 1);
+  const next = advance;
   const pad = 7;
   const box = rect ? { top: Math.max(4, rect.top-pad), left: Math.max(4, rect.left-pad), width: Math.min(window.innerWidth-8,rect.width+pad*2), height: rect.height+pad*2 } : null;
   const preferAbove = box && box.top > window.innerHeight * .55;
