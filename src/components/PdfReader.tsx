@@ -266,7 +266,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
 
   const shellClass = fullscreen
     ? 'fixed inset-0 z-[100] bg-[#EEF0F5] flex flex-col'
-    : 'rounded-[18px] overflow-hidden border border-gray-100 bg-[#EEF0F5] min-h-[72vh] flex flex-col';
+    : 'rounded-[18px] overflow-hidden border border-gray-100 bg-[#EEF0F5] h-[72dvh] min-h-[360px] flex flex-col';
 
   return (
     <div className={shellClass} dir="rtl">
@@ -347,7 +347,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         </div>
       </div>
 
-      <div ref={scrollRef} className="relative flex-1 overflow-auto overscroll-contain p-2 sm:p-3 scroll-smooth">
+      <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-auto overscroll-contain p-2 sm:p-3 scroll-smooth">
         {loading && (
           <div className="min-h-[60vh] flex items-center justify-center text-sm text-gray-400">
             جاري تجهيز PDF...

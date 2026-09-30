@@ -38,6 +38,8 @@ jobs:
         run: npm run build
         env:
           VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_UNITY_BANNER_PLACEMENT: ${{ vars.UNITY_BANNER_PLACEMENT }}
+          VITE_UNITY_RECTANGLE_PLACEMENT: ${{ vars.UNITY_RECTANGLE_PLACEMENT }}
 
       - name: Verify resource regressions
         run: node tests/resource-regressions.mjs

@@ -45,7 +45,7 @@ function clean(value?: string, max = 1200): string | undefined {
 export function aiProviderLogs(): AiProviderLogEntry[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.slice(0, MAX_ENTRIES) : [];
+    return Array.isArray(parsed) ? parsed.filter(entry => entry?.provider === 'gemini-api').slice(0, MAX_ENTRIES) : [];
   } catch {
     return [];
   }
