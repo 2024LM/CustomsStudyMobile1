@@ -123,8 +123,8 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
         <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
           <div className="flex-1">
-            <div className="text-xs font-bold text-[#2C2145]">تخفيف التاء المربوطة في نهاية الكلمة</div>
-            <div className="text-[10px] text-gray-400 mt-1">يُعامل آخر «ة» كنطق وقفي أخف أثناء القراءة فقط، دون تعديل النص الأصلي.</div>
+            <div className="text-xs font-bold text-[#2C2145]">تخفيف التاء المربوطة عند نهاية الجملة</div>
+            <div className="text-[10px] text-gray-400 mt-1">يُخفف نطق «ة» فقط قبل نقطة أو استفهام أو تعجب أو علامة وقف أو نهاية سطر/نص، وليس داخل الجملة.</div>
           </div>
           <input
             type="checkbox"
