@@ -1,5 +1,9 @@
 package com.nexus.customsstudy;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 
@@ -9,6 +13,9 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import com.getcapacitor.PermissionState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,7 +23,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-@CapacitorPlugin(name = "NexusTts")
+@CapacitorPlugin(
+    name = "NexusTts",
+    permissions = {
+        @Permission(alias = "notifications", strings = { Manifest.permission.POST_NOTIFICATIONS })
+    }
+)
 public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListener {
     private TextToSpeech tts;
     private boolean ready = false;
@@ -190,8 +202,7 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         return chunks;
     }
 
-    @PluginMethod
-    public void speak(PluginCall call) {
+    private void startSpeechService(PluginCall call) {
         if (!ready || tts == null) {
             call.reject("TTS engine is not ready");
             return;
@@ -213,37 +224,49 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
         Double rate = call.getDouble("rate", 0.92);
         float safeRate = (float)Math.max(0.5, Math.min(rate != null ? rate : 0.92, 1.5));
-        tts.setSpeechRate(safeRate);
 
-        List<String> chunks = splitForSpeech(text);
-        if (chunks.isEmpty()) {
-            call.reject("Missing text");
-            return;
-        }
+        Intent intent = new Intent(getContext(), NexusTtsService.class);
+        intent.setAction(NexusTtsService.ACTION_SPEAK);
+        intent.putExtra("text", text);
+        intent.putExtra("rate", safeRate);
+        intent.putExtra("voice", requestedVoice);
 
-        tts.stop();
-        String baseId = "nexus_" + System.currentTimeMillis();
-        for (int i = 0; i < chunks.size(); i++) {
-            int queueMode = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
-            int speakResult = tts.speak(chunks.get(i), queueMode, null, baseId + "_" + i);
-            if (speakResult == TextToSpeech.ERROR) {
-                tts.stop();
-                call.reject("Unable to speak text chunk " + (i + 1));
-                return;
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getContext().startForegroundService(intent);
+        } else {
+            getContext().startService(intent);
         }
 
         JSObject response = new JSObject();
         response.put("started", true);
-        response.put("chunks", chunks.size());
         response.put("locale", activeLocale != null ? activeLocale.toLanguageTag() : "");
         response.put("voice", activeVoice != null ? activeVoice.getName() : "");
         call.resolve(response);
     }
 
     @PluginMethod
+    public void speak(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && getPermissionState("notifications") != PermissionState.GRANTED) {
+            requestPermissionForAlias("notifications", call, "speakPermissionCallback");
+            return;
+        }
+        startSpeechService(call);
+    }
+
+    @PermissionCallback
+    private void speakPermissionCallback(PluginCall call) {
+        startSpeechService(call);
+    }
+
+    @PluginMethod
     public void stop(PluginCall call) {
         if (tts != null) tts.stop();
+        Intent intent = new Intent(getContext(), NexusTtsService.class);
+        intent.setAction(NexusTtsService.ACTION_STOP);
+        try {
+            getContext().startService(intent);
+        } catch (Exception ignored) {}
         call.resolve();
     }
 
