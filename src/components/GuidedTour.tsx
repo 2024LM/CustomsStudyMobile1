@@ -9,6 +9,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ steps, onComplete }) => 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const retryRef = useRef(0);
+  const retryTimerRef = useRef<number | null>(null);
   const step = steps[index];
 
   const advance = () => {
@@ -24,7 +25,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ steps, onComplete }) => 
       setRect(null);
       if (retryRef.current < 8) {
         retryRef.current += 1;
-        window.setTimeout(measure, 120);
+        retryTimerRef.current = window.setTimeout(measure, 120);
       } else {
         advance();
       }
@@ -35,7 +36,19 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ steps, onComplete }) => 
     requestAnimationFrame(() => setTimeout(() => setRect(el.getBoundingClientRect()), 180));
   };
 
-  useLayoutEffect(() => { measure(); }, [index, step?.target]);
+  useLayoutEffect(() => {
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    measure();
+    return () => {
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, [index, step?.target]);
   useEffect(() => {
     if (!step) return;
     const update = () => {
