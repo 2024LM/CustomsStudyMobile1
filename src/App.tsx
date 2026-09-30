@@ -115,14 +115,60 @@ export function App() {
     };
   }, [ready, startupAdHandled, onboardingComplete]);
 
-  // Remote Config fetch
+  // Remote configuration:
+  // - read once on app start
+  // - refresh when the app returns to the foreground if the last check is older than 5 minutes
+  // - refresh every 30 minutes while the app remains open
   useEffect(() => {
-    fetchRemoteConfig().then((fetched) => {
-      if (fetched) {
-        db.saveRemote(fetched);
-        setRemote(fetched);
+    let active = true;
+    let inFlight = false;
+    const FOREGROUND_REFRESH_MS = 5 * 60 * 1000;
+    const PERIODIC_REFRESH_MS = 30 * 60 * 1000;
+
+    const refreshRemoteConfig = async (force = false) => {
+      if (!active || inFlight) return;
+
+      const cached = db.cachedRemote();
+      const lastCheckedAt = Number(cached.lastCheckedAt || 0);
+      if (!force && lastCheckedAt && Date.now() - lastCheckedAt < FOREGROUND_REFRESH_MS) {
+        return;
       }
-    });
+
+      inFlight = true;
+      try {
+        const fetched = await fetchRemoteConfig();
+        if (active && fetched) {
+          db.saveRemote(fetched);
+          setRemote(fetched);
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void refreshRemoteConfig(true);
+
+    const onFocus = () => void refreshRemoteConfig(false);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshRemoteConfig(false);
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshRemoteConfig(true);
+      }
+    }, PERIODIC_REFRESH_MS);
+
+    return () => {
+      active = false;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearInterval(interval);
+    };
   }, []);
 
 
