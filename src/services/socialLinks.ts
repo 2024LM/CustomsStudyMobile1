@@ -57,7 +57,7 @@ async function tryFetch(url: string): Promise<SocialLinks | null> {
 }
 
 export async function fetchSocialLinks(): Promise<SocialLinks> {
-  const remote = await tryFetch(REMOTE_SOCIAL_URL);
+  const remote = await tryFetch(`${REMOTE_SOCIAL_URL}?t=${Date.now()}`);
   if (remote) return remote;
   return (await tryFetch(LOCAL_SOCIAL_URL)) || {};
 }
