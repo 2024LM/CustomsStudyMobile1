@@ -39,7 +39,7 @@ html.dark .app-shell > div {
   border-color: #2b2637;
 }
 
-html.dark .app-shell main .bg-white,
+html.dark .app-shell .bg-white,
 html.dark .app-shell nav {
   background-color: #201c2b !important;
 }
@@ -185,4 +185,43 @@ html.dark .app-shell .border-gray-50 {
 html.dark .app-shell ::selection {
   background: #6841e8;
   color: #ffffff;
+}
+
+
+/* Light utility surfaces used across cards, sticky headers and AI tools. */
+html.dark .app-shell .bg-\[\#FAF9FE\],
+html.dark .app-shell .bg-\[\#FBFAFF\],
+html.dark .app-shell .bg-\[\#F8F7FF\],
+html.dark .app-shell .bg-\[\#F8F6FF\],
+html.dark .app-shell .bg-\[\#F8F9FD\]\/95 {
+  background-color: #201c2b !important;
+}
+
+html.dark .app-shell .bg-\[\#F0EBFF\],
+html.dark .app-shell .bg-\[\#EDE8FF\] {
+  background-color: #302844 !important;
+}
+
+html.dark .app-shell .bg-\[\#EEF9F2\] {
+  background-color: #173229 !important;
+}
+
+html.dark .app-shell .border-\[\#DDD5FF\],
+html.dark .app-shell .border-\[\#EEEAF8\] {
+  border-color: #3a3348 !important;
+}
+
+html.dark .app-shell .text-\[\#16864B\] {
+  color: #76ddb0 !important;
+}
+
+/* Tailwind gradient utilities keep light stops unless explicitly neutralized. */
+html.dark .app-shell .from-\[\#FBFAFF\].to-white {
+  background-image: none !important;
+  background-color: #201c2b !important;
+}
+
+/* Backdrop sticky bars should remain dark while preserving blur. */
+html.dark .app-shell .bg-\[\#F8F9FD\]\/95 {
+  background-color: rgb(23 20 31 / 0.95) !important;
 }
