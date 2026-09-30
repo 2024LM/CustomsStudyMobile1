@@ -14,7 +14,6 @@ import {
   Menu,
   MessageSquare,
   Plus,
-  RefreshCcw,
   Search,
   Send,
   Settings2,
@@ -55,8 +54,6 @@ import { SpeakButton } from '../components/SpeakButton';
 interface AiAssistantPageProps {
   onOpenSettings: () => void;
 }
-
-const BUILD_SHA = (import.meta.env.VITE_BUILD_SHA || 'local').slice(0, 7);
 
 function sourceDomain(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
@@ -835,12 +832,12 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   return (
     <div className="ai-assistant-page flex flex-col gap-3 pb-40 text-right text-[#2C2145] dark:text-[#F1EDF8]">
       <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5" /></div>
             <div className="min-w-0">
-              <h1 className="font-black text-lg">مساعد الدراسة AI</h1>
-              <p className="text-xs text-[#E4DEFF] mt-0.5">التطبيق يدير الخطة • Gemini ينفذ الخطوة الحالية</p>
+              <h1 className="font-black text-base sm:text-lg leading-tight">مساعد الدراسة AI</h1>
+              <p className="text-[10px] sm:text-xs text-[#E4DEFF] mt-0.5 leading-4">التطبيق يدير الخطة • Gemini ينفذ الخطوة الحالية</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -852,23 +849,6 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
               title="الجلسات المحفوظة"
             >
               <Menu className="w-4.5 h-4.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.location.protocol.startsWith('http')) {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('refresh', Date.now().toString());
-                  window.location.replace(url.toString());
-                } else {
-                  window.location.reload();
-                }
-              }}
-              className="h-10 px-2.5 rounded-[12px] bg-white/15 text-[9px] font-bold flex items-center gap-1.5"
-              title="تحديث النسخة"
-            >
-              <RefreshCcw className="w-3.5 h-3.5" />
-              {BUILD_SHA}
             </button>
             <button onClick={clearWorkspace} className="w-10 h-10 rounded-[12px] bg-white/15 flex items-center justify-center" aria-label="جلسة جديدة">
               <Plus className="w-4.5 h-4.5" />
