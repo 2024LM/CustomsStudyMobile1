@@ -43,7 +43,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const previous = () => setStep((s) => Math.max(s - 1, 0));
 
   return (
-    <div className="h-[100dvh] min-h-0 bg-[#F8F9FD] flex justify-center text-[#2C2145] overflow-hidden" dir="rtl">
+    <div className="app-shell h-[100dvh] min-h-0 bg-[#F8F9FD] flex justify-center text-[#2C2145] overflow-hidden" dir="rtl">
       <div className="w-full max-w-md h-[100dvh] min-h-0 bg-white flex flex-col px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-[#5B3FD6]">{appConfig.appName}</span>
