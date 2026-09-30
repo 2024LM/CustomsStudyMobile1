@@ -120,8 +120,8 @@ public class NexusStoragePlugin extends Plugin {
     }
 
     private void replaceNormalizedData(SQLiteDatabase db, JSONObject root) throws Exception {
-        // Defer FK validation until all inserts, updates and removals are complete.
-        db.execSQL("PRAGMA defer_foreign_keys = ON");
+        // Parents are inserted first and children are removed first, so keep
+        // immediate FK validation: invalid snapshots fail before commit.
         java.util.Map<String, java.util.Map<String, String>> existing = readRowSignatures(db);
 
         JSONArray domains = root.optJSONArray("domains");
