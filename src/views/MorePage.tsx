@@ -183,27 +183,31 @@ export const MorePage: React.FC<MorePageProps> = ({
 
       {/* App footer */}
       <div className="mt-auto pt-3 shrink-0">
-        <div className="p-4 rounded-[20px] bg-white border border-gray-100 flex flex-col items-center text-center gap-2.5">
-          <span className="font-bold text-sm text-[#5B3FD6]">{appConfig.appName}</span>
-          <span className="text-xs text-gray-400 font-medium">طريقك نحو النجاح • إصدار الويب 1.0</span>
+        <div className="rounded-[18px] bg-white border border-gray-100 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-right min-w-0">
+              <div className="font-black text-sm text-[#5B3FD6] leading-tight">{appConfig.appName}</div>
+              <div className="text-[11px] text-gray-400 font-medium mt-1">طريقك نحو النجاح • الإصدار 1.0</div>
+            </div>
 
-          <div className="flex items-center justify-center gap-2 pt-1" aria-label="التواصل الاجتماعي">
-            {[
-              { icon: Facebook, label: 'Facebook' },
-              { icon: Instagram, label: 'Instagram' },
-              { icon: Youtube, label: 'YouTube' },
-              { icon: Globe2, label: 'الموقع' },
-            ].map(({ icon: Icon, label }) => (
-              <button
-                key={label}
-                type="button"
-                className="w-9 h-9 rounded-full bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center border border-[#E9E3FB]"
-                aria-label={label}
-                title={`${label} — سيتم ربطه عند إضافة الرابط`}
-              >
-                <Icon className="w-4 h-4" />
-              </button>
-            ))}
+            <div className="flex items-center gap-1.5 shrink-0" aria-label="التواصل الاجتماعي">
+              {[
+                { icon: Facebook, label: 'Facebook' },
+                { icon: Instagram, label: 'Instagram' },
+                { icon: Youtube, label: 'YouTube' },
+                { icon: Globe2, label: 'الموقع' },
+              ].map(({ icon: Icon, label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="w-8 h-8 rounded-[10px] text-[#6A55C7] hover:bg-[#F5F3FF] active:bg-[#EEE9FF] flex items-center justify-center transition-colors"
+                  aria-label={label}
+                  title={`${label} — سيتم ربطه عند إضافة الرابط`}
+                >
+                  <Icon className="w-[15px] h-[15px]" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
