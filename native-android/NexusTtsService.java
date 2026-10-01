@@ -119,6 +119,14 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
                 });
             }
 
+            @Override public void onStop(String utteranceId, boolean interrupted) {
+                mainHandler.post(() -> {
+                    if (utteranceId != null && !utterancePrefix.isEmpty() && utteranceId.startsWith(utterancePrefix)) {
+                        stopPlayback();
+                    }
+                });
+            }
+
             @Override public void onError(String utteranceId) {
                 mainHandler.post(() -> {
                     if (utteranceId != null && !utterancePrefix.isEmpty() && utteranceId.startsWith(utterancePrefix)) {
