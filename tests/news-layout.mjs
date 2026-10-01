@@ -26,10 +26,23 @@ try{
 const page=await browser.newPage({viewport:{width:360,height:800}});
 const errors=[];let popups=0;
 page.on('pageerror',error=>errors.push(error.message));page.on('popup',()=>popups++);
-await page.route('https://images.example.test/**', route => route.request().url().endsWith('broken.png') ? route.abort() : route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=','base64')}));
-await page.goto('http://127.0.0.1:'+server.address().port);
+let releaseImage;
+const imageGate=new Promise(resolve=>{releaseImage=resolve});
+await page.route('https://images.example.test/featured.png',async route=>{
+  await imageGate;
+  await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="blue"/></svg>'});
+});
+await page.route('https://images.example.test/broken.png', route => route.request().url().endsWith('broken.png') ? route.abort() : route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="blue"/></svg>'}));
+await page.goto('http://127.0.0.1:'+server.address().port,{waitUntil:'domcontentloaded'});
+await page.locator('img[src="https://images.example.test/featured.png"]').waitFor({state:'attached'});
+assert.equal(await page.locator('img[src="https://images.example.test/featured.png"]').isVisible(),false,'A pending image never appears');
+assert.equal(await page.getByRole('heading',{name:'Concours de recrutement',exact:true}).count(),1,'The news remains readable while its image is prepared');
+releaseImage();
 await page.waitForFunction(()=>document.querySelector('img[src="https://images.example.test/featured.png"]')?.complete && !document.querySelector('img[src="https://images.example.test/broken.png"]'));
-assert.equal(await page.locator('img[src="https://images.example.test/featured.png"]').count(),1,'Featured news keeps its source image');
+await page.locator('img[src="https://images.example.test/featured.png"]').waitFor({state:'visible'});
+await page.getByRole('heading',{name:'مباراة توظيف مدرسين',exact:true}).scrollIntoViewIfNeeded();
+await page.locator('[data-news-image-state="failed"]').first().waitFor();
+assert.equal(await page.locator('[data-news-image-state="failed"] img').count(),0,'Failed images leave no broken element or image gap');
 assert.equal(await page.getByText('مباراة توظيف مدرسين',{exact:true}).count(),1,'Image failure preserves the news');
 assert.equal(await page.getByRole('button',{name:'ترجمة الخبر إلى العربية',exact:true}).count(),2,'Arabic news needs no translation; a French summary still does');
 await page.getByRole('button',{name:'ترجمة الخبر إلى العربية',exact:true}).first().click();
