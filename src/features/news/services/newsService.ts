@@ -10,6 +10,18 @@ function normalizeUrl(raw: string): URL {
   return parsed;
 }
 
+async function bundledArticles(): Promise<NewsArticle[]> {
+  try {
+    const base = import.meta.env.BASE_URL || '/';
+    const response = await fetch(`${base}news-feed.json`, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const payload = await response.json() as { articles?: NewsArticle[] };
+    return Array.isArray(payload.articles) ? payload.articles : [];
+  } catch {
+    return [];
+  }
+}
+
 export const newsService = {
   sources(): NewsSource[] {
     const byId = new Map(DEFAULT_NEWS_SOURCES.map((s) => [s.id, s]));
@@ -28,6 +40,7 @@ export const newsService = {
   cachedArticles: () => newsStorage.articles(),
   async refresh(): Promise<NewsFetchResult[]> {
     const results: NewsFetchResult[] = [];
+    const bundled = await bundledArticles();
     for (const source of this.sources().filter((s) => s.enabled && s.kind !== 'web')) {
       try {
         const articles = source.kind === 'rss' ? await fetchRss(source) : await fetchCkan(source);
@@ -36,7 +49,7 @@ export const newsService = {
         results.push({ sourceId: source.id, articles: [], error: error instanceof Error ? error.message : 'FETCH_FAILED' });
       }
     }
-    const fresh = results.flatMap((r) => r.articles);
+    const fresh = [...bundled, ...results.flatMap((r) => r.articles)];
     const previous = newsStorage.articles();
     const merged = [...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))]
       .sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || ''));
