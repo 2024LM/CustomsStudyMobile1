@@ -210,11 +210,8 @@ export const NewsPage: React.FC = () => {
         const Icon = theme.icon;
         const date = formatDate(featured.publishedAt);
         return (
-          <div className="relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block">
-            <NewsImage url={featured.imageUrl} featured>
-              <div className={`absolute inset-0 bg-gradient-to-br ${theme.shell}`} />
-            </NewsImage>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/5" />
+          <div className={`relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block bg-gradient-to-br ${theme.shell}`}>
+            <NewsImage url={featured.imageUrl} featured />
             <div className="absolute top-4 right-4 w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/15 flex items-center justify-center">
               <Icon className="w-5 h-5" />
             </div>
@@ -249,17 +246,9 @@ export const NewsPage: React.FC = () => {
             const date = formatDate(article.publishedAt);
             return (
               <div key={article.id} className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs">
-                <NewsImage url={article.imageUrl}>
-                  <div className={`h-20 bg-gradient-to-br ${theme.shell} relative overflow-hidden`}>
-                    <div className="absolute -left-3 -top-4 w-20 h-20 rounded-full bg-white/10" />
-                    <div className="absolute inset-0 flex items-center justify-between px-4">
-                      <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 text-white flex items-center justify-center"><Icon className="w-5 h-5" /></div>
-                      <span className="text-[11px] font-bold text-white/75">{source?.name || 'مصدر'}</span>
-                    </div>
-                  </div>
-                </NewsImage>
+                <NewsImage url={article.imageUrl} />
                 <div className="p-4">
-                  {article.imageUrl && <div className="text-[11px] font-bold text-[#5B3FD6] mb-1">{source?.name || 'مصدر'}</div>}
+                  <div className="text-[11px] font-bold text-[#5B3FD6] mb-1">{source?.name || 'مصدر'}</div>
                   <NewsArticleContent article={article} />
                   <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-gray-400">
                     <span>{date}</span>
