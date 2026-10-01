@@ -398,7 +398,7 @@ export function App() {
             تعذر حفظ آخر تغييراتك على هذا الجهاز. قد تفقدها عند إغلاق التطبيق. حرر مساحة تخزين وحاول مجددًا.
           </div>
         )}
-        <main className={`flex-1 min-h-0 w-full pt-0 pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain ${page === 'QUESTIONS' || page === 'SESSION' ? 'px-0' : 'px-4'}`}>
+        <main className="flex-1 min-h-0 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain">
           <Suspense fallback={<div className="py-12 text-center text-sm text-gray-400" role="status">جارٍ التحميل…</div>}>
           {page === 'HOME' && (
             <HomePage
