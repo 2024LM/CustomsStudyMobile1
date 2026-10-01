@@ -38,7 +38,7 @@ export function preferArabicStories(articles) {
     } catch {}
     const previous = byStory.get(key);
     if (!previous || (!isArabicText(previous.title) && isArabicText(item.title))) {
-      byStory.set(key, { ...item, imageUrl: item.imageUrl || previous?.imageUrl });
+      byStory.set(key, item.imageUrl || !previous?.imageUrl ? item : { ...item, imageUrl: previous.imageUrl });
     } else if (!previous.imageUrl && item.imageUrl) {
       byStory.set(key, { ...previous, imageUrl: item.imageUrl });
     }

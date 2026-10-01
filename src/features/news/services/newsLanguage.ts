@@ -29,7 +29,7 @@ export function preferArabicArticles(articles: NewsArticle[]): NewsArticle[] {
     const key = storyKey(article);
     const previous = stories.get(key);
     if (!previous || (!isArabicText(previous.title) && isArabicText(article.title))) {
-      stories.set(key, { ...article, imageUrl: article.imageUrl || previous?.imageUrl });
+      stories.set(key, article.imageUrl || !previous?.imageUrl ? article : { ...article, imageUrl: previous.imageUrl });
     } else if (!previous.imageUrl && article.imageUrl) {
       stories.set(key, { ...previous, imageUrl: article.imageUrl });
     }
