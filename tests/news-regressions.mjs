@@ -109,3 +109,12 @@ assert.equal(preferArabicStories([{...french,imageUrl:'https://publisher.ma/stor
 assert.equal(preferArabicStories([arabic,{...arabic,imageUrl:'https://publisher.ma/story.jpg'}])[0].imageUrl,'https://publisher.ma/story.jpg','Image from a duplicate enriches the original');
 
 assert.equal(feedImage('<media:content medium="image" url="/image?id=1"/>', sourceUrl), 'https://publisher.ma/image?id=1');
+
+const defaultsText=fs.readFileSync('src/features/news/config/defaultSources.ts','utf8');
+assert.equal(defaultsText.includes('open-data-ma'),false,'Removed API source is not configured');
+assert.equal(fs.readFileSync('scripts/fetch-news.mjs','utf8').includes('data.gov.ma'),false,'Build does not fetch the removed API source');
+const newsStorageTest=loadModule('src/features/news/storage/newsStorage.ts',{},{
+  localStorage:{getItem:key=>key.includes('cache')?JSON.stringify([{id:'api',sourceId:'open-data-ma'},{id:'kept',sourceId:'hcp'}]):null,setItem:()=>{}}
+});
+assert.equal(newsStorageTest.newsStorage.articles().length,1,'Previously cached API news are removed');
+assert.equal(newsStorageTest.newsStorage.articles()[0].id,'kept','Other cached sources are preserved');

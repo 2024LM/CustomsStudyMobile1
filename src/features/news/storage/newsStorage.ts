@@ -11,6 +11,6 @@ function parse<T>(value: string | null, fallback: T): T {
 export const newsStorage = {
   customSources: (): NewsSource[] => parse(localStorage.getItem(SOURCES_KEY), []),
   saveCustomSources: (sources: NewsSource[]) => localStorage.setItem(SOURCES_KEY, JSON.stringify(sources)),
-  articles: (): NewsArticle[] => parse(localStorage.getItem(CACHE_KEY), []),
-  saveArticles: (articles: NewsArticle[]) => localStorage.setItem(CACHE_KEY, JSON.stringify(articles.slice(0, 250))),
+  articles: (): NewsArticle[] => parse<NewsArticle[]>(localStorage.getItem(CACHE_KEY), []).filter(article => article.sourceId !== 'open-data-ma'),
+  saveArticles: (articles: NewsArticle[]) => localStorage.setItem(CACHE_KEY, JSON.stringify(articles.filter(article => article.sourceId !== 'open-data-ma').slice(0, 250))),
 };

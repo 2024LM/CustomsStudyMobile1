@@ -53,7 +53,7 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: () => void }) {
         }}
         className="home-news-rail flex gap-3 overflow-x-auto snap-x snap-mandatory overscroll-x-contain p-3">
         {articles.map(article => <div key={article.id} className="shrink-0 w-[88%] sm:w-[360px] snap-start">
-          <NewsArticleCard article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
+          <NewsArticleCard preview article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
         </div>)}
       </div>
       <div className="flex items-center justify-between px-3 pb-3">

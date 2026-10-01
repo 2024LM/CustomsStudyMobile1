@@ -5,5 +5,4 @@ export const DEFAULT_NEWS_SOURCES: NewsSource[] = [
   { id: 'men', name: 'وزارة التربية الوطنية', url: 'https://www.men.gov.ma/مباريات', kind: 'web', builtIn: true, enabled: true },
   { id: 'finances', name: 'وزارة الاقتصاد والمالية', url: 'https://www.finances.gov.ma/ar/Pages/index.aspx', kind: 'web', builtIn: true, enabled: true },
   { id: 'hcp', name: 'المندوبية السامية للتخطيط', url: 'https://www.hcp.ma/', feedUrl: 'https://www.hcp.ma/xml/syndication.rss', kind: 'rss', builtIn: true, enabled: true },
-  { id: 'open-data-ma', name: 'البيانات المفتوحة المغربية', url: 'https://data.gov.ma/index.php/ar/actualites', apiUrl: 'https://data.gov.ma/data/api/3/action/package_search', kind: 'ckan', builtIn: true, enabled: true },
 ];

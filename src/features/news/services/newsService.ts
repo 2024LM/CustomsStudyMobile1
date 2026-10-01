@@ -2,7 +2,6 @@ import { preferArabicArticles } from './newsLanguage';
 import { DEFAULT_NEWS_SOURCES } from '../config/defaultSources';
 import { newsStorage } from '../storage/newsStorage';
 import { fetchRss } from '../providers/rssProvider';
-import { fetchCkan } from '../providers/ckanProvider';
 import { NewsArticle, NewsFetchResult, NewsSource } from '../types';
 
 let refreshTask: Promise<NewsFetchResult[]> | undefined;
@@ -21,7 +20,7 @@ async function bundledArticles(): Promise<NewsArticle[]> {
     const response = await fetch(`${base}news-feed.json`, { cache: 'no-store' });
     if (!response.ok) return [];
     const payload = await response.json() as { articles?: NewsArticle[] };
-    return Array.isArray(payload.articles) ? payload.articles : [];
+    return Array.isArray(payload.articles) ? payload.articles.filter(article => article.sourceId !== 'open-data-ma') : [];
   } catch {
     return [];
   }
@@ -31,7 +30,7 @@ export const newsService = {
   sources(): NewsSource[] {
     const byId = new Map(DEFAULT_NEWS_SOURCES.map((s) => [s.id, s]));
     newsStorage.customSources().forEach((s) => byId.set(s.id, s));
-    return [...byId.values()];
+    return [...byId.values()].filter(source => source.id !== 'open-data-ma' && ['rss', 'web'].includes(source.kind));
   },
   addSource(input: Pick<NewsSource, 'name' | 'url'>): NewsSource {
     const parsed = normalizeUrl(input.url);
@@ -64,7 +63,7 @@ export const newsService = {
     }
     for (const source of sources) {
       try {
-        const articles = source.kind === 'rss' ? await fetchRss(source) : await fetchCkan(source);
+        const articles = await fetchRss(source);
         results.push({ sourceId: source.id, articles });
       } catch (error) {
         results.push({ sourceId: source.id, articles: [], error: error instanceof Error ? error.message : 'FETCH_FAILED' });
