@@ -35,10 +35,10 @@ export const StudyPage: React.FC<StudyPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-3 pb-8 text-right w-full">
+    <div className="flex flex-col gap-3 pb-8 text-right">
       {!sessionActive && (
         <>
-          <div className="w-full px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
+          <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center shrink-0">
                 <BookOpen className="w-6 h-6" />
@@ -50,7 +50,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             </div>
           </div>
 
-          <div data-tour="study-mode-switch" className="mx-4 grid grid-cols-2 gap-1.5 bg-white border border-[#E6E2F0] rounded-[16px] p-1.5 shadow-xs">
+          <div data-tour="study-mode-switch" className="grid grid-cols-2 gap-1.5 bg-white border border-[#E6E2F0] rounded-[16px] p-1.5 shadow-xs">
             <button
               type="button"
               onClick={() => setView('browse')}
@@ -80,9 +80,9 @@ export const StudyPage: React.FC<StudyPageProps> = ({
       )}
 
       {view === 'browse' ? (
-        <div className="px-4"><QuestionsPage embedded /></div>
+        <QuestionsPage embedded />
       ) : (
-        <div className="px-4"><SessionPage
+        <SessionPage
           key={[
             Array.isArray(initialTopic) ? initialTopic.join('|') : (initialTopic || 'all'),
             initialMode,
@@ -101,7 +101,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             setView('browse');
             onSessionExit?.();
           }}
-        /></div>
+        />
       )}
     </div>
   );
