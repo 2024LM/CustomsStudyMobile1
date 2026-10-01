@@ -2,6 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { collectLocalizedPages, discoverArabicUrls, isArabicText, localizedValue, preferArabicStories, stableNewsId } from './news-language.mjs';
 
+import { inlineImage, feedImage, enrichArticleImages } from './news-images.mjs';
+
 const OUT = new URL('../public/news-feed.json', import.meta.url);
 
 const strip = (value = '') => value
@@ -73,6 +75,7 @@ function extractOfficialLinks(html, pageUrl, sourceId, category, matcher, limit 
       id: stableNewsId(sourceId, key),
       sourceId,
       title: title.slice(0, 280),
+      imageUrl: inlineImage(match[2], pageUrl),
       summary: category,
       url,
       category,
@@ -239,7 +242,7 @@ async function fetchHcpRss() {
           return strip((match?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
         };
         const url = get('link') || root;
-        const image = item.match(/<(?:enclosure|media:content|media:thumbnail)\b[^>]*url=["']([^"']+)["']/i)?.[1];
+        const image = feedImage(item, url);
         articles.push({ id: stableNewsId('hcp', url), sourceId: 'hcp', title: get('title') || 'المندوبية السامية للتخطيط',
           summary: get('description').slice(0, 500) || undefined, url, imageUrl: image, publishedAt: get('pubDate') || undefined, category: 'أخبار وإحصائيات' });
       }
@@ -307,7 +310,7 @@ async function fetchOpenData() {
       title: localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية'))),
       summary: strip(localizedValue(item.notes_translated, localizedValue(item.notes))).slice(0, 500) || undefined,
       url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
-      imageUrl: item.organization?.image_display_url || item.organization?.image_url || undefined,
+      imageUrl: undefined,
       publishedAt: item.metadata_modified || item.metadata_created || undefined,
       category: 'بيانات مفتوحة',
     }));
@@ -321,6 +324,7 @@ export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss, fetchOpenData 
 export async function refreshNews() {
   const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss(), fetchOpenData()]);
   const articles = preferArabicStories(batches.flat()).slice(0, 180);
+  await enrichArticleImages(articles, fetchText);
   await mkdir(new URL('../public/', import.meta.url), { recursive: true });
   await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), articles }, null, 2) + '\n', 'utf8');
   console.log('[news] wrote ' + articles.length + ' articles to public/news-feed.json');
