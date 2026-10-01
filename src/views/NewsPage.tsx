@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileText,
   Landmark,
+  Languages,
   Loader2,
   Newspaper,
   Plus,
@@ -44,6 +45,19 @@ function formatDate(value?: string) {
   }
 }
 
+
+function hasArabic(value?: string) {
+  return Boolean(value && /[\u0600-\u06FF]/.test(value));
+}
+
+function articleIsArabic(title: string, summary?: string) {
+  return hasArabic(title) || hasArabic(summary);
+}
+
+function translateUrl(url: string) {
+  return `https://translate.google.com/translate?sl=auto&tl=ar&u=${encodeURIComponent(url)}`;
+}
+
 export const NewsPage: React.FC = () => {
   const [version, setVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -57,10 +71,16 @@ export const NewsPage: React.FC = () => {
 
   const sources = useMemo(() => newsService.sources().filter((source) => source.enabled), [version]);
   const articles = useMemo(() => newsService.cachedArticles(), [version]);
-  const filteredArticles = useMemo(
-    () => selectedSource === 'ALL' ? articles : articles.filter((article) => article.sourceId === selectedSource),
-    [articles, selectedSource]
-  );
+  const filteredArticles = useMemo(() => {
+    const selected = selectedSource === 'ALL'
+      ? articles
+      : articles.filter((article) => article.sourceId === selectedSource);
+    return [...selected].sort((a, b) => {
+      const arabicA = articleIsArabic(a.title, a.summary) ? 1 : 0;
+      const arabicB = articleIsArabic(b.title, b.summary) ? 1 : 0;
+      return arabicB - arabicA;
+    });
+  }, [articles, selectedSource]);
 
   const articleCountBySource = useMemo(() => {
     const counts = new Map<string, number>();
@@ -211,8 +231,9 @@ export const NewsPage: React.FC = () => {
         const Icon = theme.icon;
         const summary = cleanSummary(featured.summary);
         const date = formatDate(featured.publishedAt);
+        const needsTranslation = !articleIsArabic(featured.title, summary);
         return (
-          <a href={featured.url} target="_blank" rel="noopener noreferrer" className="relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block">
+          <div className="relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block">
             {featured.imageUrl ? (
               <img src={featured.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
             ) : (
@@ -229,11 +250,25 @@ export const NewsPage: React.FC = () => {
               </div>
               <h2 className="text-[19px] leading-8 font-black">{featured.title}</h2>
               {summary && <p className="text-xs leading-6 text-white/80 mt-2 line-clamp-2">{summary}</p>}
-              <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-white/90">
-                قراءة الخبر <ExternalLink className="w-3.5 h-3.5" />
+              <div className="mt-4 flex items-center gap-2 flex-wrap">
+                <a href={featured.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-white/90 bg-white/10 border border-white/10 rounded-xl px-3 py-2">
+                  قراءة الخبر <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                {needsTranslation && (
+                  <a
+                    href={translateUrl(featured.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 border border-white/15 rounded-xl px-3 py-2"
+                    aria-label="ترجمة الخبر إلى العربية"
+                    title="ترجمة إلى العربية"
+                  >
+                    <Languages className="w-4 h-4" /> ترجمة
+                  </a>
+                )}
               </div>
             </div>
-          </a>
+          </div>
         );
       })() : (
         <div className="bg-white border border-gray-100 rounded-[26px] p-7 text-center shadow-xs">
@@ -251,8 +286,9 @@ export const NewsPage: React.FC = () => {
             const Icon = theme.icon;
             const summary = cleanSummary(article.summary);
             const date = formatDate(article.publishedAt);
+            const needsTranslation = !articleIsArabic(article.title, summary);
             return (
-              <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer" className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs active:scale-[0.995] transition-transform">
+              <div key={article.id} className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs">
                 {article.imageUrl ? (
                   <div className="h-36 overflow-hidden bg-gray-100">
                     <img src={article.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" loading="lazy" />
@@ -270,12 +306,28 @@ export const NewsPage: React.FC = () => {
                   {article.imageUrl && <div className="text-[11px] font-bold text-[#5B3FD6] mb-1">{source?.name || 'مصدر'}</div>}
                   <h3 className="font-black text-[14px] leading-6 text-[#2C2145]">{article.title}</h3>
                   {summary && <p className="text-xs text-gray-500 mt-2 leading-5 line-clamp-2">{summary}</p>}
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+                  <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-gray-400">
                     <span>{date}</span>
-                    <span className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold">فتح <ExternalLink className="w-3 h-3" /></span>
+                    <div className="flex items-center gap-1.5">
+                      {needsTranslation && (
+                        <a
+                          href={translateUrl(article.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold bg-[#F5F3FF] rounded-lg px-2 py-1.5"
+                          aria-label="ترجمة الخبر إلى العربية"
+                          title="ترجمة إلى العربية"
+                        >
+                          <Languages className="w-3.5 h-3.5" /> ترجمة
+                        </a>
+                      )}
+                      <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold px-2 py-1.5">
+                        فتح <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </a>
+              </div>
             );
           })}
         </div>
