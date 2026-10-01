@@ -58,6 +58,9 @@ try {
   assert.deepEqual([...new Set(compact.map(card=>card.accent))].sort(),['#0F766E','#2F5AA8','#8B5CF6','#B45309'].sort(),'Original source colors are retained');
   assert.equal(await page.locator('[data-news-card="item-10"] img').count(),0,'A failed preview image leaves no broken element');
   assert.equal(await page.locator('[data-news-card="item-11"] img').count(),0,'A text-only preview adds no fake image');
+  const missingTextWidth=await page.locator('[data-news-card="item-11"] .news-preview-body > div').first().evaluate(node=>node.getBoundingClientRect().width);
+  const failedTextWidth=await page.locator('[data-news-card="item-10"] .news-preview-body > div').first().evaluate(node=>node.getBoundingClientRect().width);
+  assert.ok(Math.abs(missingTextWidth-failedTextWidth)<1,'A failed image leaves no flex gap and text receives the full available width');
   assert.equal(await page.locator('[data-news-card="item-9"] .news-preview-photo').evaluate(node=>getComputedStyle(node).objectFit),'contain','Portrait previews preserve the full picture');
   await page.getByRole('button',{name:'الخبر السابق',exact:true}).click();
   await page.getByText('3 / 8',{exact:true}).waitFor();
