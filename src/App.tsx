@@ -5,6 +5,7 @@ import {
   BookMarked,
   MoreHorizontal,
   Sparkles,
+  Newspaper,
 } from 'lucide-react';
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
@@ -20,6 +21,7 @@ import { GuidedTour, TourStep } from './components/GuidedTour';
 import { RatingPrompt } from './components/RatingPrompt';
 
 import { HomePage } from './views/HomePage';
+const NewsPage = lazy(() => import('./views/NewsPage').then(module => ({ default: module.NewsPage })));
 const StudyPage = lazy(() => import('./views/StudyPage').then(module => ({ default: module.StudyPage })));
 const MistakesPage = lazy(() => import('./views/MistakesPage').then(module => ({ default: module.MistakesPage })));
 const FavoritesPage = lazy(() => import('./views/FavoritesPage').then(module => ({ default: module.FavoritesPage })));
@@ -327,6 +329,7 @@ export function App() {
 
   const navItems = [
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
+    { p: 'NEWS' as Page, title: 'أخبار', icon: Newspaper },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
     { p: 'AI_ASSISTANT' as Page, title: 'AI', icon: Sparkles },
     { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
@@ -415,6 +418,8 @@ export function App() {
               username={username}
             />
           )}
+
+          {page === 'NEWS' && <NewsPage />}
 
           {(page === 'QUESTIONS' || page === 'SESSION') && (
             <StudyPage
