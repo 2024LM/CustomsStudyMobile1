@@ -16,7 +16,7 @@ import { newsService } from '../features/news/services/newsService';
 import { sourceTheme } from '../features/news/config/sourceTheme';
 
 export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: () => void }> = ({initialArticleId,onClearInitial}) => {
-  const [opened,setOpened] = useState<NewsArticle>(()=>initialArticleId?newsService.cachedArticles().find(item=>item.internalId===initialArticleId||item.id===initialArticleId):undefined);
+  const [opened,setOpened] = useState<NewsArticle | undefined>(()=>initialArticleId?newsService.cachedArticles().find(item=>item.internalId===initialArticleId||item.id===initialArticleId):undefined);
   const [version, setVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedSource, setSelectedSource] = useState('ALL');
