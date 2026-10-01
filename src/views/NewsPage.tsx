@@ -16,7 +16,10 @@ export const NewsPage: React.FC = () => {
   const refresh = async () => {
     setLoading(true); setFetchError('');
     const results = await newsService.refresh();
-    if (results.length && results.every((r) => r.error)) setFetchError('تعذر تحديث المصادر الآن. يمكنك فتح المصادر الرسمية مباشرة.');
+    const hasArticles = newsService.cachedArticles().length > 0;
+    if (!hasArticles && results.length && results.every((r) => r.error)) {
+      setFetchError('تعذر تحديث الأخبار الآن. حاول مجددًا لاحقًا أو افتح المصدر الرسمي.');
+    }
     setVersion((v) => v + 1); setLoading(false);
   };
 
@@ -58,8 +61,8 @@ export const NewsPage: React.FC = () => {
         </a>;
       }) : <div className="bg-white border border-[#E6E2F0] rounded-[18px] p-6 text-center">
         <Newspaper className="w-9 h-9 mx-auto text-[#5B3FD6] mb-2" />
-        <p className="font-bold text-sm">واجهة الأخبار جاهزة</p>
-        <p className="text-xs text-gray-400 mt-1 leading-5">تم فصل وحدة الأخبار عن بقية التطبيق. طبقة الجلب ستملأ هذه الواجهة من المصادر المدعومة دون ربطها بمنطق المراجعة.</p>
+        <p className="font-bold text-sm">لا توجد أخبار متاحة الآن</p>
+        <p className="text-xs text-gray-400 mt-1 leading-5">جرّب تحديث الأخبار، أو افتح أحد المصادر الرسمية أعلاه.</p>
       </div>}
 
       {showAdd && <div className="fixed inset-0 z-50 bg-black/45 flex items-end sm:items-center justify-center p-4">
