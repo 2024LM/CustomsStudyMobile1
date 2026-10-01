@@ -29,33 +29,43 @@ async function fetchText(url) {
   return response.text();
 }
 
+function extractOfficialLinks(html, pageUrl, sourceId, category, matcher, limit = 35) {
+  const items = [];
+  const seen = new Set();
+  const anchor = /<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+  while ((match = anchor.exec(html)) && items.length < limit) {
+    const title = strip(match[2]);
+    if (title.length < 18 || !matcher.test(title)) continue;
+    const url = absoluteUrl(pageUrl, match[1]);
+    if (!/^https?:\/\//i.test(url)) continue;
+    const key = (url + title).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push({
+      id: `${sourceId}-${Buffer.from(key).toString('base64url').slice(0, 48)}`,
+      sourceId,
+      title: title.slice(0, 280),
+      summary: category,
+      url,
+      category,
+    });
+  }
+  return items;
+}
+
 async function fetchEmploiPublic() {
   const pages = [
-    ['https://www.emploi-public.ma/fr/concours-liste?procedure=avis&stat=service_etat', 'مباريات التوظيف'],
+    ['https://www.emploi-public.ma/fr/concours-liste', 'مباريات التوظيف'],
     ['https://www.emploi-public.ma/fr/eap-liste', 'امتحانات الكفاءة المهنية'],
   ];
   const articles = [];
+  const matcher = /(concours|recrutement|examen|aptitude|résultat|resultat|convocation|annulation|مباراة|امتحان|توظيف)/i;
 
   for (const [url, category] of pages) {
     try {
       const html = await fetchText(url);
-      const anchor = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-      let match;
-      while ((match = anchor.exec(html)) && articles.length < 80) {
-        const title = strip(match[2]);
-        if (title.length < 35) continue;
-        if (!/(concours|recrutement|examen|aptitude|publication|résultat|resultat|convocation|مباراة|امتحان)/i.test(title)) continue;
-        const articleUrl = absoluteUrl(url, match[1]);
-        if (!articleUrl.startsWith('https://www.emploi-public.ma/')) continue;
-        articles.push({
-          id: `emploi-public-${Buffer.from(articleUrl + title).toString('base64url').slice(0, 48)}`,
-          sourceId: 'emploi-public',
-          title: title.slice(0, 280),
-          summary: category,
-          url: articleUrl,
-          category,
-        });
-      }
+      articles.push(...extractOfficialLinks(html, url, 'emploi-public', category, matcher, 45));
     } catch (error) {
       console.warn('[news] emploi-public failed:', error instanceof Error ? error.message : error);
     }
@@ -63,8 +73,61 @@ async function fetchEmploiPublic() {
   return articles;
 }
 
+async function fetchMen() {
+  const pages = [
+    ['https://www.men.gov.ma/%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA', 'مباريات وزارة التربية الوطنية'],
+    ['https://www.men.gov.ma/%D8%A5%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA', 'إعلانات وزارة التربية الوطنية'],
+    ['https://www.men.gov.ma/fr/concours', 'Concours du ministère'],
+  ];
+  const articles = [];
+  const matcher = /(مباراة|الترشيح|المترشح|الاختبارات|توظيف|منصب|concours|recrutement|candidature|épreuve|resultat|résultat)/i;
+  for (const [url, category] of pages) {
+    try {
+      const html = await fetchText(url);
+      articles.push(...extractOfficialLinks(html, url, 'men', category, matcher, 35));
+    } catch (error) {
+      console.warn('[news] MEN failed:', error instanceof Error ? error.message : error);
+    }
+  }
+  return articles;
+}
+
+async function fetchFinances() {
+  const pages = [
+    ['https://www.finances.gov.ma/fr/vous-orientez/Pages/appels-candidatures.aspx', 'مباريات وترشيحات وزارة الاقتصاد والمالية'],
+    ['https://www.finances.gov.ma/ar/%D9%84%D8%AA%D9%88%D8%AC%D9%8A%D9%87%D9%83%D9%85/Pages/%D8%A7%D9%85%D8%AA%D8%AD%D8%A7%D9%86-%D8%A7%D9%84%D9%83%D9%81%D8%A7%D8%A1%D8%A9-%D8%A7%D9%84%D9%85%D9%87%D9%86%D9%8A%D8%A9.aspx', 'امتحانات الكفاءة المهنية'],
+  ];
+  const articles = [];
+  const matcher = /(candidature|concours|recrutement|poste|résultat|resultat|امتحان|مباراة|ترشيح|توظيف|منصب|نتائج)/i;
+  for (const [url, category] of pages) {
+    try {
+      const html = await fetchText(url);
+      const links = extractOfficialLinks(html, url, 'finances', category, matcher, 35);
+      articles.push(...links);
+      // Some MEF pages expose useful rows with very short "FR/AR" links; keep a page-level entry
+      // so the source never appears empty when the table itself has no descriptive anchors.
+      if (!links.length) {
+        const plain = strip(html);
+        if (matcher.test(plain)) {
+          articles.push({
+            id: `finances-page-${Buffer.from(url).toString('base64url').slice(0, 40)}`,
+            sourceId: 'finances',
+            title: category,
+            summary: plain.slice(0, 220),
+            url,
+            category,
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('[news] finances failed:', error instanceof Error ? error.message : error);
+    }
+  }
+  return articles;
+}
+
 async function fetchHcpRss() {
-  const sourceUrl = 'https://www.cnd.hcp.ma/xml/syndication.rss';
+  const sourceUrl = 'https://www.hcp.ma/xml/syndication.rss';
   try {
     const xml = await fetchText(sourceUrl);
     const items = xml.match(/<item\b[\s\S]*?<\/item>/gi) || [];
@@ -131,9 +194,11 @@ const dedupe = (items) => {
 
 const articles = dedupe([
   ...(await fetchEmploiPublic()),
+  ...(await fetchMen()),
+  ...(await fetchFinances()),
   ...(await fetchHcpRss()),
   ...(await fetchOpenData()),
-]).slice(0, 120);
+]).slice(0, 180);
 
 await mkdir(new URL('../public/', import.meta.url), { recursive: true });
 await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), articles }, null, 2) + '\n', 'utf8');
