@@ -1,5 +1,6 @@
 export type Page =
   | 'HOME'
+  | 'NEWS'
   | 'QUESTIONS'
   | 'SESSION'
   | 'REFERENCES'
