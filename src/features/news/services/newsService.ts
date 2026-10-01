@@ -51,8 +51,12 @@ export const newsService = {
     }
     const fresh = [...bundled, ...results.flatMap((r) => r.articles)];
     const previous = newsStorage.articles();
+    const timestamp = (value?: string) => {
+      const parsed = Date.parse(value || '');
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
     const merged = [...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))]
-      .sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || ''));
+      .sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
     newsStorage.saveArticles(merged);
     return results;
   },
