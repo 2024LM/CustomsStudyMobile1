@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NexusStoragePlugin.class);
         registerPlugin(NexusStudyAlarmPlugin.class);
         registerPlugin(NexusTtsPlugin.class);
+        registerPlugin(NexusNewsTranslatePlugin.class);
         registerPlugin(NexusSecureSecretsPlugin.class);
         registerPlugin(NexusFileExportPlugin.class);
         registerPlugin(NexusPdfPlugin.class);

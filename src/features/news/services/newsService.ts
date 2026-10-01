@@ -1,3 +1,4 @@
+import { preferArabicArticles } from './newsLanguage';
 import { DEFAULT_NEWS_SOURCES } from '../config/defaultSources';
 import { newsStorage } from '../storage/newsStorage';
 import { fetchRss } from '../providers/rssProvider';
@@ -49,13 +50,13 @@ export const newsService = {
         results.push({ sourceId: source.id, articles: [], error: error instanceof Error ? error.message : 'FETCH_FAILED' });
       }
     }
-    const fresh = [...bundled, ...results.flatMap((r) => r.articles)];
+    const fresh = preferArabicArticles([...bundled, ...results.flatMap((r) => r.articles)]);
     const previous = newsStorage.articles();
     const timestamp = (value?: string) => {
       const parsed = Date.parse(value || '');
       return Number.isFinite(parsed) ? parsed : 0;
     };
-    const merged = [...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))]
+    const merged = preferArabicArticles([...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))])
       .sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
     newsStorage.saveArticles(merged);
     return results;

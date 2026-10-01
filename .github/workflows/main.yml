@@ -34,6 +34,9 @@ jobs:
       - name: Install Capacitor Android
         run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @playwright/test@1.58.2
 
+      - name: Verify Arabic news preference and translation cache
+        run: node tests/news-regressions.mjs
+
       - name: Refresh bundled Moroccan news
         run: node scripts/fetch-news.mjs
         continue-on-error: true
@@ -59,6 +62,9 @@ jobs:
 
       - name: Verify reading frame
         run: node tests/tts-layout.mjs
+
+      - name: Verify inline news translation
+        run: node tests/news-layout.mjs
 
       - name: Create Android project
         run: npx cap add android

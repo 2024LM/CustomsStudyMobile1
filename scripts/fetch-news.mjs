@@ -1,4 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { collectLocalizedPages, discoverArabicUrls, isArabicText, localizedValue, preferArabicStories, stableNewsId } from './news-language.mjs';
 
 const OUT = new URL('../public/news-feed.json', import.meta.url);
 
@@ -17,10 +19,18 @@ function absoluteUrl(base, href) {
   try { return new URL(href, base).toString(); } catch { return base; }
 }
 
+const pageCache = new Map();
 async function fetchText(url) {
+  if (pageCache.has(url)) return pageCache.get(url);
+  const task = fetchTextUncached(url);
+  pageCache.set(url, task);
+  return task;
+}
+async function fetchTextUncached(url) {
   const response = await fetch(url, {
     headers: {
       'user-agent': 'Raje3-NewsFetcher/1.0 (+https://github.com/2024LM/CustomsStudyMobile1)',
+      'accept-language': 'ar,fr;q=0.8,en;q=0.5',
       accept: 'text/html,application/xhtml+xml,application/xml,text/xml,application/json;q=0.9,*/*;q=0.8',
     },
     signal: AbortSignal.timeout(15000),
@@ -60,7 +70,7 @@ function extractOfficialLinks(html, pageUrl, sourceId, category, matcher, limit 
     if (seen.has(key)) continue;
     seen.add(key);
     items.push({
-      id: `${sourceId}-${Buffer.from(key).toString('base64url').slice(0, 48)}`,
+      id: stableNewsId(sourceId, key),
       sourceId,
       title: title.slice(0, 280),
       summary: category,
@@ -88,7 +98,7 @@ function articleFromBlock(sourceId, category, pageUrl, block, index) {
     examDate ? `تاريخ المباراة: ${examDate}` : '',
   ].filter(Boolean).join(' • ');
   return {
-    id: `${sourceId}-text-${Buffer.from(title + index).toString('base64url').slice(0, 44)}`,
+    id: stableNewsId(sourceId, pageUrl + '|' + title),
     sourceId,
     title,
     summary: meta || category,
@@ -113,101 +123,53 @@ function extractTextBlocks(plain, sourceId, category, pageUrl, startPattern, lim
 
 async function fetchEmploiPublic() {
   const pages = [
-    ['https://www.emploi-public.ma/fr/concours-liste', 'مباريات التوظيف'],
-    ['https://www.emploi-public.ma/fr/eap-liste', 'امتحانات الكفاءة المهنية'],
+    { url: 'https://www.emploi-public.ma/ar/قائمة-المباريات', fallbackUrls: ['https://www.emploi-public.ma/fr/concours-liste'], category: 'مباريات التوظيف' },
+    // The French page advertises its Arabic counterpart if one is available.
+    { url: 'https://www.emploi-public.ma/fr/eap-liste', category: 'امتحانات الكفاءة المهنية' },
   ];
-  const articles = [];
-  const matcher = /(concours|recrutement|examen|aptitude|résultat|resultat|convocation|annulation|مباراة|امتحان|توظيف)/i;
-
-  for (const [url, category] of pages) {
-    try {
-      const html = await fetchText(url);
-      const linked = extractOfficialLinks(html, url, 'emploi-public', category, matcher, 45);
-      const plain = strip(html);
-      const rows = extractTextBlocks(
-        plain,
-        'emploi-public',
-        category,
-        url,
-        /Avis de concours de recrutement de /gi,
-        45
-      );
-      articles.push(...(linked.length >= rows.length ? linked : rows));
-    } catch (error) {
-      console.warn('[news] emploi-public failed:', error instanceof Error ? error.message : error);
-    }
-  }
-  return articles;
+  const matcher = /(concours|recrutement|examen|aptitude|résultat|resultat|convocation|annulation|مباراة|مباريات|امتحان|توظيف)/i;
+  return collectLocalizedPages(pages, fetchText, (html, url, page) => {
+    const linked = extractOfficialLinks(html, url, 'emploi-public', page.category, matcher, 45);
+    const rows = extractTextBlocks(strip(html), 'emploi-public', page.category, url,
+      /(?:Avis de concours de recrutement de |(?:إعلان عن )?مباراة توظيف\s)/gi, 45);
+    return linked.length ? linked : rows;
+  });
 }
 
 async function fetchMen() {
   const pages = [
-    ['https://www.men.gov.ma/%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA', 'مباريات وزارة التربية الوطنية', 'concours'],
-    ['https://www.men.gov.ma/%D8%A5%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA', 'إعلانات وزارة التربية الوطنية', 'annonces'],
+    { url: 'https://www.men.gov.ma/مباريات', category: 'مباريات وزارة التربية الوطنية', mode: 'concours' },
+    { url: 'https://www.men.gov.ma/إعلانات', fallbackUrls: ['https://www.men.gov.ma/Ar/Pages/AdminActualite.aspx'], category: 'إعلانات وزارة التربية الوطنية', mode: 'annonces' },
   ];
-  const articles = [];
-
-  for (const [url, category, mode] of pages) {
-    try {
-      const html = await fetchText(url);
-      const rows = extractTableRows(html);
-
-      if (mode === 'concours') {
-        for (const [index, cells] of rows.entries()) {
-          const title = cells.find((cell) => /(?:Avis|Appel|Ouverture|recrutement|candidature|concours|مباراة|ترشيح|توظيف)/i.test(cell) && cell.length > 25);
-          if (!title) continue;
-          const deadline = cells.find((cell) => /\b\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}\b/i.test(cell) || /\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}\b/.test(cell));
-          articles.push({
-            id: `men-concours-${Buffer.from(title + index).toString('base64url').slice(0, 44)}`,
-            sourceId: 'men',
-            title: title.slice(0, 280),
-            summary: deadline ? `آخر أجل: ${deadline}` : category,
-            url,
-            category,
-          });
-        }
-      } else {
-        for (const [index, cells] of rows.entries()) {
-          const date = cells.find((cell) => /\b\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}\b/i.test(cell) || /\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}\b/.test(cell));
-          const title = cells.find((cell) => cell.length > 30 && cell !== date && !/Consulter|Télécharger/i.test(cell));
-          if (!title) continue;
-          articles.push({
-            id: `men-annonce-${Buffer.from(title + index).toString('base64url').slice(0, 44)}`,
-            sourceId: 'men',
-            title: title.slice(0, 280),
-            summary: date ? `نشر في: ${date}` : category,
-            url,
-            category,
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('[news] MEN failed:', error instanceof Error ? error.message : error);
+  return collectLocalizedPages(pages, fetchText, (html, url, page) => {
+    const items = [];
+    for (const cells of extractTableRows(html)) {
+      const candidates = cells.filter(cell => cell.length > 25 && !/^(?:Consulter|Télécharger|تحميل|اطلاع)$/i.test(cell));
+      const eligible = page.mode === 'concours' ? candidates.filter(cell => /(?:Avis|Appel|Ouverture|recrutement|candidature|concours|مباراة|مباريات|ترشيح|توظيف)/i.test(cell)) : candidates;
+      const title = eligible.find(isArabicText) || eligible[0];
+      if (!title) continue;
+      const date = cells.find(cell => /\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}\b/.test(cell) || /\b\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}\b/i.test(cell));
+      items.push({
+        id: stableNewsId('men', url + '|' + title), sourceId: 'men', title: title.slice(0, 280),
+        summary: date ? (page.mode === 'concours' ? 'آخر أجل: ' : 'نشر في: ') + date : page.category,
+        url, category: page.category,
+      });
     }
-  }
-
-  return articles;
+    const links = extractOfficialLinks(html, url, 'men', page.category,
+      /(?:Avis|recrutement|concours|communiqué|مباراة|مباريات|ترشيح|توظيف|إعلان|بلاغ)/i, 40);
+    return [...items, ...links];
+  });
 }
 
 async function fetchFinances() {
   const articles = [];
 
-  try {
-    const homeUrl = 'https://www.finances.gov.ma/ar/Pages/index.aspx';
-    const html = await fetchText(homeUrl);
-    const matcher = /(مباراة|توظيف|ترشيح|مترشح|لائحة|امتحان|الكفاءة المهنية|الجمارك)/i;
-    const links = extractOfficialLinks(
-      html,
-      homeUrl,
-      'finances',
-      'مباريات ومستجدات وزارة الاقتصاد والمالية',
-      matcher,
-      45
-    );
-    articles.push(...links);
-  } catch (error) {
-    console.warn('[news] finances Arabic homepage failed:', error instanceof Error ? error.message : error);
-  }
+  const homeItems = await collectLocalizedPages([
+    { url: 'https://www.finances.gov.ma/ar/Pages/index.aspx', fallbackUrls: ['https://www.finances.gov.ma/fr/Pages/index.aspx'] }
+  ], fetchText, (html, url) => extractOfficialLinks(html, url, 'finances',
+    'مباريات ومستجدات وزارة الاقتصاد والمالية',
+    /(مباراة|توظيف|ترشيح|مترشح|لائحة|امتحان|الكفاءة المهنية|الجمارك|concours|recrutement|candidature|examen|douane)/i, 45));
+  articles.push(...homeItems);
 
   try {
     const url = 'https://www.finances.gov.ma/ar/%D9%84%D8%AA%D9%88%D8%AC%D9%8A%D9%87%D9%83%D9%85/Pages/%D8%A7%D9%85%D8%AA%D8%AD%D8%A7%D9%86-%D8%A7%D9%84%D9%83%D9%81%D8%A7%D8%A1%D8%A9-%D8%A7%D9%84%D9%85%D9%87%D9%86%D9%8A%D8%A9.aspx';
@@ -224,7 +186,7 @@ async function fetchFinances() {
       const [day, month, year] = examDate.split('/');
       const publishedAt = year && month && day ? `${year}-${month}-${day}` : undefined;
       articles.push({
-        id: `finances-exam-${Buffer.from(grade + index).toString('base64url').slice(0, 44)}`,
+        id: stableNewsId('finances', url + '|' + grade),
         sourceId: 'finances',
         title: grade.slice(0, 280),
         summary: [
@@ -244,35 +206,47 @@ async function fetchFinances() {
   return articles;
 }
 
-async function fetchHcpRss() {
-  const sourceUrl = 'https://www.hcp.ma/xml/syndication.rss';
-  try {
-    const xml = await fetchText(sourceUrl);
-    const items = xml.match(/<item\b[\s\S]*?<\/item>/gi) || [];
-    return items.slice(0, 30).map((item, index) => {
-      const get = (tag) => {
-        const m = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
-        return strip((m?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
-      };
-      const url = get('link') || 'https://www.hcp.ma/';
-      const enclosure = item.match(/<enclosure\b[^>]*url=["']([^"']+)["'][^>]*type=["']image\//i)
-        || item.match(/<media:(?:content|thumbnail)\b[^>]*url=["']([^"']+)["']/i);
-      const imageUrl = enclosure?.[1] || undefined;
-      return {
-        id: `hcp-${Buffer.from(url + index).toString('base64url').slice(0, 48)}`,
-        sourceId: 'hcp',
-        title: get('title') || 'المندوبية السامية للتخطيط',
-        summary: get('description').slice(0, 500) || undefined,
-        url,
-        imageUrl,
-        publishedAt: get('pubDate') || undefined,
-        category: 'أخبار وإحصائيات',
-      };
-    });
-  } catch (error) {
-    console.warn('[news] HCP RSS failed:', error instanceof Error ? error.message : error);
-    return [];
+function rssFeedUrls(html, base) {
+  const urls = [];
+  for (const tag of html.match(/<link\b[^>]*>/gi) || []) {
+    if (!/\btype=["']application\/(?:rss|atom)\+xml["']/i.test(tag)) continue;
+    const href = tag.match(/\bhref=["']([^"']+)["']/i)?.[1];
+    if (href) {
+      const url = absoluteUrl(base, href);
+      if (new URL(url).hostname.replace(/^www\./, '') === new URL(base).hostname.replace(/^www\./, '')) urls.push(url);
+    }
   }
+  return urls;
+}
+async function fetchHcpRss() {
+  const root = 'https://www.hcp.ma/';
+  const feeds = ['https://www.hcp.ma/xml/syndication.rss'];
+  try {
+    const html = await fetchText(root);
+    // Discover the publisher's Arabic version and its feed; keep the standard RSS as fallback.
+    for (const alternate of discoverArabicUrls(html, root)) {
+      try { feeds.unshift(...rssFeedUrls(await fetchText(alternate), alternate)); } catch {}
+    }
+  } catch {}
+  const articles = [];
+  for (const sourceUrl of [...new Set(feeds)].slice(0, 4)) {
+    try {
+      const xml = await fetchText(sourceUrl);
+      const items = xml.match(/<item\b[\s\S]*?<\/item>/gi) || [];
+      for (const item of items.slice(0, 30)) {
+        const get = tag => {
+          const match = item.match(new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+          return strip((match?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
+        };
+        const url = get('link') || root;
+        const image = item.match(/<(?:enclosure|media:content|media:thumbnail)\b[^>]*url=["']([^"']+)["']/i)?.[1];
+        articles.push({ id: stableNewsId('hcp', url), sourceId: 'hcp', title: get('title') || 'المندوبية السامية للتخطيط',
+          summary: get('description').slice(0, 500) || undefined, url, imageUrl: image, publishedAt: get('pubDate') || undefined, category: 'أخبار وإحصائيات' });
+      }
+      console.log('[news] HCP feed ' + sourceUrl + ': ' + items.length + ' items');
+    } catch (error) { console.warn('[news] HCP RSS failed:', error instanceof Error ? error.message : error); }
+  }
+  return preferArabicStories(articles);
 }
 
 async function fetchOpenData() {
@@ -302,7 +276,7 @@ async function fetchOpenData() {
       if (!title) continue;
       const [day, month, year] = current[1].split('/');
       textItems.push({
-        id: `open-data-ar-${Buffer.from(title + i).toString('base64url').slice(0, 44)}`,
+        id: stableNewsId('open-data-ma', arabicNewsUrl + '|' + title),
         sourceId: 'open-data-ma',
         title: title.slice(0, 280),
         summary: 'مستجدات البوابة الوطنية للبيانات المفتوحة',
@@ -330,9 +304,9 @@ async function fetchOpenData() {
     return (payload.result?.results || []).map((item, index) => ({
       id: `open-data-ma-${item.name || index}`,
       sourceId: 'open-data-ma',
-      title: String(item.title || item.name || 'بيانات مغربية'),
-      summary: strip(String(item.notes || '')).slice(0, 500) || undefined,
-      url: item.name ? `https://data.gov.ma/ar/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
+      title: localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية'))),
+      summary: strip(localizedValue(item.notes_translated, localizedValue(item.notes))).slice(0, 500) || undefined,
+      url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
       imageUrl: item.organization?.image_display_url || item.organization?.image_url || undefined,
       publishedAt: item.metadata_modified || item.metadata_created || undefined,
       category: 'بيانات مفتوحة',
@@ -343,24 +317,13 @@ async function fetchOpenData() {
   }
 }
 
-const dedupe = (items) => {
-  const seen = new Set();
-  return items.filter((item) => {
-    const key = (item.url || item.title).toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
-const articles = dedupe([
-  ...(await fetchEmploiPublic()),
-  ...(await fetchMen()),
-  ...(await fetchFinances()),
-  ...(await fetchHcpRss()),
-  ...(await fetchOpenData()),
-]).slice(0, 180);
-
-await mkdir(new URL('../public/', import.meta.url), { recursive: true });
-await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), articles }, null, 2) + '\n', 'utf8');
-console.log(`[news] wrote ${articles.length} articles to public/news-feed.json`);
+export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss, fetchOpenData };
+export async function refreshNews() {
+  const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss(), fetchOpenData()]);
+  const articles = preferArabicStories(batches.flat()).slice(0, 180);
+  await mkdir(new URL('../public/', import.meta.url), { recursive: true });
+  await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), articles }, null, 2) + '\n', 'utf8');
+  console.log('[news] wrote ' + articles.length + ' articles to public/news-feed.json');
+  return articles;
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await refreshNews();
