@@ -104,3 +104,6 @@ assert.equal(imageArticles[0].imageUrl,'https://publisher.ma/news.jpg');
 assert.equal(imageArticles[1].imageUrl,undefined);
 assert.deepEqual(fetchedImages,['https://publisher.ma/news/1','https://publisher.ma/news/2']);
 console.log('News image extraction and bounded enrichment regressions passed');
+
+assert.equal(preferArabicStories([{...french,imageUrl:'https://publisher.ma/story.jpg'},arabic])[0].imageUrl,'https://publisher.ma/story.jpg','Arabic preference retains the same story image');
+assert.equal(preferArabicStories([arabic,{...arabic,imageUrl:'https://publisher.ma/story.jpg'}])[0].imageUrl,'https://publisher.ma/story.jpg','Image from a duplicate enriches the original');

@@ -37,7 +37,11 @@ export function preferArabicStories(articles) {
       else if (/\/(?:details|détails|تفاصيل|dataset|article|actualite|actualites)\//i.test(path) || /_a\d+\.html$/i.test(path)) key = item.sourceId + '|' + url.host + path + url.search;
     } catch {}
     const previous = byStory.get(key);
-    if (!previous || (!isArabicText(previous.title) && isArabicText(item.title))) byStory.set(key, item);
+    if (!previous || (!isArabicText(previous.title) && isArabicText(item.title))) {
+      byStory.set(key, { ...item, imageUrl: item.imageUrl || previous?.imageUrl });
+    } else if (!previous.imageUrl && item.imageUrl) {
+      byStory.set(key, { ...previous, imageUrl: item.imageUrl });
+    }
   }
   return [...byStory.values()];
 }
