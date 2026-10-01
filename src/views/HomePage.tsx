@@ -336,7 +336,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
-      <div className="sm:col-span-2"><ReferenceBannerAd slot="home-below-stats" /></div>
+      <ReferenceBannerAd slot="home-below-stats" className="sm:col-span-2" />
 
       <button
         data-tour="home-start-session"

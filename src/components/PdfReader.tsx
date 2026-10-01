@@ -62,7 +62,15 @@ async function renderWebPdfPage(
 
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   await pdfPage.render({ canvasContext: context, viewport }).promise;
-  return canvas.toDataURL('image/png', 0.96);
+  try {
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+      value => value ? resolve(value) : reject(new Error('تعذر إنشاء صورة الصفحة.')), 'image/png'
+    ));
+    return URL.createObjectURL(blob);
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
 }
 
 export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
@@ -73,6 +81,15 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
   const renderToken = useRef(0);
   const renderingPages = useRef<Set<number>>(new Set());
   const loadedPages = useRef<Set<number>>(new Set());
+  const cachedImages = useRef<Map<number, string>>(new Map());
+  const wantedPages = useRef<Set<number>>(new Set());
+  const renderQueue = useRef<Promise<void>>(Promise.resolve());
+  const pageHeights = useRef<Map<number, number>>(new Map());
+  const clearImages = () => {
+    for (const url of cachedImages.current.values()) URL.revokeObjectURL(url);
+    cachedImages.current.clear();
+    loadedPages.current.clear();
+  };
 
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
@@ -130,6 +147,8 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
       active = false;
       renderToken.current += 1;
       renderingPages.current.clear();
+      wantedPages.current.clear();
+      clearImages();
       if (native) {
         void closeNativePdf();
       } else {
@@ -140,80 +159,95 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
     };
   }, [blob, native]);
 
-  const renderPage = async (pageNumber: number, token: number) => {
-    if (
-      pageNumber < 1 ||
-      pageNumber > pages ||
-      loadedPages.current.has(pageNumber) ||
-      renderingPages.current.has(pageNumber)
-    ) return;
-
+  const renderPage = (pageNumber: number, token: number) => {
+    if (pageNumber < 1 || pageNumber > pages || loadedPages.current.has(pageNumber)
+      || renderingPages.current.has(pageNumber)) return;
     renderingPages.current.add(pageNumber);
-    try {
-      let url: string;
-      if (native) {
-        const width = Math.round(960 * zoom);
-        url = await renderNativePdfPage(pageNumber - 1, width);
-      } else {
-        const doc = webDocumentRef.current;
-        if (!doc) return;
-        url = await renderWebPdfPage(doc, pageNumber, zoom);
+    // One bitmap at a time, and skip queued pages that have scrolled out of view.
+    renderQueue.current = renderQueue.current.catch(() => undefined).then(async () => {
+      let url: string | undefined;
+      try {
+        if (renderToken.current !== token || !wantedPages.current.has(pageNumber)) return;
+        if (native) {
+          const dataUrl = await renderNativePdfPage(pageNumber - 1, Math.round(960 * zoom));
+          const image = await (await fetch(dataUrl)).blob();
+          url = URL.createObjectURL(image);
+        } else {
+          const doc = webDocumentRef.current;
+          if (!doc) return;
+          url = await renderWebPdfPage(doc, pageNumber, zoom);
+        }
+        if (renderToken.current !== token || !wantedPages.current.has(pageNumber)) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        cachedImages.current.set(pageNumber, url);
+        loadedPages.current.add(pageNumber);
+        setPageImages(Object.fromEntries(cachedImages.current));
+      } catch (err: any) {
+        if (url) URL.revokeObjectURL(url);
+        if (renderToken.current === token) setError(err?.message || 'تعذر عرض إحدى صفحات PDF.');
+      } finally {
+        if (renderToken.current === token) renderingPages.current.delete(pageNumber);
       }
-      if (renderToken.current !== token) return;
-      loadedPages.current.add(pageNumber);
-      setPageImages((current) => current[pageNumber] ? current : { ...current, [pageNumber]: url });
-    } catch (err: any) {
-      if (renderToken.current === token) {
-        setError(err?.message || 'تعذر عرض إحدى صفحات PDF.');
-      }
-    } finally {
-      renderingPages.current.delete(pageNumber);
-    }
+    });
   };
 
   useEffect(() => {
     if (!pages || loading || error) return;
     const token = ++renderToken.current;
+    clearImages();
     setPageImages({});
     renderingPages.current.clear();
-    loadedPages.current.clear();
-
+    wantedPages.current.clear();
+    pageHeights.current.clear();
     const root = scrollRef.current;
     if (!root) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible: Array<{ page: number; ratio: number }> = [];
-
-        for (const entry of entries) {
-          const pageNumber = Number((entry.target as HTMLElement).dataset.pdfPage || 0);
-          if (!pageNumber) continue;
-
-          if (entry.isIntersecting) {
-            visible.push({ page: pageNumber, ratio: entry.intersectionRatio });
-            void renderPage(pageNumber, token);
-            void renderPage(pageNumber - 1, token);
-            void renderPage(pageNumber + 1, token);
-          }
+    const intersecting = new Map<number, number>();
+    const requestNearby = () => {
+      const ordered = [...intersecting.keys()].sort((a, b) => {
+        const center = root.getBoundingClientRect().top + root.clientHeight / 2;
+        const distance = (n: number) => {
+          const bounds = pageRefs.current.get(n)?.getBoundingClientRect();
+          return bounds ? Math.abs((bounds.top + bounds.bottom) / 2 - center) : Infinity;
+        };
+        return distance(a) - distance(b);
+      });
+      const wanted = new Set<number>();
+      for (const n of ordered) {
+        for (const candidate of [n, n - 1, n + 1]) {
+          if (candidate >= 1 && candidate <= pages && wanted.size < 6) wanted.add(candidate);
         }
-
-        if (visible.length) {
-          visible.sort((a, b) => b.ratio - a.ratio || a.page - b.page);
-          setPage(visible[0].page);
-        }
-      },
-      {
-        root,
-        rootMargin: '900px 0px',
-        threshold: [0.05, 0.25, 0.5, 0.75],
       }
-    );
-
-    pageRefs.current.forEach((element) => observer.observe(element));
-    void renderPage(1, token);
-    void renderPage(2, token);
-
-    return () => observer.disconnect();
+      wantedPages.current = wanted;
+      let removed = false;
+      for (const [n, url] of cachedImages.current) {
+        if (!wanted.has(n)) {
+          URL.revokeObjectURL(url);
+          cachedImages.current.delete(n);
+          loadedPages.current.delete(n);
+          removed = true;
+        }
+      }
+      if (removed) setPageImages(Object.fromEntries(cachedImages.current));
+      for (const n of wanted) renderPage(n, token);
+      if (ordered.length) setPage(ordered[0]);
+    };
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const n = Number((entry.target as HTMLElement).dataset.pdfPage || 0);
+        if (entry.isIntersecting) intersecting.set(n, entry.intersectionRatio);
+        else intersecting.delete(n);
+      }
+      requestNearby();
+    }, { root, rootMargin: '200px 0px', threshold: [0, 0.25, 0.5, 0.75] });
+    pageRefs.current.forEach(element => observer.observe(element));
+    return () => {
+      observer.disconnect();
+      renderToken.current += 1;
+      wantedPages.current.clear();
+      clearImages();
+    };
   }, [pages, loading, error, native, zoom]);
 
   const goPage = (next: number) => {
@@ -232,7 +266,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
 
   const shellClass = fullscreen
     ? 'fixed inset-0 z-[100] bg-[#EEF0F5] flex flex-col'
-    : 'rounded-[18px] overflow-hidden border border-gray-100 bg-[#EEF0F5] min-h-[72vh] flex flex-col';
+    : 'rounded-[18px] overflow-hidden border border-gray-100 bg-[#EEF0F5] h-[72dvh] min-h-[360px] flex flex-col';
 
   return (
     <div className={shellClass} dir="rtl">
@@ -313,7 +347,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
         </div>
       </div>
 
-      <div ref={scrollRef} className="relative flex-1 overflow-auto overscroll-contain p-2 sm:p-3 scroll-smooth">
+      <div ref={scrollRef} className="relative flex-1 min-h-0 overflow-auto overscroll-contain p-2 sm:p-3 scroll-smooth">
         {loading && (
           <div className="min-h-[60vh] flex items-center justify-center text-sm text-gray-400">
             جاري تجهيز PDF...
@@ -350,18 +384,21 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ blob, title }) => {
                     style={{
                       width: `${Math.max(70, Math.round(100 * zoom))}%`,
                       maxWidth: zoom <= 1 ? '980px' : 'none',
-                      minHeight: imageUrl ? undefined : `${Math.round(620 * zoom)}px`,
+                      minHeight: imageUrl ? undefined : `${pageHeights.current.get(pageNumber) || Math.round(620 * zoom)}px`,
                     }}
                   >
                     {imageUrl ? (
                       <img
                         src={imageUrl}
                         alt={`${title} - الصفحة ${pageNumber}`}
+                        onLoad={event => {
+                          pageHeights.current.set(pageNumber, event.currentTarget.getBoundingClientRect().height);
+                        }}
                         draggable={false}
                         className="block w-full h-auto select-none"
                       />
                     ) : (
-                      <div className="min-h-[620px] flex flex-col items-center justify-center gap-2 text-xs text-gray-400 bg-white">
+                      <div style={{ height: pageHeights.current.get(pageNumber) || Math.round(620 * zoom) }} className="flex flex-col items-center justify-center gap-2 text-xs text-gray-400 bg-white">
                         <span>جاري تحميل الصفحة {pageNumber}...</span>
                       </div>
                     )}

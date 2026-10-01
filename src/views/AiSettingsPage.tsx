@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
 import {
   CheckCircle2,
   Eye,
@@ -16,8 +15,6 @@ import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { AiProviderMonitor } from '../components/AiProviderMonitor';
 import {
   aiEnabled,
-  aiProviderMode,
-  AiProviderMode,
   aiVerified,
   addVerifiedGeminiKey,
   deleteGeminiKeyById,
@@ -27,26 +24,19 @@ import {
   findGeminiKeyNumber,
   GeminiKeyMeta,
   listGeminiKeys,
-  nanoStatus,
-  generateWithNano,
   cachedWebSearchCapability,
   refreshWebSearchCapability,
   WebSearchCapability,
   selectGeminiKey,
   setAiEnabled,
-  setAiProviderMode,
   setGeminiModel,
   verifyGeminiConnection,
 } from '../services/geminiAi';
 
 export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const isAndroid = Capacitor.getPlatform() === 'android';
-  const initialProvider = aiProviderMode() === 'nano' && !isAndroid ? 'auto' : aiProviderMode();
   const [enabled, setEnabled] = useState(aiEnabled());
   const [verified, setVerified] = useState(aiVerified());
   const [model, setModel] = useState<GeminiModel>(geminiModel());
-  const [provider, setProvider] = useState<AiProviderMode>(initialProvider);
-  const [nano, setNano] = useState<{ status: 'available' | 'downloadable' | 'downloading' | 'unavailable'; available: boolean; model?: string; tokenLimit?: number }>({ status: 'unavailable', available: false });
   const [draftKey, setDraftKey] = useState('');
   const [keys, setKeys] = useState<GeminiKeyMeta[]>([]);
   const [duplicateNumber, setDuplicateNumber] = useState<number | null>(null);
@@ -60,20 +50,14 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     void listGeminiKeys().then(setKeys);
     setWebCapability(cachedWebSearchCapability());
 
-    if (isAndroid) {
-      void nanoStatus().then(setNano);
-    } else if (aiProviderMode() === 'nano') {
-      setAiProviderMode('auto');
-      setProvider('auto');
-    }
-  }, [isAndroid]);
+  }, []);
 
   const toggleEnabled = () => {
     const next = !enabled;
     setEnabled(next);
     setAiEnabled(next);
     setStatus(next
-      ? 'تم تفعيل الذكاء الاصطناعي. سيستخدم التطبيق المزود المحدد أدناه.'
+      ? 'تم تفعيل الذكاء الاصطناعي. سيستخدم التطبيق Gemini API عبر الإنترنت.'
       : 'تم إخفاء أدوات الذكاء الاصطناعي من التطبيق.');
   };
 
@@ -175,63 +159,6 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     setStatus('تم تغيير النموذج. أعد اختبار الاتصال قبل استخدام أدوات AI.');
   };
 
-  const changeProvider = (value: AiProviderMode) => {
-    setProvider(value);
-    setAiProviderMode(value);
-    setStatus(
-      value === 'auto'
-        ? (isAndroid
-            ? 'الوضع التلقائي سيستخدم Nano عند توفره ويرجع إلى Gemini API عند الحاجة.'
-            : 'في المتصفح يستخدم الوضع التلقائي Gemini API لأن Nano المحلي خاص بتطبيق Android.')
-        : value === 'nano'
-          ? 'تم اختيار Gemini Nano المحلي. ميزات البحث في الويب والروابط ستحتاج التحويل إلى API.'
-          : 'تم اختيار Gemini API السحابي.'
-    );
-  };
-
-  const refreshNano = async () => {
-    if (!isAndroid) {
-      setStatus('Gemini Nano المحلي متاح فقط داخل تطبيق Android.');
-      return;
-    }
-    setBusy(true);
-    setStatus('جارٍ فحص Gemini Nano على هذا الجهاز…');
-    try {
-      const result = await nanoStatus();
-      setNano(result);
-      setStatus(
-        result.status === 'available'
-          ? `Gemini Nano جاهز على الجهاز${result.model ? ` — ${result.model}` : ''}.`
-          : result.status === 'downloadable'
-            ? 'الجهاز يدعم Gemini Nano لكن النموذج غير منزّل بعد.'
-            : result.status === 'downloading'
-              ? 'Gemini Nano قيد التنزيل على الجهاز.'
-              : 'Gemini Nano غير مدعوم أو غير متاح على هذا الجهاز.'
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const testNano = async () => {
-    if (!isAndroid) {
-      setStatus('اختبار Gemini Nano متاح فقط داخل تطبيق Android.');
-      return;
-    }
-    setBusy(true);
-    setStatus('جارٍ اختبار Gemini Nano محليًا…');
-    try {
-      const text = await generateWithNano('أجب بكلمة واحدة فقط: جاهز');
-      setStatus(`نجح Gemini Nano محليًا: ${text.slice(0, 80)}`);
-      setNano(await nanoStatus());
-    } catch (error: any) {
-      setStatus(error?.message || 'فشل اختبار Gemini Nano.');
-      setNano(await nanoStatus());
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const checkWebProvider = async () => {
     setWebChecking(true);
     setStatus('جارٍ فحص النماذج المتاحة وقدرة Google Search فعليًا…');
@@ -259,9 +186,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     <div className="flex flex-col gap-4 pb-8 text-right">
       <PurpleSubpageHeader
         title="إعدادات الذكاء الاصطناعي"
-        subtitle={isAndroid
-          ? 'اختر تلقائيًا بين Gemini Nano المحلي وGemini API السحابي'
-          : 'في المتصفح يعمل الذكاء الاصطناعي عبر Gemini API السحابي'}
+        subtitle="إعداد Gemini API السحابي ومفاتيح الاتصال"
         onBack={onBack}
       />
 
@@ -274,7 +199,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
             <div>
               <div className="font-bold text-sm text-[#2C2145]">تفعيل الذكاء الاصطناعي</div>
               <div className="text-[11px] text-gray-400 mt-1">
-                الأدوات تظهر بعد التفعيل عندما يكون Nano جاهزًا أو API متحققًا
+                الأدوات تظهر بعد التفعيل والتحقق من مفتاح Gemini API
               </div>
             </div>
           </div>
@@ -284,72 +209,12 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
         </button>
       </div>
 
-      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center">
-            <Cpu className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm">مزود الذكاء الاصطناعي</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">اختر كيف ينفذ التطبيق طلبات AI</p>
-          </div>
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex items-center gap-3">
+        <Cpu className="w-5 h-5 text-[#5B3FD6]" />
+        <div>
+          <h3 className="font-bold text-sm">Gemini API</h3>
+          <p className="text-[11px] text-gray-400 mt-1">يعمل عبر الإنترنت باستخدام مفاتيح الاتصال المحفوظة.</p>
         </div>
-
-        {([
-          ['auto', 'تلقائي', isAndroid
-            ? 'Nano أولًا، ثم API للمهام التي تحتاج السحابة'
-            : 'يستخدم Gemini API تلقائيًا في نسخة المتصفح'],
-          ...(isAndroid
-            ? [['nano', 'Gemini Nano', 'محلي على الجهاز وبدون API Key عند الدعم'] as [AiProviderMode, string, string]]
-            : []),
-          ['api', 'Gemini API', 'استخدام النموذج السحابي دائمًا'],
-        ] as Array<[AiProviderMode, string, string]>).map(([id, title, desc]) => (
-          <button
-            key={id}
-            onClick={() => changeProvider(id)}
-            className={`w-full rounded-[14px] border p-3 text-right transition-all ${provider === id ? 'bg-[#F5F3FF] border-[#5B3FD6]' : 'bg-white border-gray-100'}`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-xs text-[#2C2145]">{title}</span>
-              {provider === id && <CheckCircle2 className="w-4 h-4 text-[#5B3FD6]" />}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-1">{desc}</div>
-          </button>
-        ))}
-
-        {isAndroid ? (
-          <div className="rounded-[14px] bg-[#F8F9FD] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-bold text-[#2C2145]">Gemini Nano على الجهاز</div>
-                <div className={`text-[10px] mt-1 font-semibold ${nano.available ? 'text-emerald-600' : nano.status === 'downloadable' || nano.status === 'downloading' ? 'text-amber-600' : 'text-gray-400'}`}>
-                  {nano.status === 'available'
-                    ? 'جاهز ✓'
-                    : nano.status === 'downloadable'
-                      ? 'مدعوم — يحتاج تنزيل'
-                      : nano.status === 'downloading'
-                        ? 'قيد التنزيل'
-                        : 'غير متاح'}
-                </div>
-                {nano.model && <div className="text-[9px] text-gray-400 mt-1">{nano.model}{nano.tokenLimit ? ` • ${nano.tokenLimit} tokens` : ''}</div>}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => void refreshNano()} disabled={busy} className="h-9 px-3 rounded-[10px] bg-white border border-gray-200 text-[10px] font-bold disabled:opacity-40">فحص</button>
-                {nano.available && <button onClick={() => void testNano()} disabled={busy} className="h-9 px-3 rounded-[10px] bg-[#2C2145] text-white text-[10px] font-bold disabled:opacity-40">اختبار</button>}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-[14px] bg-[#F8F9FD] p-3 flex items-start gap-2">
-            <Cpu className="w-4 h-4 text-[#5B3FD6] shrink-0 mt-0.5" />
-            <div>
-              <div className="text-xs font-bold text-[#2C2145]">Gemini Nano غير متاح في المتصفح</div>
-              <p className="text-[10px] leading-5 text-gray-500 mt-1">
-                فحص وتشغيل Gemini Nano يعتمد على Android وAICore، لذلك يظهر فقط داخل نسخة APK. في المتصفح يستخدم الوضع التلقائي Gemini API.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-4">

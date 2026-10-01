@@ -33,7 +33,7 @@ public class NexusStoragePlugin extends Plugin {
     }
 
     @PluginMethod
-    public void loadSnapshot(PluginCall call) {
+    public synchronized void loadSnapshot(PluginCall call) {
         try {
             SQLiteDatabase db = helper.getWritableDatabase();
             String value;
@@ -61,7 +61,7 @@ public class NexusStoragePlugin extends Plugin {
     }
 
     @PluginMethod
-    public void saveSnapshot(PluginCall call) {
+    public synchronized void saveSnapshot(PluginCall call) {
         String value = call.getString("value");
         if (value == null) {
             call.reject("Missing database snapshot");
@@ -120,14 +120,9 @@ public class NexusStoragePlugin extends Plugin {
     }
 
     private void replaceNormalizedData(SQLiteDatabase db, JSONObject root) throws Exception {
-        db.delete("attempts", null, null);
-        db.delete("question_states", null, null);
-        db.delete("questions", null, null);
-        db.delete("sessions", null, null);
-        db.delete("banks", null, null);
-        db.delete("domains", null, null);
-        db.delete("settings", null, null);
-        db.delete("notifications", null, null);
+        // Parents are inserted first and children are removed first, so keep
+        // immediate FK validation: invalid snapshots fail before commit.
+        java.util.Map<String, java.util.Map<String, String>> existing = readRowSignatures(db);
 
         JSONArray domains = root.optJSONArray("domains");
         if (domains != null) {
@@ -140,7 +135,7 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("enabled", item.optBoolean("enabled", true) ? 1 : 0);
                 v.put("built_in", item.optBoolean("builtIn", false) ? 1 : 0);
                 v.put("created_at", item.optLong("createdAt", 0));
-                ensureInsert(db, "domains", v);
+                ensureInsert(db, "domains", v, existing);
             }
         }
 
@@ -159,7 +154,7 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("enabled", item.optBoolean("enabled", true) ? 1 : 0);
                 v.put("imported_at", item.optLong("importedAt", 0));
                 v.put("source_name", item.optString("sourceName", ""));
-                ensureInsert(db, "banks", v);
+                ensureInsert(db, "banks", v, existing);
             }
         }
 
@@ -182,7 +177,7 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("question_type", item.optString("questionType", "QCM"));
                 v.put("qcm_status", item.optString("qcmStatus", "NOT_READY"));
                 v.put("enabled", item.optBoolean("enabled", true) ? 1 : 0);
-                ensureInsert(db, "questions", v);
+                ensureInsert(db, "questions", v, existing);
             }
         }
 
@@ -201,7 +196,7 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("bank_id", item.optString("bankId", ""));
                 JSONArray ids = item.optJSONArray("questionRowIds");
                 v.put("question_row_ids", ids == null ? "[]" : ids.toString());
-                ensureInsert(db, "sessions", v);
+                ensureInsert(db, "sessions", v, existing);
             }
         }
 
@@ -221,7 +216,7 @@ public class NexusStoragePlugin extends Plugin {
                     v.put("streak", item.optInt("streak", 0));
                     putNullableLong(v, "last_answered_at", item, "lastAnsweredAt");
                     putNullableLong(v, "next_review_at", item, "nextReviewAt");
-                    ensureInsert(db, "question_states", v);
+                    ensureInsert(db, "question_states", v, existing);
                 }
             }
         }
@@ -237,7 +232,7 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("is_correct", item.optBoolean("isCorrect", false) ? 1 : 0);
                 v.put("answered_at", item.optLong("answeredAt", 0));
                 putNullableLong(v, "session_id", item, "sessionId");
-                ensureInsert(db, "attempts", v);
+                ensureInsert(db, "attempts", v, existing);
             }
         }
 
@@ -250,7 +245,7 @@ public class NexusStoragePlugin extends Plugin {
                     ContentValues v = new ContentValues();
                     v.put("key", key);
                     v.put("value", settings.optString(key, ""));
-                    ensureInsert(db, "settings", v);
+                    ensureInsert(db, "settings", v, existing);
                 }
             }
         }
@@ -269,7 +264,14 @@ public class NexusStoragePlugin extends Plugin {
                 v.put("received_at", item.optLong("receivedAt", 0));
                 putNullableLong(v, "read_at", item, "readAt");
                 v.put("source", item.optString("source", "local"));
-                ensureInsert(db, "notifications", v);
+                ensureInsert(db, "notifications", v, existing);
+            }
+        }
+        // Delete missing children before their parents, preserving referential integrity.
+        for (String table : new String[]{"attempts", "question_states", "sessions", "questions", "banks", "domains", "settings", "notifications"}) {
+            String key = primaryKey(table);
+            for (String id : existing.get(table).keySet()) {
+                db.delete(table, key + "=?", new String[]{id});
             }
         }
     }
@@ -435,9 +437,60 @@ public class NexusStoragePlugin extends Plugin {
         return out;
     }
 
-    private void ensureInsert(SQLiteDatabase db, String table, ContentValues values) {
-        long rowId = db.insertOrThrow(table, null, values);
-        if (rowId == -1) throw new IllegalStateException("SQLite insert failed for " + table);
+    private String primaryKey(String table) {
+        if ("questions".equals(table)) return "row_id";
+        if ("question_states".equals(table)) return "question_row_id";
+        if ("settings".equals(table)) return "key";
+        return "id";
+    }
+
+    private String rowSignature(ContentValues values) {
+        java.util.List<String> keys = new java.util.ArrayList<>(values.keySet());
+        java.util.Collections.sort(keys);
+        StringBuilder result = new StringBuilder();
+        for (String key : keys) {
+            String value = values.getAsString(key);
+            result.append(key.length()).append(':').append(key);
+            if (value == null) result.append("-1:");
+            else result.append(value.length()).append(':').append(value);
+        }
+        return result.toString();
+    }
+
+    private java.util.Map<String, java.util.Map<String, String>> readRowSignatures(SQLiteDatabase db) {
+        java.util.Map<String, java.util.Map<String, String>> result = new java.util.HashMap<>();
+        for (String table : new String[]{"domains", "banks", "questions", "sessions", "question_states", "attempts", "settings", "notifications"}) {
+            java.util.Map<String, String> rows = new java.util.HashMap<>();
+            try (Cursor cursor = db.query(table, null, null, null, null, null, null)) {
+                String[] columns = cursor.getColumnNames();
+                int idColumn = cursor.getColumnIndexOrThrow(primaryKey(table));
+                while (cursor.moveToNext()) {
+                    ContentValues values = new ContentValues();
+                    for (int i = 0; i < columns.length; i++) {
+                        if (cursor.isNull(i)) values.putNull(columns[i]);
+                        else values.put(columns[i], cursor.getString(i));
+                    }
+                    rows.put(cursor.getString(idColumn), rowSignature(values));
+                }
+            }
+            result.put(table, rows);
+        }
+        return result;
+    }
+
+    private void ensureInsert(SQLiteDatabase db, String table, ContentValues values,
+        java.util.Map<String, java.util.Map<String, String>> existing) {
+        String key = primaryKey(table);
+        String id = values.getAsString(key);
+        String previous = existing.get(table).remove(id);
+        if (rowSignature(values).equals(previous)) return;
+        if (previous != null) {
+            if (db.update(table, values, key + "=?", new String[]{id}) != 1) {
+                throw new IllegalStateException("SQLite update failed for " + table);
+            }
+        } else if (db.insertOrThrow(table, null, values) == -1) {
+            throw new IllegalStateException("SQLite insert failed for " + table);
+        }
     }
 
     private void putNullableLong(ContentValues values, String column, JSONObject object, String key) {

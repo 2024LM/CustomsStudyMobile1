@@ -3,13 +3,11 @@ import { QuizQuestion } from '../types';
 import { logAiProviderEvent } from './aiProviderDiagnostics';
 
 export type GeminiModel = 'gemini-3.6-flash' | 'gemini-3.5-flash-lite' | 'gemini-3.1-pro';
-export type AiProviderMode = 'auto' | 'api' | 'nano';
 
 const ENABLED_KEY = 'ai_gemini_enabled';
 const VERIFIED_KEY = 'ai_gemini_verified';
 const MODEL_KEY = 'ai_gemini_model';
 const WEB_KEY = 'ai_gemini_web_key';
-const PROVIDER_KEY = 'ai_provider_mode';
 const KEY_POOL_VERSION = 1;
 const WEB_CAPABILITY_KEY = 'ai_web_search_capability_v1';
 const WEB_CAPABILITY_SUCCESS_TTL = 12 * 60 * 60 * 1000;
@@ -22,33 +20,6 @@ interface SecureSecretsPlugin {
 }
 
 const SecureSecrets = registerPlugin<SecureSecretsPlugin>('NexusSecureSecrets');
-
-interface NanoAiPlugin {
-  status(): Promise<{
-    status: 'available' | 'downloadable' | 'downloading' | 'unavailable';
-    available: boolean;
-    model?: string;
-    tokenLimit?: number;
-  }>;
-  generate(options: { prompt: string }): Promise<{
-    status: 'available' | 'downloadable' | 'downloading' | 'unavailable';
-    text: string;
-    model?: string;
-  }>;
-}
-
-const NanoAi = registerPlugin<NanoAiPlugin>('NexusNanoAi');
-
-
-
-export function aiProviderMode(): AiProviderMode {
-  const value = localStorage.getItem(PROVIDER_KEY) as AiProviderMode | null;
-  return value === 'api' || value === 'nano' ? value : 'auto';
-}
-
-export function setAiProviderMode(mode: AiProviderMode): void {
-  localStorage.setItem(PROVIDER_KEY, mode);
-}
 
 export type WebSearchCapabilityStatus = 'ready' | 'quota' | 'unsupported' | 'error' | 'unknown';
 
@@ -85,72 +56,6 @@ export function cachedWebSearchCapability(): WebSearchCapability {
 function saveWebSearchCapability(value: WebSearchCapability): WebSearchCapability {
   localStorage.setItem(WEB_CAPABILITY_KEY, JSON.stringify(value));
   return value;
-}
-
-export async function nanoStatus(): Promise<{
-  status: 'available' | 'downloadable' | 'downloading' | 'unavailable';
-  available: boolean;
-  model?: string;
-  tokenLimit?: number;
-}> {
-  if (Capacitor.getPlatform() !== 'android') {
-    return { status: 'unavailable', available: false };
-  }
-  try {
-    return await NanoAi.status();
-  } catch {
-    return { status: 'unavailable', available: false };
-  }
-}
-
-export async function generateWithNano(prompt: string, operation = 'Nano Text'): Promise<string> {
-  if (Capacitor.getPlatform() !== 'android') {
-    throw new Error('Gemini Nano المحلي متاح فقط في نسخة Android.');
-  }
-  const started = Date.now();
-  try {
-    const result = await NanoAi.generate({ prompt });
-    if (result.status !== 'available') {
-      const message = result.status === 'downloadable'
-        ? 'Gemini Nano مدعوم على هذا الجهاز لكنه يحتاج تنزيل النموذج أولًا.'
-        : result.status === 'downloading'
-          ? 'Gemini Nano قيد التنزيل على هذا الجهاز.'
-          : 'Gemini Nano غير متاح على هذا الجهاز.';
-      logAiProviderEvent({
-        provider: 'gemini-nano',
-        operation,
-        model: result.model,
-        status: 'error',
-        durationMs: Date.now() - started,
-        requestSummary: prompt,
-        error: message,
-      });
-      throw new Error(message);
-    }
-    if (!result.text.trim()) throw new Error('لم يُرجع Gemini Nano استجابة.');
-    logAiProviderEvent({
-      provider: 'gemini-nano',
-      operation,
-      model: result.model,
-      status: 'success',
-      durationMs: Date.now() - started,
-      requestSummary: prompt,
-      responseSummary: result.text,
-    });
-    return result.text.trim();
-  } catch (error: any) {
-    if (!String(error?.message || '').includes('Gemini Nano')) {
-      logAiProviderEvent({
-        provider: 'gemini-nano',
-        operation,
-        status: 'error',
-        durationMs: Date.now() - started,
-        requestSummary: prompt,
-        error: error?.message || 'Gemini Nano inference failed',
-      });
-    }
-    throw error;
-  }
 }
 
 export const GEMINI_MODELS: Array<{ id: GeminiModel; label: string; description: string }> = [
@@ -610,47 +515,14 @@ async function generateCloud(prompt: string, maxOutputTokens = 700, operation = 
 }
 
 async function generate(prompt: string, maxOutputTokens = 700, operation = 'نص Gemini'): Promise<string> {
-  const mode = aiProviderMode();
-
-  if (mode === 'nano') {
-    return generateWithNano(prompt, operation);
-  }
-
-  if (mode === 'auto') {
-    const local = await nanoStatus();
-    if (local.available) {
-      try {
-        return await generateWithNano(prompt, operation);
-      } catch {
-        // Fall through to cloud when a verified API key exists.
-      }
-    }
-  }
-
   if (!aiVerified()) {
-    throw new Error(
-      mode === 'auto'
-        ? 'لا يوجد مزود AI جاهز. فعّل Gemini Nano المدعوم أو أضف Gemini API Key صالحًا.'
-        : 'Gemini API غير متحقق. اختبر المفتاح من الإعدادات.'
-    );
+    throw new Error('Gemini API غير متحقق. اختبر المفتاح من الإعدادات.');
   }
-
   return generateCloud(prompt, maxOutputTokens, operation);
 }
 
 export async function aiReady(): Promise<boolean> {
   if (!aiEnabled()) return false;
-  const mode = aiProviderMode();
-
-  if (mode === 'nano') {
-    return (await nanoStatus()).available;
-  }
-
-  if (mode === 'api') {
-    return (await listGeminiKeys()).some((key) => key.verifiedAt > 0);
-  }
-
-  if ((await nanoStatus()).available) return true;
   return (await listGeminiKeys()).some((key) => key.verifiedAt > 0);
 }
 
@@ -821,10 +693,6 @@ export async function flashcardsFromReference(title: string, text: string): Prom
 
 
 async function assertCloudAiReady(feature: string): Promise<void> {
-  const mode = aiProviderMode();
-  if (mode === 'nano') {
-    throw new Error(`${feature} يحتاج Gemini API السحابي ولا يعمل في وضع Nano المحلي.`);
-  }
   if (!(await listGeminiKeys()).some((key) => key.verifiedAt > 0)) {
     throw new Error(`${feature} يحتاج مفتاح Gemini API واحدًا على الأقل صالحًا ومتحققًا.`);
   }
@@ -1687,21 +1555,6 @@ ${JSON.stringify(sourceSummary)}`;
   } else {
     assertMixedSourcePayload(sources);
 
-    const onlyTextSources = sources.every((source) => source.kind === 'text');
-    const mode = aiProviderMode();
-    if (onlyTextSources && mode !== 'api') {
-      const nano = await nanoStatus();
-      if (nano.available) {
-        const textSources = sources
-          .map((source) => `[مصدر مرفق: ${source.title}]\n${cleanReferenceText(source.text || '')}`)
-          .join('\n\n');
-        raw = await generateWithNano(`${prompt}\n\n${textSources}`, 'Planner JSON');
-      } else if (mode === 'nano') {
-        throw new Error('Gemini Nano غير متاح على هذا الجهاز.');
-      }
-    }
-
-    if (!raw) {
       await assertCloudAiReady('المرفقات متعددة الوسائط أو الروابط');
       const model = geminiModel();
     const parts: any[] = [{ text: prompt }];
@@ -1759,8 +1612,7 @@ ${JSON.stringify(sourceSummary)}`;
       throw new Error(apiMessage || 'تعذر إرسال المرفقات إلى Gemini.');
     }
 
-      raw = responseText(payload);
-    }
+    raw = responseText(payload);
   }
 
   const parsed = parseJsonObject(raw);

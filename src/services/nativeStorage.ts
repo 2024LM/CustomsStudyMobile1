@@ -7,7 +7,8 @@ interface NexusStoragePlugin {
 
 const NexusStorage = registerPlugin<NexusStoragePlugin>('NexusStorage');
 
-let writeQueue: Promise<void> = Promise.resolve();
+let pendingSnapshot: string | null = null;
+let writeQueue: Promise<void> | null = null;
 
 export function isNativeAndroidStorage(): boolean {
   return Capacitor.getPlatform() === 'android';
@@ -30,16 +31,22 @@ export async function loadNativeSnapshot(): Promise<string | null> {
 export function saveNativeSnapshot(value: string): Promise<void> {
   if (!isNativeAndroidStorage()) return Promise.resolve();
 
-  // Serialize writes so rapid answers/settings changes cannot race each other.
-  writeQueue = writeQueue
-    .catch(() => undefined)
-    .then(async () => {
-      try {
-        await NexusStorage.saveSnapshot({ value });
-      } catch (error) {
-        console.warn('Native SQLite save failed; localStorage remains the fallback.', error);
+  pendingSnapshot = value;
+  if (!writeQueue) {
+    writeQueue = Promise.resolve().then(async () => {
+      while (pendingSnapshot !== null) {
+        const latest = pendingSnapshot;
+        pendingSnapshot = null;
+        try {
+          await NexusStorage.saveSnapshot({ value: latest });
+        } catch (error) {
+          console.warn('Native SQLite save failed; localStorage remains the fallback.', error);
+        }
       }
+    }).finally(() => {
+      writeQueue = null;
+      if (pendingSnapshot !== null) return saveNativeSnapshot(pendingSnapshot);
     });
-
+  }
   return writeQueue;
 }

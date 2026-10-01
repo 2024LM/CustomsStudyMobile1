@@ -53,12 +53,16 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   const [showProgress, setShowProgress] = useState(() => db.setting('session_show_progress', '1') === '1');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
-  const topics = useMemo(() => db.topics(), []);
-  const playableCount = db.playableQuestionCount();
-  const dueReviewCount = db.dueReviewQuestions(500).length;
-  const mistakesCount = db.mistakes().filter((q) => q.qcmStatus === 'READY').length;
-  const favoritesCount = db.favorites().filter((q) => q.qcmStatus === 'READY').length;
-  const smartCount = db.smartQuestionPool(500).length;
+  const [dbRevision, setDbRevision] = useState(0);
+  useEffect(() => db.subscribe(() => setDbRevision(value => value + 1)), []);
+  const { topics, playableCount, dueReviewCount, mistakesCount, favoritesCount, smartCount } = useMemo(() => ({
+    topics: db.topics(),
+    playableCount: db.playableQuestionCount(),
+    dueReviewCount: db.dueReviewQuestions(500).length,
+    mistakesCount: db.mistakes().filter((q) => q.qcmStatus === 'READY').length,
+    favoritesCount: db.favorites().filter((q) => q.qcmStatus === 'READY').length,
+    smartCount: db.smartQuestionPool(500).length,
+  }), [dbRevision]);
   const sessionRunning = questions.length > 0 && sessionId !== null && !done;
   const sessionFocused = questions.length > 0 && sessionId !== null;
   const autoStartHandled = useRef(false);
@@ -91,13 +95,14 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   }, []);
 
   const persistSessionPreferences = () => {
-    db.setSetting('session_question_time_limit', String(questionTimeLimit));
-    db.setSetting('session_auto_advance', autoAdvance ? '1' : '0');
-    db.setSetting('session_show_explanation', showExplanation ? '1' : '0');
-    db.setSetting('session_shuffle_options', shuffleOptions ? '1' : '0');
-    db.setSetting('session_show_progress', showProgress ? '1' : '0');
+    db.setSettings({
+      session_question_time_limit: String(questionTimeLimit),
+      session_auto_advance: autoAdvance ? '1' : '0',
+      session_show_explanation: showExplanation ? '1' : '0',
+      session_shuffle_options: shuffleOptions ? '1' : '0',
+      session_show_progress: showProgress ? '1' : '0',
+    });
   };
-
   const handleStartSession = () => {
     persistSessionPreferences();
     const topicFilter = selectedTopics.length > 0 ? selectedTopics : null;

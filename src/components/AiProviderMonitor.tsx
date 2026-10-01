@@ -181,7 +181,7 @@ export const AiProviderMonitor: React.FC = () => {
                             )}
                           </div>
                           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[9px] text-gray-400">
-                            <span>{entry.provider === 'gemini-nano' ? 'Nano' : 'Gemini API'}</span>
+                            <span>Gemini API</span>
                             {entry.model && <span>{entry.model}</span>}
                             {entry.keyNumber && <span>مفتاح {entry.keyNumber}</span>}
                             {entry.attempt && <span>محاولة {entry.attempt}</span>}
