@@ -4,7 +4,6 @@ import {
   ExternalLink,
   FileText,
   Landmark,
-  Languages,
   Loader2,
   Newspaper,
   Plus,
@@ -13,6 +12,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { NewsArticleContent } from '../features/news/components/NewsArticleContent';
 import { newsService } from '../features/news/services/newsService';
 
 const sourceTheme = (id: string) => {
@@ -23,16 +23,6 @@ const sourceTheme = (id: string) => {
   if (id === 'open-data-ma') return { icon: Sparkles, shell: 'from-[#0F766E] to-[#0E7490]', chip: 'bg-cyan-50 text-cyan-700 border-cyan-100' };
   return { icon: Newspaper, shell: 'from-[#5B3FD6] to-[#392080]', chip: 'bg-[#F5F3FF] text-[#5B3FD6] border-[#E7E1FF]' };
 };
-
-function cleanSummary(value?: string) {
-  if (!value) return '';
-  const cleaned = value
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/^[\s|•·—-]+|[\s|•·—-]+$/g, '')
-    .trim();
-  return cleaned.length > 180 ? `${cleaned.slice(0, 177)}…` : cleaned;
-}
 
 function formatDate(value?: string) {
   if (!value) return '';
@@ -45,19 +35,6 @@ function formatDate(value?: string) {
   }
 }
 
-
-function hasArabic(value?: string) {
-  return Boolean(value && /[\u0600-\u06FF]/.test(value));
-}
-
-function articleIsArabic(title: string) {
-  return hasArabic(title);
-}
-
-function translateTextUrl(title: string, summary?: string) {
-  const text = [title, summary].filter(Boolean).join('\n\n').trim();
-  return `https://translate.google.com/?sl=auto&tl=ar&text=${encodeURIComponent(text)}&op=translate`;
-}
 
 export const NewsPage: React.FC = () => {
   const [version, setVersion] = useState(0);
@@ -230,9 +207,7 @@ export const NewsPage: React.FC = () => {
         const source = sources.find((item) => item.id === featured.sourceId);
         const theme = sourceTheme(featured.sourceId);
         const Icon = theme.icon;
-        const summary = cleanSummary(featured.summary);
         const date = formatDate(featured.publishedAt);
-        const needsTranslation = !articleIsArabic(featured.title);
         return (
           <div className="relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block">
             {featured.imageUrl ? (
@@ -249,24 +224,11 @@ export const NewsPage: React.FC = () => {
                 <span className="font-bold">{source?.name || 'مصدر موثوق'}</span>
                 {date && <><span className="w-1 h-1 rounded-full bg-white/50" /><span>{date}</span></>}
               </div>
-              <h2 className="text-[19px] leading-8 font-black">{featured.title}</h2>
-              {summary && <p className="text-xs leading-6 text-white/80 mt-2 line-clamp-2">{summary}</p>}
+              <NewsArticleContent article={featured} featured />
               <div className="mt-4 flex items-center gap-2 flex-wrap">
                 <a href={featured.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-white/90 bg-white/10 border border-white/10 rounded-xl px-3 py-2">
                   قراءة الخبر <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-                {needsTranslation && (
-                  <a
-                    href={translateTextUrl(featured.title, summary)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 border border-white/15 rounded-xl px-3 py-2"
-                    aria-label="ترجمة الخبر إلى العربية"
-                    title="ترجمة إلى العربية"
-                  >
-                    <Languages className="w-4 h-4" /> ترجمة
-                  </a>
-                )}
               </div>
             </div>
           </div>
@@ -285,9 +247,7 @@ export const NewsPage: React.FC = () => {
             const source = sources.find((item) => item.id === article.sourceId);
             const theme = sourceTheme(article.sourceId);
             const Icon = theme.icon;
-            const summary = cleanSummary(article.summary);
             const date = formatDate(article.publishedAt);
-            const needsTranslation = !articleIsArabic(article.title);
             return (
               <div key={article.id} className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs">
                 {article.imageUrl ? (
@@ -305,23 +265,10 @@ export const NewsPage: React.FC = () => {
                 )}
                 <div className="p-4">
                   {article.imageUrl && <div className="text-[11px] font-bold text-[#5B3FD6] mb-1">{source?.name || 'مصدر'}</div>}
-                  <h3 className="font-black text-[14px] leading-6 text-[#2C2145]">{article.title}</h3>
-                  {summary && <p className="text-xs text-gray-500 mt-2 leading-5 line-clamp-2">{summary}</p>}
+                  <NewsArticleContent article={article} />
                   <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-gray-400">
                     <span>{date}</span>
                     <div className="flex items-center gap-1.5">
-                      {needsTranslation && (
-                        <a
-                          href={translateTextUrl(article.title, summary)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold bg-[#F5F3FF] rounded-lg px-2 py-1.5"
-                          aria-label="ترجمة الخبر إلى العربية"
-                          title="ترجمة إلى العربية"
-                        >
-                          <Languages className="w-3.5 h-3.5" /> ترجمة
-                        </a>
-                      )}
                       <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold px-2 py-1.5">
                         فتح <ExternalLink className="w-3 h-3" />
                       </a>

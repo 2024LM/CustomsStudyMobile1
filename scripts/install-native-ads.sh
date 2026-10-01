@@ -9,6 +9,7 @@ cp native-android/NexusStudyAlarmPlugin.java "$JAVA_DIR/NexusStudyAlarmPlugin.ja
 cp native-android/StudyAlarmReceiver.java "$JAVA_DIR/StudyAlarmReceiver.java"
 cp native-android/StudyAlarmService.java "$JAVA_DIR/StudyAlarmService.java"
 cp native-android/NexusTtsPlugin.java "$JAVA_DIR/NexusTtsPlugin.java"
+cp native-android/NexusNewsTranslatePlugin.java "$JAVA_DIR/NexusNewsTranslatePlugin.java"
 cp native-android/NexusTtsService.java "$JAVA_DIR/NexusTtsService.java"
 cp native-android/NexusSecureSecretsPlugin.java "$JAVA_DIR/NexusSecureSecretsPlugin.java"
 cp native-android/NexusFileExportPlugin.java "$JAVA_DIR/NexusFileExportPlugin.java"
@@ -34,6 +35,10 @@ p=Path("android/app/build.gradle")
 s=p.read_text()
 needle="dependencies {"
 deps = []
+if "com.google.mlkit:translate" not in s:
+    deps.append("    implementation 'com.google.mlkit:translate:17.0.3'\n")
+if "com.google.mlkit:language-id" not in s:
+    deps.append("    implementation 'com.google.mlkit:language-id:17.0.6'\n")
 if "com.unity3d.ads:unity-ads" not in s:
     deps.append("    implementation 'com.unity3d.ads:unity-ads:4.19.0'\n")
 if "org.robolectric:robolectric" not in s:
