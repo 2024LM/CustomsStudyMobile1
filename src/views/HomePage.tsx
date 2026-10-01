@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Moon,
   Monitor,
+  Newspaper,
   RotateCcw,
   Sun,
   Target,
@@ -28,6 +29,7 @@ interface HomePageProps {
   onStartSession: (topic?: string | string[], count?: number, mode?: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart', autoStart?: boolean) => void;
   onViewQuestions: () => void;
   onViewMistakes: () => void;
+  onOpenNews?: () => void;
   onOpenNotifications?: () => void;
   onOpenStudyCenter?: () => void;
   unreadNotificationsCount?: number;
@@ -48,6 +50,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onStartSession,
   onViewQuestions,
   onViewMistakes,
+  onOpenNews,
   onOpenNotifications,
   onOpenStudyCenter,
   unreadNotificationsCount = 0,
@@ -131,6 +134,16 @@ export const HomePage: React.FC<HomePageProps> = ({
           <p className="text-[#D8CDFB] text-xs">تابع تقدمك وحدد أولويتك التالية بسرعة</p>
         </div>
       </div>
+
+      {onOpenNews && (
+        <button onClick={onOpenNews} className="sm:col-span-2 w-full bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs text-right flex items-center justify-between gap-3 active:scale-[0.99] transition-transform">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[14px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center shrink-0"><Newspaper className="w-5 h-5" /></div>
+            <div><div className="font-black text-sm text-[#2C2145]">أخبار المراجعة والمباريات</div><div className="text-[11px] text-gray-400 mt-1">مصادر مغربية رسمية ومصادر تضيفها بنفسك</div></div>
+          </div>
+          <ChevronLeft className="w-5 h-5 text-gray-300" />
+        </button>
+      )}
 
       <div className="sm:col-span-2 bg-white rounded-[20px] p-3 border border-gray-100">
         <label className="text-[12px] font-bold text-gray-500">إحصائيات</label>
