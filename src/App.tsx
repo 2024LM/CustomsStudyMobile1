@@ -5,7 +5,6 @@ import {
   BookMarked,
   MoreHorizontal,
   Sparkles,
-  Newspaper,
 } from 'lucide-react';
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
@@ -329,7 +328,6 @@ export function App() {
 
   const navItems = [
     { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
-    { p: 'NEWS' as Page, title: 'أخبار', icon: Newspaper },
     { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
     { p: 'AI_ASSISTANT' as Page, title: 'AI', icon: Sparkles },
     { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
@@ -409,6 +407,7 @@ export function App() {
               onStartSession={startSessionWithTopic}
               onViewQuestions={() => setPage('QUESTIONS')}
               onViewMistakes={() => setPage('MISTAKES')}
+              onOpenNews={() => setPage('NEWS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               onOpenStudyCenter={() => setPage('ADVANCED')}
               unreadNotificationsCount={unreadNotificationsCount}
