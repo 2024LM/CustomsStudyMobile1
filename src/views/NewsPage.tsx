@@ -54,8 +54,9 @@ function articleIsArabic(title: string, summary?: string) {
   return hasArabic(title) || hasArabic(summary);
 }
 
-function translateUrl(url: string) {
-  return `https://translate.google.com/translate?sl=auto&tl=ar&u=${encodeURIComponent(url)}`;
+function translateTextUrl(title: string, summary?: string) {
+  const text = [title, summary].filter(Boolean).join('\n\n').trim();
+  return `https://translate.google.com/?sl=auto&tl=ar&text=${encodeURIComponent(text)}&op=translate`;
 }
 
 export const NewsPage: React.FC = () => {
@@ -256,7 +257,7 @@ export const NewsPage: React.FC = () => {
                 </a>
                 {needsTranslation && (
                   <a
-                    href={translateUrl(featured.url)}
+                    href={translateTextUrl(featured.title, summary)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 border border-white/15 rounded-xl px-3 py-2"
@@ -311,7 +312,7 @@ export const NewsPage: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       {needsTranslation && (
                         <a
-                          href={translateUrl(article.url)}
+                          href={translateTextUrl(article.title, summary)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold bg-[#F5F3FF] rounded-lg px-2 py-1.5"
