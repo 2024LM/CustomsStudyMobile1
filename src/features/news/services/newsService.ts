@@ -42,6 +42,8 @@ export const newsService = {
     newsStorage.saveCustomSources(newsStorage.customSources().filter((s) => s.id !== id));
   },
   cachedArticles: () => newsStorage.articles(),
+  pendingNewArticles: () => newsStorage.pendingNewArticles(),
+  markNewsNotified: (ids: string[]) => newsStorage.markNewsNotified(ids),
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
     return () => { listeners.delete(listener); };

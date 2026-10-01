@@ -113,8 +113,53 @@ assert.equal(feedImage('<media:content medium="image" url="/image?id=1"/>', sour
 const defaultsText=fs.readFileSync('src/features/news/config/defaultSources.ts','utf8');
 assert.equal(defaultsText.includes('open-data-ma'),false,'Removed API source is not configured');
 assert.equal(fs.readFileSync('scripts/fetch-news.mjs','utf8').includes('data.gov.ma'),false,'Build does not fetch the removed API source');
-const newsStorageTest=loadModule('src/features/news/storage/newsStorage.ts',{},{
-  localStorage:{getItem:key=>key.includes('cache')?JSON.stringify([{id:'api',sourceId:'open-data-ma'},{id:'kept',sourceId:'hcp'}]):null,setItem:()=>{}}
+const identity=loadModule('src/features/news/services/newsIdentity.ts',{});
+const presentation=loadModule('src/features/news/services/newsPresentation.ts',{});
+const newsStorageTest=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity,'../services/newsPresentation':presentation},{
+  localStorage:{getItem:key=>key.includes('cache')?JSON.stringify([{id:'api',sourceId:'open-data-ma',title:'API',url:'https://data.gov.ma/story'},{id:'kept',sourceId:'hcp',title:'Retained story',url:'https://www.hcp.ma/retained_a1.html'}]):null,setItem:()=>{}}
 });
 assert.equal(newsStorageTest.newsStorage.articles().length,1,'Previously cached API news are removed');
 assert.equal(newsStorageTest.newsStorage.articles()[0].id,'kept','Other cached sources are preserved');
+
+const {publicationDate,newsDocument,plainNewsText,retainNewsFeed}=await import('../scripts/news-document.mjs');
+assert.equal(publicationDate('04/10/2026').publishedAt,'2026-10-04');
+assert.equal(publicationDate('04/10/2026').publishedTimeKnown,false);
+assert.equal(publicationDate('31/02/2026').publishedAt,undefined);
+assert.equal(publicationDate('2026-10-04T14:32:00+01:00').publishedAt,'2026-10-04T13:32:00.000Z');
+assert.equal(publicationDate('2026-10-04T14:32').publishedLocalTime,true);
+assert.equal(publicationDate('Not a date').publishedAt,undefined);
+const documentFixture=newsDocument('<meta property="article:published_time" content="2026-10-04T14:32:00+01:00"><article><nav>Menu</nav><p>'+('Useful official information. '.repeat(6))+'</p><script>alert(1)</script></article>');
+assert.equal(documentFixture.publishedTimeKnown,true);
+assert.ok(documentFixture.content.includes('Useful official information'));
+assert.equal(documentFixture.content.includes('alert'),false);
+assert.equal(plainNewsText('&lt;p&gt;Safe text&lt;/p&gt;').includes('<p>'),false);
+const articleBase={id:'external-id',sourceId:'hcp',title:'Original title',url:'https://www.hcp.ma/test_a1.html',publishedAt:'2026-10-01T10:00:00Z',publishedTimeKnown:true};
+assert.equal(identity.internalNewsId(articleBase),identity.internalNewsId({...articleBase,title:'Changed title',id:'different-provider-id'}),'Editing the title does not change a concrete story identity');
+assert.notEqual(identity.internalNewsId(articleBase),identity.internalNewsId({...articleBase,sourceId:'men'}),'Identities are scoped to a source');
+const many=Array.from({length:15},(_,index)=>({...articleBase,id:'id'+index,url:'https://www.hcp.ma/test_a'+(index+1)+'.html',publishedAt:'2026-09-'+String(index+1).padStart(2,'0')}));
+const kept=identity.retainLatestNews([...many,...many.map(article=>({...article,sourceId:'men'}))]);
+assert.equal(kept.filter(article=>article.sourceId==='hcp').length,10);
+assert.equal(kept.filter(article=>article.sourceId==='men').length,10);
+assert.equal(kept[0].id,'id14','Most recent publication first');
+assert.equal(retainNewsFeed(many).length,10,'Build feed uses the same retention bound');
+const persistent=new Map();
+persistent.set('raje3_news_cache_v1',JSON.stringify(many));
+const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity,'../services/newsPresentation':presentation},{
+  localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
+}).newsStorage;
+assert.equal(stateStorage.articles().length,10);
+assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,10,'Migration physically drops old article bodies');
+stateStorage.saveArticles(many);
+assert.equal(stateStorage.pendingNewArticles().length,0,'Initial population is a baseline');
+const newItem={...articleBase,id:'brand-new',url:'https://www.hcp.ma/new_a99.html',content:'Detailed text'};
+stateStorage.saveArticles([newItem,...many]);
+assert.equal(stateStorage.pendingNewArticles().length,1);
+const newId=stateStorage.pendingNewArticles()[0].internalId;
+stateStorage.saveArticles([{...newItem,title:'Updated title'},...many]);
+assert.equal(stateStorage.pendingNewArticles().length,1,'Re-fetching or editing a story does not queue it twice');
+stateStorage.markNewsNotified([newId]);
+assert.equal(stateStorage.pendingNewArticles().length,0);
+assert.ok(Object.values(JSON.parse(persistent.get('raje3_news_tracker_v1'))).every(source=>source.seenIds.length<=10&&source.pendingIds.length<=10),'Notification metadata is bounded');
+
+assert.notEqual(presentation.newsDate('2026-10-01T10:30:00Z',true),presentation.newsDate('2026-10-01',false),'Known hours are displayed while date-only publications do not acquire a fake time');
+console.log('News publication, identity, retention, detail extraction and future-notification baseline checks passed');

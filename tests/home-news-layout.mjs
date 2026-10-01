@@ -8,7 +8,7 @@ import {chromium} from '@playwright/test';
 
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'home-news-'));
 await build({
-  stdin:{contents:"import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {HomeNewsPreview} from './src/features/news/components/HomeNewsPreview';import {NewsPage} from './src/views/NewsPage';import {BottomNavigation} from './src/components/BottomNavigation';function Harness(){const [page,setPage]=useState('HOME');return <div className='app-shell'><main className='p-4 pb-24'>{page==='HOME'?<HomeNewsPreview onOpenNews={()=>setPage('NEWS')}/>:page==='NEWS'?<NewsPage/>:<h1>{page}</h1>}</main><BottomNavigation page={page} onNavigate={setPage}/></div>};createRoot(document.getElementById('app')).render(<Harness/>);",resolveDir:process.cwd(),sourcefile:'home-news-harness.tsx',loader:'tsx'},
+  stdin:{contents:"import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {HomeNewsPreview} from './src/features/news/components/HomeNewsPreview';import {NewsPage} from './src/views/NewsPage';import {BottomNavigation} from './src/components/BottomNavigation';function Harness(){const [page,setPage]=useState('HOME');const [articleId,setArticleId]=useState();return <div className='app-shell'><main className='p-4 pb-24'>{page==='HOME'?<HomeNewsPreview onOpenNews={id=>{setArticleId(id);setPage('NEWS')}}/>:page==='NEWS'?<NewsPage initialArticleId={articleId} onClearInitial={()=>setArticleId(undefined)}/>:<h1>{page}</h1>}</main><BottomNavigation page={page} onNavigate={setPage}/></div>};createRoot(document.getElementById('app')).render(<Harness/>);",resolveDir:process.cwd(),sourcefile:'home-news-harness.tsx',loader:'tsx'},
   bundle:true,outfile:path.join(temp,'app.js'),format:'iife',platform:'browser',
   plugins:[{name:'controlled-news',setup(builder){
     builder.onResolve({filter:/news\/services\/newsService$|^\.\.\/services\/newsService$/},()=>({path:'service',namespace:'fake'}));
@@ -80,6 +80,12 @@ try {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'The carousel does not overflow the page');
   }
   await page.setViewportSize({width:320,height:800});
+  await rail.locator('article').first().getByRole('button',{name:'قراءة داخل التطبيق',exact:true}).click();
+  await page.locator('[data-news-detail]').waitFor();
+  assert.equal(await page.getByRole('heading',{name:'خبر جديد',exact:true}).count(),1,'A home preview opens the selected story inside the app');
+  assert.equal(await page.getByRole('link',{name:'التوجه إلى المصدر',exact:true}).count(),1);
+  await page.getByRole('button',{name:'العودة إلى الأخبار',exact:true}).click();
+  await nav.getByRole('button',{name:'الرئيسية',exact:true}).click();
   await page.getByRole('button',{name:'كل الأخبار',exact:true}).click();
   await page.getByRole('heading',{name:'أخبار المراجعة والمباريات',exact:true}).waitFor();
   assert.equal(await nav.getByRole('button',{name:'الأخبار',exact:true}).getAttribute('aria-current'),'page');

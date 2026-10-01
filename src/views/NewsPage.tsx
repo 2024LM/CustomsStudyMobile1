@@ -7,13 +7,16 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { NewsArticleDetail } from '../features/news/components/NewsArticleDetail';
+import { NewsArticle } from '../features/news/types';
 import { NewsArticleCard } from '../features/news/components/NewsArticleCard';
 import { latestNews } from '../features/news/services/newsPresentation';
 import { newsService } from '../features/news/services/newsService';
 
 import { sourceTheme } from '../features/news/config/sourceTheme';
 
-export const NewsPage: React.FC = () => {
+export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: () => void }> = ({initialArticleId,onClearInitial}) => {
+  const [opened,setOpened] = useState<NewsArticle | undefined>(()=>initialArticleId?newsService.cachedArticles().find(item=>item.internalId===initialArticleId||item.id===initialArticleId):undefined);
   const [version, setVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedSource, setSelectedSource] = useState('ALL');
@@ -93,8 +96,16 @@ export const NewsPage: React.FC = () => {
     }
   };
 
+  useEffect(()=>{
+    if(!initialArticleId)return;
+    const article=newsService.cachedArticles().find(item=>item.internalId===initialArticleId||item.id===initialArticleId);
+    if(article)setOpened(article);
+  },[initialArticleId,version]);
+
   const featured = filteredArticles[0];
   const rest = filteredArticles.slice(1);
+
+  if(opened)return <NewsArticleDetail article={opened} sourceName={sources.find(source=>source.id===opened.sourceId)?.name} onBack={()=>{setOpened(undefined);onClearInitial?.();}} />;
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -166,7 +177,7 @@ export const NewsPage: React.FC = () => {
           </div>
         </div>
       ) : featured ? (
-        <NewsArticleCard article={featured} featured sourceName={sources.find(source => source.id === featured.sourceId)?.name} />
+        <NewsArticleCard onOpen={setOpened} article={featured} featured sourceName={sources.find(source => source.id === featured.sourceId)?.name} />
       ) : (
         <div className="bg-white border border-gray-100 rounded-lg p-7 text-center shadow-xs">
           <div className="w-14 h-14 rounded-md bg-[#F3F0FF] text-[#5B3FD6] flex items-center justify-center mx-auto mb-3"><Newspaper className="w-7 h-7" /></div>
@@ -177,7 +188,7 @@ export const NewsPage: React.FC = () => {
 
       {!!rest.length && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rest.map(article => <NewsArticleCard key={article.id} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />)}
+          {rest.map(article => <NewsArticleCard onOpen={setOpened} key={article.internalId || article.id} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />)}
         </div>
       )}
 

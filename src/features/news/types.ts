@@ -12,12 +12,18 @@ export interface NewsSource {
 
 export interface NewsArticle {
   id: string;
+  internalId?: string;
   sourceId: string;
   title: string;
   summary?: string;
+  content?: string;
+  firstSeenAt?: string;
   url: string;
   imageUrl?: string;
   publishedAt?: string;
+  publishedTimeKnown?: boolean;
+  publishedLocalTime?: boolean;
+  eventDate?: string;
   category?: string;
 }
 
