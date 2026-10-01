@@ -47,7 +47,7 @@ import {
   saveGeneralNote,
 } from '../services/advancedStudyTools';
 import { QuizQuestion } from '../types';
-import { arabicTtsStatus } from '../services/arabicTts';
+import { arabicTtsStatus, stopArabicTts } from '../services/arabicTts';
 import { SpeakButton } from '../components/SpeakButton';
 import { ActivityBarChart } from '../components/ActivityBarChart';
 
