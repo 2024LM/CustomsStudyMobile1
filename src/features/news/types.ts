@@ -1,0 +1,22 @@
+export type NewsSourceKind = 'rss' | 'api' | 'web';
+
+export interface NewsSource {
+  id: string;
+  name: string;
+  url: string;
+  feedUrl?: string;
+  kind: NewsSourceKind;
+  builtIn: boolean;
+  enabled: boolean;
+}
+
+export interface NewsArticle {
+  id: string;
+  sourceId: string;
+  title: string;
+  summary?: string;
+  url: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  category?: string;
+}
