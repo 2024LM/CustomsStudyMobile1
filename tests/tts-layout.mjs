@@ -19,9 +19,9 @@ await build({
 });
 const styles = fs.readFileSync('src/index.css', 'utf8');
 const css = styles.slice(styles.indexOf('/* Mark the block'));
-const html = '<!doctype html><html><head><style>section{padding:16px;margin:16px}'+css+'</style></head><body><div id="app"></div><script src="/app.js"></script></body></html>';
+const html = '<!doctype html><html><head><meta charset="utf-8"><style>section{padding:16px;margin:16px}'+css+'</style></head><body><div id="app"></div><script src="/app.js"></script></body></html>';
 const server = createServer((request, response) => {
-  response.setHeader('Content-Type', request.url === '/app.js' ? 'text/javascript' : 'text/html');
+  response.setHeader('Content-Type', request.url === '/app.js' ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8');
   response.end(request.url === '/app.js' ? fs.readFileSync(path.join(temp, 'app.js')) : html);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

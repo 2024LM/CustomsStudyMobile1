@@ -8,6 +8,7 @@ import {
 
 interface SpeakButtonProps {
   text: string;
+  rate?: number;
   className?: string;
   compact?: boolean;
   title?: string;
@@ -15,7 +16,7 @@ interface SpeakButtonProps {
 }
 let buttonSequence = 0;
 export const SpeakButton: React.FC<SpeakButtonProps> = ({
-  text, className = '', compact = true, title = 'استماع', onError,
+  text, rate, className = '', compact = true, title = 'استماع', onError,
 }) => {
   const [playback, setPlayback] = useState(currentTtsPlayback);
   const [frameEnabled, setFrameEnabled] = useState(readingFrameEnabled);
@@ -62,7 +63,7 @@ export const SpeakButton: React.FC<SpeakButtonProps> = ({
     if (speaking || busy) { await stopArabicTts(); return; }
     requestId.current = 'reader-' + (++buttonSequence);
     try {
-      await speakArabic(text, undefined, requestId.current);
+      await speakArabic(text, rate, requestId.current);
     } catch (error: any) {
       if (currentTtsPlayback().state !== 'stopped' && currentTtsPlayback().requestId === requestId.current
           && currentTtsPlayback().state !== 'error') {

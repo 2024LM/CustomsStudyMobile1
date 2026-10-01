@@ -52,8 +52,7 @@ export function subscribeTtsPlayback(listener: (state: TtsPlaybackState) => void
 function receiveNativePlayback(event: TtsPlaybackState): void {
   if (event.requestId !== playbackState.requestId) return;
   // A queued start event must not revive a locally cancelled or completed request.
-  if (['stopped', 'done', 'error'].includes(playbackState.state)
-      && (event.state === 'loading' || event.state === 'speaking')) return;
+  if (['stopped', 'done', 'error'].includes(playbackState.state)) return;
   publishPlayback(event);
 }
 async function ensureNativePlayback(): Promise<void> {
@@ -289,7 +288,7 @@ function speakInBrowser(text: string, rate: number, selectedId: string, requestI
         utterance.rate = rate;
         if (selected) { utterance.voice = selected; utterance.lang = selected.lang; }
         utterance.onstart = () => {
-          if (playbackState.requestId !== requestId) return;
+          if (playbackState.requestId !== requestId || ['stopped', 'done', 'error'].includes(playbackState.state)) return;
           publishPlayback({ requestId, state: 'speaking' });
           if (!started) {
             started = true;

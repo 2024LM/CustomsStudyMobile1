@@ -47,7 +47,8 @@ import {
   saveGeneralNote,
 } from '../services/advancedStudyTools';
 import { QuizQuestion } from '../types';
-import { arabicTtsStatus, speakArabic, stopArabicTts } from '../services/arabicTts';
+import { arabicTtsStatus } from '../services/arabicTts';
+import { SpeakButton } from '../components/SpeakButton';
 import { ActivityBarChart } from '../components/ActivityBarChart';
 
 type Section =
@@ -114,7 +115,6 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const [mergedName, setMergedName] = useState('بنك مدمج');
   const [compareA, setCompareA] = useState(() => db.banks()[0]?.id || '');
   const [compareB, setCompareB] = useState(() => db.banks()[1]?.id || db.banks()[0]?.id || '');
-  const [listening, setListening] = useState(false);
   const [analyticsBankId, setAnalyticsBankId] = useState<string>('ALL');
   const [analyticsPeriod, setAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
@@ -274,36 +274,9 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
     const sec = seconds % 60;
     return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
-  const stopListening = () => {
-    void stopArabicTts();
-    setListening(false);
-  };
-
-  const startListening = async () => {
-    if (smartQuestions.length === 0) {
-      setStatus('لا توجد أسئلة جاهزة لجلسة الاستماع.');
-      return;
-    }
-    try {
-      setListening(true);
-      const text = smartQuestions.slice(0, 10).map((q, index) =>
-        `السؤال رقم ${index + 1}. ${q.question}. الإجابة الصحيحة. ${q.correctAnswer}. ${q.explanation ? 'الشرح. ' + q.explanation : ''}`
-      ).join('. ');
-      const result = await speakArabic(text, 0.9);
-      setTtsInfo((current) => ({
-        ready: true,
-        arabic: true,
-        locale: result.locale,
-        voice: result.voice,
-      }));
-      setStatus(`بدأت القراءة العربية${result.locale ? ' • ' + result.locale : ''}.`);
-    } catch (error: any) {
-      setListening(false);
-      setStatus(error?.message || 'تعذر تشغيل الصوت العربي.');
-    }
-  };
-
-
+  const listeningText = smartQuestions.slice(0, 10).map((q, index) =>
+    `السؤال رقم ${index + 1}. ${q.question}. الإجابة الصحيحة. ${q.correctAnswer}. ${q.explanation ? 'الشرح. ' + q.explanation : ''}`
+  ).join('. ');
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -445,7 +418,7 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
       )}
 
       {section === 'smart' && (
-        <div className="flex flex-col gap-3">
+        <div data-speech-scope className="flex flex-col gap-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-white rounded-[18px] p-4 border border-gray-100">
               <Brain className="w-5 h-5 text-[#5B3FD6] mb-2" />
@@ -468,13 +441,8 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
                   {ttsInfo?.arabic ? ` • ${ttsInfo.locale || 'ar'}` : ttsInfo ? ' • لا يوجد صوت عربي مثبت' : ''}
                 </p>
               </div>
-              <button
-                onClick={listening ? stopListening : startListening}
-                className={`shrink-0 px-3 py-2.5 rounded-[12px] text-xs font-bold flex items-center gap-1.5 ${listening ? 'bg-red-50 text-red-600' : 'bg-[#5B3FD6] text-white'}`}
-              >
-                <Headphones className="w-4 h-4" />
-                {listening ? 'إيقاف' : 'استماع'}
-              </button>
+              <SpeakButton text={listeningText} rate={0.9} compact={false} title="استماع"
+                onError={setStatus} className="shrink-0 bg-[#F5F3FF] text-[#5B3FD6]" />
             </div>
           </div>
 
@@ -496,7 +464,7 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </div>
           </div>
 
-          <div className="bg-white rounded-[20px] p-4 border border-gray-100">
+          <div data-speech-text className="bg-white rounded-[20px] p-4 border border-gray-100">
             <h3 className="font-bold text-sm mb-3">أسئلة ذات أولوية للمراجعة</h3>
             <div className="flex flex-col gap-2">
               {smartQuestions.slice(0, 10).map((q) => (
@@ -540,20 +508,19 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </div>
 
           {selectedCard ? (
-            <div className="bg-white rounded-[22px] p-5 border border-gray-100 text-center min-h-56 flex flex-col justify-between">
+            <div data-speech-scope className="bg-white rounded-[22px] p-5 border border-gray-100 text-center min-h-56 flex flex-col justify-between">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-[10px] text-gray-400">مراجعة البطاقات</span>
                 <span className="text-[10px] font-bold text-[#5B3FD6]">{Math.min(cardIndex + 1, dueCards.length || cards.length)} / {dueCards.length || cards.length}</span>
               </div>
-              <button onClick={() => setCardFlipped((v) => !v)} className="flex-1 flex items-center justify-center text-lg font-bold leading-8 px-2">
+              <button data-speech-text onClick={() => setCardFlipped((v) => !v)} className="flex-1 flex items-center justify-center text-lg font-bold leading-8 px-2">
                 {cardFlipped ? selectedCard.back : selectedCard.front}
               </button>
               <div className="text-[10px] text-gray-400 mt-2">اضغط على البطاقة لقلبها</div>
               <div className="flex justify-center gap-2 mt-4">
-                <button onClick={() => void speakArabic(cardFlipped ? selectedCard.back : selectedCard.front).catch((error) => setStatus(error?.message || 'تعذر تشغيل الصوت العربي.'))}
-                  className="w-10 h-10 rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center">
-                  <Volume2 className="w-4 h-4" />
-                </button>
+                <SpeakButton text={cardFlipped ? selectedCard.back : selectedCard.front}
+                  title="قراءة البطاقة" onError={setStatus}
+                  className="!w-10 !h-10 bg-[#F5F3FF] text-[#5B3FD6]" />
                 <button onClick={() => { deleteFlashcard(selectedCard.id); setCardIndex(0); setRefresh((v) => v + 1); }}
                   className="w-10 h-10 rounded-[12px] bg-red-50 text-red-500 flex items-center justify-center">
                   <Trash2 className="w-4 h-4" />
@@ -687,14 +654,15 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </div>
 
           {glossary.map((item) => (
-            <div key={item.id} className="bg-white rounded-[17px] p-4 border border-gray-100">
+            <div data-speech-scope key={item.id} className="bg-white rounded-[17px] p-4 border border-gray-100">
               <div className="flex justify-between gap-3">
-                <div>
+                <div data-speech-text>
                   <div className="font-bold text-sm">{item.term}</div>
                   <div className="text-xs text-gray-600 leading-6 mt-1">{item.definition}</div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => void speakArabic(`${item.term}. ${item.definition}`).catch((error) => setStatus(error?.message || 'تعذر تشغيل الصوت العربي.'))} className="w-8 h-8 rounded-[9px] bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center"><Headphones className="w-3.5 h-3.5" /></button>
+                  <SpeakButton text={`${item.term}. ${item.definition}`} title="قراءة التعريف"
+                    onError={setStatus} className="bg-[#F5F3FF] text-[#5B3FD6]" />
                   <button onClick={() => { deleteGlossaryItem(item.id); setRefresh((v) => v + 1); }} className="w-8 h-8 rounded-[9px] bg-red-50 text-red-500 flex items-center justify-center"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
