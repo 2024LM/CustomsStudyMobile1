@@ -12,12 +12,15 @@ export async function fetchCkan(source: NewsSource): Promise<NewsArticle[]> {
   return (payload.result?.results || []).map((item, index) => {
     const title = String(item.title || item.name || 'بيانات مغربية');
     const name = String(item.name || '');
+    const organization = (item.organization || {}) as Record<string, unknown>;
+    const imageUrl = String(organization.image_display_url || organization.image_url || '') || undefined;
     return {
       id: `${source.id}-${name || index}`,
       sourceId: source.id,
       title,
       summary: String(item.notes || '').slice(0, 500) || undefined,
       url: name ? `${source.url.replace(/\/$/, '')}/dataset/${encodeURIComponent(name)}` : source.url,
+      imageUrl,
       publishedAt: String(item.metadata_modified || item.metadata_created || '') || undefined,
       category: 'بيانات مفتوحة',
     };
