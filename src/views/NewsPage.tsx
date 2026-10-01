@@ -75,11 +75,11 @@ export const NewsPage: React.FC = () => {
     const selected = selectedSource === 'ALL'
       ? articles
       : articles.filter((article) => article.sourceId === selectedSource);
-    return [...selected].sort((a, b) => {
-      const arabicA = articleIsArabic(a.title, a.summary) ? 1 : 0;
-      const arabicB = articleIsArabic(b.title, b.summary) ? 1 : 0;
-      return arabicB - arabicA;
-    });
+    const timestamp = (value?: string) => {
+      const parsed = Date.parse(value || '');
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    return [...selected].sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
   }, [articles, selectedSource]);
 
   const articleCountBySource = useMemo(() => {
