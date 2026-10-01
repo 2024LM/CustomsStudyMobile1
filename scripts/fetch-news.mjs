@@ -142,8 +142,8 @@ async function fetchEmploiPublic() {
 
 async function fetchMen() {
   const pages = [
-    ['https://www.men.gov.ma/fr/concours', 'مباريات وزارة التربية الوطنية', 'concours'],
-    ['https://www.men.gov.ma/fr/annonces', 'إعلانات وزارة التربية الوطنية', 'annonces'],
+    ['https://www.men.gov.ma/%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA', 'مباريات وزارة التربية الوطنية', 'concours'],
+    ['https://www.men.gov.ma/%D8%A5%D8%B9%D9%84%D8%A7%D9%86%D8%A7%D8%AA', 'إعلانات وزارة التربية الوطنية', 'annonces'],
   ];
   const articles = [];
 
@@ -190,60 +190,55 @@ async function fetchMen() {
 }
 
 async function fetchFinances() {
-  const pages = [
-    ['https://www.finances.gov.ma/fr/vous-orientez/Pages/appels-candidatures.aspx', 'ترشيحات وزارة الاقتصاد والمالية', 'candidatures'],
-    ['https://www.finances.gov.ma/ar/%D9%84%D8%AA%D9%88%D8%AC%D9%8A%D9%87%D9%83%D9%85/Pages/%D8%A7%D9%85%D8%AA%D8%AD%D8%A7%D9%86-%D8%A7%D9%84%D9%83%D9%81%D8%A7%D8%A1%D8%A9-%D8%A7%D9%84%D9%85%D9%87%D9%86%D9%8A%D8%A9.aspx', 'امتحانات الكفاءة المهنية', 'exams'],
-  ];
   const articles = [];
 
-  for (const [url, category, mode] of pages) {
-    try {
-      const html = await fetchText(url);
-      const rows = extractTableRows(html);
+  try {
+    const homeUrl = 'https://www.finances.gov.ma/ar/Pages/index.aspx';
+    const html = await fetchText(homeUrl);
+    const matcher = /(مباراة|توظيف|ترشيح|مترشح|لائحة|امتحان|الكفاءة المهنية|الجمارك)/i;
+    const links = extractOfficialLinks(
+      html,
+      homeUrl,
+      'finances',
+      'مباريات ومستجدات وزارة الاقتصاد والمالية',
+      matcher,
+      45
+    );
+    articles.push(...links);
+  } catch (error) {
+    console.warn('[news] finances Arabic homepage failed:', error instanceof Error ? error.message : error);
+  }
 
-      if (mode === 'candidatures') {
-        for (const [index, cells] of rows.entries()) {
-          if (cells.length < 3) continue;
-          const entity = cells[0];
-          if (/Entité concernée|Nombre de postes/i.test(entity)) continue;
-          const positions = cells.find((cell, i) => i > 0 && /(Directeur|Chef de division|Chef de service|Expert|poste)/i.test(cell));
-          const dates = cells.filter((cell) => /\b\d{2}\/\d{2}\/\d{4}\b/.test(cell));
-          if (!positions && !dates.length) continue;
-          const title = `${entity} — ${positions || 'Appel à candidatures'}`;
-          articles.push({
-            id: `finances-candidature-${Buffer.from(title + index).toString('base64url').slice(0, 44)}`,
-            sourceId: 'finances',
-            title: title.slice(0, 280),
-            summary: [dates[0] ? `آخر أجل: ${dates[0]}` : '', dates[1] ? `نشر في: ${dates[1]}` : ''].filter(Boolean).join(' • ') || category,
-            url,
-            category,
-          });
-        }
-      } else {
-        for (const [index, cells] of rows.entries()) {
-          if (cells.length < 4) continue;
-          const grade = cells[0];
-          if (/الدرجة|تاريخ امتحان/i.test(grade) || grade.length < 3) continue;
-          const dates = cells.filter((cell) => /\b\d{2}\/\d{2}\/\d{4}\b/.test(cell));
-          const posts = cells.find((cell) => /^\d+$/.test(cell));
-          if (!dates.length) continue;
-          articles.push({
-            id: `finances-exam-${Buffer.from(grade + index).toString('base64url').slice(0, 44)}`,
-            sourceId: 'finances',
-            title: grade.slice(0, 280),
-            summary: [
-              dates[0] ? `تاريخ الامتحان: ${dates[0]}` : '',
-              dates[1] ? `آخر أجل: ${dates[1]}` : '',
-              posts ? `${posts} منصب` : '',
-            ].filter(Boolean).join(' • '),
-            url,
-            category,
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('[news] finances failed:', error instanceof Error ? error.message : error);
+  try {
+    const url = 'https://www.finances.gov.ma/ar/%D9%84%D8%AA%D9%88%D8%AC%D9%8A%D9%87%D9%83%D9%85/Pages/%D8%A7%D9%85%D8%AA%D8%AD%D8%A7%D9%86-%D8%A7%D9%84%D9%83%D9%81%D8%A7%D8%A1%D8%A9-%D8%A7%D9%84%D9%85%D9%87%D9%86%D9%8A%D8%A9.aspx';
+    const html = await fetchText(url);
+    const rows = extractTableRows(html);
+    for (const [index, cells] of rows.entries()) {
+      if (cells.length < 4) continue;
+      const grade = cells[0];
+      if (/الدرجة|تاريخ امتحان/i.test(grade) || grade.length < 3) continue;
+      const dates = cells.filter((cell) => /\b\d{2}\/\d{2}\/\d{4}\b/.test(cell));
+      const posts = cells.find((cell) => /^\d+$/.test(cell));
+      if (!dates.length) continue;
+      const examDate = dates[0];
+      const [day, month, year] = examDate.split('/');
+      const publishedAt = year && month && day ? `${year}-${month}-${day}` : undefined;
+      articles.push({
+        id: `finances-exam-${Buffer.from(grade + index).toString('base64url').slice(0, 44)}`,
+        sourceId: 'finances',
+        title: grade.slice(0, 280),
+        summary: [
+          examDate ? `تاريخ الامتحان: ${examDate}` : '',
+          dates[1] ? `آخر أجل: ${dates[1]}` : '',
+          posts ? `${posts} منصب` : '',
+        ].filter(Boolean).join(' • '),
+        url,
+        publishedAt,
+        category: 'امتحانات الكفاءة المهنية',
+      });
     }
+  } catch (error) {
+    console.warn('[news] finances exams failed:', error instanceof Error ? error.message : error);
   }
 
   return articles;
@@ -281,6 +276,48 @@ async function fetchHcpRss() {
 }
 
 async function fetchOpenData() {
+  const arabicNewsUrl = 'https://data.gov.ma/index.php/ar/actualites';
+  try {
+    const html = await fetchText(arabicNewsUrl);
+    const rows = extractTableRows(html);
+    const linked = extractOfficialLinks(
+      html,
+      arabicNewsUrl,
+      'open-data-ma',
+      'مستجدات البيانات المفتوحة',
+      /[\u0600-\u06FF]{8,}/i,
+      40
+    );
+
+    const plain = strip(html);
+    const dateRx = /(\d{2}\/\d{2}\/\d{4})/g;
+    const dates = [...plain.matchAll(dateRx)];
+    const textItems = [];
+    for (let i = 0; i < dates.length; i += 1) {
+      const current = dates[i];
+      const start = i === 0 ? 0 : (dates[i - 1].index || 0) + dates[i - 1][0].length;
+      const end = current.index || plain.length;
+      const block = plain.slice(start, end).trim();
+      const title = block.split(/المزيد|\s{2,}/).find((part) => /[\u0600-\u06FF]/.test(part) && part.length > 25);
+      if (!title) continue;
+      const [day, month, year] = current[1].split('/');
+      textItems.push({
+        id: `open-data-ar-${Buffer.from(title + i).toString('base64url').slice(0, 44)}`,
+        sourceId: 'open-data-ma',
+        title: title.slice(0, 280),
+        summary: 'مستجدات البوابة الوطنية للبيانات المفتوحة',
+        url: arabicNewsUrl,
+        publishedAt: year && month && day ? `${year}-${month}-${day}` : undefined,
+        category: 'البيانات المفتوحة',
+      });
+    }
+
+    const arabicItems = [...linked, ...textItems].filter((item) => /[\u0600-\u06FF]/.test(item.title));
+    if (arabicItems.length) return arabicItems;
+  } catch (error) {
+    console.warn('[news] data.gov.ma Arabic news failed:', error instanceof Error ? error.message : error);
+  }
+
   const url = new URL('https://data.gov.ma/data/api/3/action/package_search');
   url.searchParams.set('q', '*:*');
   url.searchParams.set('rows', '30');
@@ -295,7 +332,7 @@ async function fetchOpenData() {
       sourceId: 'open-data-ma',
       title: String(item.title || item.name || 'بيانات مغربية'),
       summary: strip(String(item.notes || '')).slice(0, 500) || undefined,
-      url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/',
+      url: item.name ? `https://data.gov.ma/ar/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
       imageUrl: item.organization?.image_display_url || item.organization?.image_url || undefined,
       publishedAt: item.metadata_modified || item.metadata_created || undefined,
       category: 'بيانات مفتوحة',
