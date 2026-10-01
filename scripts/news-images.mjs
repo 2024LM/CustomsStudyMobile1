@@ -33,7 +33,7 @@ export function feedImage(item, base) {
     const medium = attribute(tag, 'medium') || '';
     if (type && !type.startsWith('image/') || medium && medium !== 'image') continue;
     const url = imageUrl(attribute(tag, 'url'), base);
-    if (url && (type.startsWith('image/') || /<media:thumbnail/i.test(tag) || /\.(?:png|jpe?g|webp|gif|avif)(?:[?#]|$)/i.test(url))) return url;
+    if (url && (type.startsWith('image/') || medium === 'image' || /<media:thumbnail/i.test(tag) || /\.(?:png|jpe?g|webp|gif|avif)(?:[?#]|$)/i.test(url))) return url;
   }
   return inlineImage(item.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'), base);
 }

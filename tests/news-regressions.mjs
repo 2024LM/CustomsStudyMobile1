@@ -107,3 +107,5 @@ console.log('News image extraction and bounded enrichment regressions passed');
 
 assert.equal(preferArabicStories([{...french,imageUrl:'https://publisher.ma/story.jpg'},arabic])[0].imageUrl,'https://publisher.ma/story.jpg','Arabic preference retains the same story image');
 assert.equal(preferArabicStories([arabic,{...arabic,imageUrl:'https://publisher.ma/story.jpg'}])[0].imageUrl,'https://publisher.ma/story.jpg','Image from a duplicate enriches the original');
+
+assert.equal(feedImage('<media:content medium="image" url="/image?id=1"/>', sourceUrl), 'https://publisher.ma/image?id=1');

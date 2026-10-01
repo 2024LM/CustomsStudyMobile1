@@ -27,7 +27,7 @@ export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
       const medium = attachment.getAttribute('medium') || '';
       if ((type && !type.startsWith('image/')) || (medium && medium !== 'image')) continue;
       const candidate = safeImage(attachment.getAttribute('url'));
-      if (candidate && (type.startsWith('image/') || attachment.localName === 'thumbnail' ||
+      if (candidate && (type.startsWith('image/') || medium === 'image' || attachment.localName === 'thumbnail' ||
         /\.(?:png|jpe?g|webp|gif|avif)(?:[?#]|$)/i.test(candidate))) {
         imageUrl = candidate;
         break;
