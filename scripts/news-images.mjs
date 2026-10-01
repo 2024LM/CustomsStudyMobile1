@@ -37,7 +37,7 @@ export function feedImage(item, base) {
   }
   return inlineImage(item.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'), base);
 }
-export async function enrichArticleImages(articles, fetchText, limit = 40) {
+export async function enrichArticleImages(articles, fetchText, limit = 180) {
   const counts = new Map();
   for (const article of articles) counts.set(article.url, (counts.get(article.url) || 0) + 1);
   const candidates = articles.filter(article => !article.imageUrl && counts.get(article.url) === 1 &&
