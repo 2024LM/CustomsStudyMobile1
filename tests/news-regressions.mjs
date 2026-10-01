@@ -144,7 +144,7 @@ assert.equal(kept[0].id,'id14','Most recent publication first');
 assert.equal(retainNewsFeed(many).length,10,'Build feed uses the same retention bound');
 const persistent=new Map();
 persistent.set('raje3_news_cache_v1',JSON.stringify(many));
-const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity},{
+const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity,'../services/newsPresentation':presentation},{
   localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
 }).newsStorage;
 assert.equal(stateStorage.articles().length,10);
