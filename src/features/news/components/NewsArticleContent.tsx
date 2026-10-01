@@ -42,17 +42,17 @@ export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boo
   const text = translated && result ? result : { title: article.title, summary };
   const Heading = featured ? 'h2' : 'h3';
   return <>
-    <Heading dir="auto" className={featured ? 'text-[19px] leading-8 font-black' : 'font-black text-[14px] leading-6 text-[#2C2145]'}>{text.title}</Heading>
-    {!!text.summary && <p dir="auto" className={featured ? 'text-xs leading-6 text-white/80 mt-2' : 'text-xs text-gray-500 mt-2 leading-5'}>{text.summary}</p>}
+    <Heading dir="auto" className={featured ? 'text-[19px] leading-8 font-black text-[#2C2145]' : 'font-black text-[14px] leading-6 text-[#2C2145]'}>{text.title}</Heading>
+    {!!text.summary && <p dir="auto" className={'text-xs text-gray-500 mt-2 leading-6'}>{text.summary}</p>}
     {needsArabicTranslation(article.title, summary) && <div className="mt-3">
       <button type="button" disabled={busy} onClick={() => void translate()} aria-label={translated ? 'عرض النص الأصلي' : 'ترجمة الخبر إلى العربية'}
-        className={'inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-60 ' + (featured ? 'text-white bg-white/15 border border-white/15' : 'text-[#5B3FD6] bg-[#F5F3FF]')}>
+        className={'inline-flex items-center gap-1.5 text-xs font-bold rounded-md px-3 py-2 disabled:opacity-60 ' + 'text-[#5B3FD6] bg-[#F5F3FF]'}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
         {busy ? 'جارٍ الترجمة…' : translated ? 'عرض الأصل' : 'ترجمة للعربية'}
       </button>
-      {translated && <span className={'text-[10px] mr-2 ' + (featured ? 'text-white/75' : 'text-gray-400')}>ترجمة آلية</span>}
-      {busy && <p role="status" className={'text-[11px] mt-2 ' + (featured ? 'text-white/80' : 'text-gray-500')}>قد يحتاج أول استخدام تنزيل حزمة اللغة.</p>}
-      {error && <p role="alert" className={'text-xs mt-2 ' + (featured ? 'text-white' : 'text-red-600')}>{error}</p>}
+      {translated && <span className={'text-[10px] mr-2 ' + 'text-gray-400'}>ترجمة آلية</span>}
+      {busy && <p role="status" className={'text-[11px] mt-2 ' + 'text-gray-500'}>قد يحتاج أول استخدام تنزيل حزمة اللغة.</p>}
+      {error && <p role="alert" className={'text-xs mt-2 ' + 'text-red-600'}>{error}</p>}
     </div>}
   </>;
 };

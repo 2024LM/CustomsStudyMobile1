@@ -253,3 +253,6 @@ html.dark .app-shell :focus-visible { outline-color: #b9a8ff; }
 /* Mark the block being read without shifting content or animating it. */
 .tts-reading-frame { outline: 2px solid #7c5ce7; outline-offset: 3px; }
 html.dark .tts-reading-frame { outline-color: #b9a8ff; }
+
+/* Recent news are content rectangles; only fully prepared photos occupy space. */
+.home-news-rail img { max-height: 160px; }

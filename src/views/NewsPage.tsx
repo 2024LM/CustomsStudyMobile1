@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
-  ExternalLink,
   FileText,
   Landmark,
   Loader2,
@@ -12,8 +11,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { NewsImage } from '../features/news/components/NewsImage';
-import { NewsArticleContent } from '../features/news/components/NewsArticleContent';
+import { NewsArticleCard } from '../features/news/components/NewsArticleCard';
+import { latestNews } from '../features/news/services/newsPresentation';
 import { newsService } from '../features/news/services/newsService';
 
 const sourceTheme = (id: string) => {
@@ -24,18 +23,6 @@ const sourceTheme = (id: string) => {
   if (id === 'open-data-ma') return { icon: Sparkles, shell: 'from-[#0F766E] to-[#0E7490]', chip: 'bg-cyan-50 text-cyan-700 border-cyan-100' };
   return { icon: Newspaper, shell: 'from-[#5B3FD6] to-[#392080]', chip: 'bg-[#F5F3FF] text-[#5B3FD6] border-[#E7E1FF]' };
 };
-
-function formatDate(value?: string) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  try {
-    return new Intl.DateTimeFormat('ar-MA', { day: 'numeric', month: 'short' }).format(date);
-  } catch {
-    return '';
-  }
-}
-
 
 export const NewsPage: React.FC = () => {
   const [version, setVersion] = useState(0);
@@ -54,11 +41,7 @@ export const NewsPage: React.FC = () => {
     const selected = selectedSource === 'ALL'
       ? articles
       : articles.filter((article) => article.sourceId === selectedSource);
-    const timestamp = (value?: string) => {
-      const parsed = Date.parse(value || '');
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-    return [...selected].sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
+    return latestNews(selected);
   }, [articles, selectedSource]);
 
   const articleCountBySource = useMemo(() => {
@@ -126,36 +109,24 @@ export const NewsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
-      <div className="-mx-4 -mt-4 px-5 pt-5 pb-6 bg-gradient-to-br from-[#2B1766] via-[#4C2FC4] to-[#7257F4] text-white shadow-sm overflow-hidden relative">
-        <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-12 right-10 w-44 h-44 rounded-full bg-fuchsia-300/10 blur-3xl" />
-        <div className="relative flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 flex items-center justify-center">
-                <Newspaper className="w-5 h-5" />
-              </div>
-              <span className="text-[11px] font-bold text-white/70">راجِع | الأخبار</span>
-            </div>
-            <h1 className="font-black text-[22px] leading-8">أخبار المراجعة والمباريات</h1>
-            <p className="text-xs text-white/70 mt-1">مختارات مغربية مفيدة ومباشرة.</p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => void refresh()} disabled={loading} className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 flex items-center justify-center active:scale-95" aria-label="تحديث الأخبار">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-            </button>
-            <button onClick={() => setShowAdd(true)} className="w-10 h-10 rounded-2xl bg-white text-[#4C2FC4] flex items-center justify-center active:scale-95 shadow-sm" aria-label="إضافة مصدر">
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
+      <header className="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+        <div>
+          <h1 className="font-black text-[22px] leading-8 text-[#2C2145]">أخبار المراجعة والمباريات</h1>
+          <p className="text-xs text-gray-500 mt-1">أحدث المحتويات من المصادر المغربية.</p>
         </div>
-      </div>
+        <div className="flex gap-1 shrink-0">
+          <button onClick={() => void refresh()} disabled={loading} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="تحديث الأخبار">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+          </button>
+          <button onClick={() => setShowAdd(true)} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="إضافة مصدر"><Plus className="w-5 h-5" /></button>
+        </div>
+      </header>
 
       <div className="-mx-1 px-1 overflow-x-auto">
         <div className="flex gap-2 min-w-max pb-1">
           <button
             onClick={() => void selectSource('ALL')}
-            className={`px-4 py-2.5 rounded-2xl border text-xs font-black transition-all ${selectedSource === 'ALL' ? 'bg-[#2C2145] text-white border-[#2C2145] shadow-sm' : 'bg-white text-[#544B63] border-gray-100'}`}
+            className={`px-4 py-2.5 rounded-md border text-xs font-black transition-all ${selectedSource === 'ALL' ? 'bg-[#2C2145] text-white border-[#2C2145] shadow-sm' : 'bg-white text-[#544B63] border-gray-100'}`}
           >
             الكل <span className="opacity-60 mr-1">{articles.length}</span>
           </button>
@@ -167,7 +138,7 @@ export const NewsPage: React.FC = () => {
               <button
                 key={source.id}
                 onClick={() => void selectSource(source.id)}
-                className={`px-3.5 py-2.5 rounded-2xl border text-xs font-black flex items-center gap-2 transition-all ${active ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-sm' : theme.chip}`}
+                className={`px-3.5 py-2.5 rounded-md border text-xs font-black flex items-center gap-2 transition-all ${active ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-sm' : theme.chip}`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{source.name}</span>
@@ -178,11 +149,11 @@ export const NewsPage: React.FC = () => {
         </div>
       </div>
 
-      {fetchError && <div className="rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 text-xs font-semibold">{fetchError}</div>}
+      {fetchError && <div className="rounded-md bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 text-xs font-semibold">{fetchError}</div>}
 
       {sourceLoading === selectedSource ? (
         <div className="space-y-3" role="status" aria-live="polite">
-          <div className="bg-white border border-gray-100 rounded-[26px] p-5 shadow-xs overflow-hidden">
+          <div className="bg-white border border-gray-100 rounded-lg p-5 shadow-xs overflow-hidden">
             <div className="flex items-center gap-3 mb-5">
               <Loader2 className="w-5 h-5 text-[#5B3FD6] animate-spin" />
               <div>
@@ -196,7 +167,7 @@ export const NewsPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[0, 1].map((item) => (
-              <div key={item} className="bg-white border border-gray-100 rounded-[22px] p-4">
+              <div key={item} className="bg-white border border-gray-100 rounded-lg p-4">
                 <div className="h-3 w-1/3 rounded-full bg-gray-100 animate-pulse mb-4" />
                 <div className="h-4 w-full rounded-full bg-gray-100 animate-pulse mb-2" />
                 <div className="h-4 w-4/5 rounded-full bg-gray-100 animate-pulse" />
@@ -204,34 +175,11 @@ export const NewsPage: React.FC = () => {
             ))}
           </div>
         </div>
-      ) : featured ? (() => {
-        const source = sources.find((item) => item.id === featured.sourceId);
-        const theme = sourceTheme(featured.sourceId);
-        const Icon = theme.icon;
-        const date = formatDate(featured.publishedAt);
-        return (
-          <div className={`relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block bg-gradient-to-br ${theme.shell}`}>
-            <NewsImage url={featured.imageUrl} featured />
-            <div className="absolute top-4 right-4 w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/15 flex items-center justify-center">
-              <Icon className="w-5 h-5" />
-            </div>
-            <div className="relative min-h-[230px] p-5 flex flex-col justify-end">
-              <div className="flex items-center gap-2 text-[11px] text-white/75 mb-2">
-                <span className="font-bold">{source?.name || 'مصدر موثوق'}</span>
-                {date && <><span className="w-1 h-1 rounded-full bg-white/50" /><span>{date}</span></>}
-              </div>
-              <NewsArticleContent article={featured} featured />
-              <div className="mt-4 flex items-center gap-2 flex-wrap">
-                <a href={featured.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-white/90 bg-white/10 border border-white/10 rounded-xl px-3 py-2">
-                  قراءة الخبر <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-          </div>
-        );
-      })() : (
-        <div className="bg-white border border-gray-100 rounded-[26px] p-7 text-center shadow-xs">
-          <div className="w-14 h-14 rounded-[20px] bg-[#F3F0FF] text-[#5B3FD6] flex items-center justify-center mx-auto mb-3"><Newspaper className="w-7 h-7" /></div>
+      ) : featured ? (
+        <NewsArticleCard article={featured} featured sourceName={sources.find(source => source.id === featured.sourceId)?.name} />
+      ) : (
+        <div className="bg-white border border-gray-100 rounded-lg p-7 text-center shadow-xs">
+          <div className="w-14 h-14 rounded-md bg-[#F3F0FF] text-[#5B3FD6] flex items-center justify-center mx-auto mb-3"><Newspaper className="w-7 h-7" /></div>
           <p className="font-black text-[#2C2145]">لا توجد أخبار في هذا القسم الآن</p>
           <p className="text-xs text-gray-400 mt-2">جرّب مصدرًا آخر أو حدّث الأخبار.</p>
         </div>
@@ -239,35 +187,13 @@ export const NewsPage: React.FC = () => {
 
       {!!rest.length && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rest.map((article) => {
-            const source = sources.find((item) => item.id === article.sourceId);
-            const theme = sourceTheme(article.sourceId);
-            const Icon = theme.icon;
-            const date = formatDate(article.publishedAt);
-            return (
-              <div key={article.id} className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs">
-                <NewsImage url={article.imageUrl} />
-                <div className="p-4">
-                  <div className="text-[11px] font-bold text-[#5B3FD6] mb-1">{source?.name || 'مصدر'}</div>
-                  <NewsArticleContent article={article} />
-                  <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-gray-400">
-                    <span>{date}</span>
-                    <div className="flex items-center gap-1.5">
-                      <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#5B3FD6] font-bold px-2 py-1.5">
-                        فتح <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {rest.map(article => <NewsArticleCard key={article.id} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />)}
         </div>
       )}
 
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-[28px] p-5 text-right shadow-2xl">
+          <div className="w-full max-w-md bg-white rounded-lg p-5 text-right shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="font-black text-[#2C2145]">إضافة مصدر</h2>
@@ -275,10 +201,10 @@ export const NewsPage: React.FC = () => {
               </div>
               <button onClick={() => setShowAdd(false)} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="اسم المصدر" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-2xl px-4 py-3 mb-3 outline-none text-sm" />
-            <input value={url} onChange={(event) => setUrl(event.target.value)} dir="ltr" placeholder="https://example.ma" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-2xl px-4 py-3 outline-none text-left text-sm" />
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="اسم المصدر" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 mb-3 outline-none text-sm" />
+            <input value={url} onChange={(event) => setUrl(event.target.value)} dir="ltr" placeholder="https://example.ma" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 outline-none text-left text-sm" />
             {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-            <button onClick={add} className="w-full mt-4 bg-[#5B3FD6] text-white rounded-2xl py-3.5 font-black">إضافة المصدر</button>
+            <button onClick={add} className="w-full mt-4 bg-[#5B3FD6] text-white rounded-md py-3.5 font-black">إضافة المصدر</button>
 
             {sources.some((source) => !source.builtIn) && (
               <div className="mt-5 border-t border-gray-100 pt-3">
