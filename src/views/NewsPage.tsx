@@ -50,8 +50,8 @@ function hasArabic(value?: string) {
   return Boolean(value && /[\u0600-\u06FF]/.test(value));
 }
 
-function articleIsArabic(title: string, summary?: string) {
-  return hasArabic(title) || hasArabic(summary);
+function articleIsArabic(title: string) {
+  return hasArabic(title);
 }
 
 function translateTextUrl(title: string, summary?: string) {
@@ -232,7 +232,7 @@ export const NewsPage: React.FC = () => {
         const Icon = theme.icon;
         const summary = cleanSummary(featured.summary);
         const date = formatDate(featured.publishedAt);
-        const needsTranslation = !articleIsArabic(featured.title, summary);
+        const needsTranslation = !articleIsArabic(featured.title);
         return (
           <div className="relative overflow-hidden min-h-[230px] rounded-[28px] shadow-sm border border-white/10 text-white block">
             {featured.imageUrl ? (
@@ -287,7 +287,7 @@ export const NewsPage: React.FC = () => {
             const Icon = theme.icon;
             const summary = cleanSummary(article.summary);
             const date = formatDate(article.publishedAt);
-            const needsTranslation = !articleIsArabic(article.title, summary);
+            const needsTranslation = !articleIsArabic(article.title);
             return (
               <div key={article.id} className="group bg-white border border-gray-100 rounded-[22px] overflow-hidden shadow-xs">
                 {article.imageUrl ? (
