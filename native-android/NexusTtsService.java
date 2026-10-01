@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
@@ -22,13 +24,39 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
     public static final String ACTION_SPEAK = "com.nexus.customsstudy.tts.SPEAK";
     public static final String ACTION_STOP = "com.nexus.customsstudy.tts.STOP";
 
+    public static final String ACTION_PLAYBACK = "com.nexus.customsstudy.tts.PLAYBACK";
+    private static volatile String playbackRequestId = "";
+    private static volatile String playbackState = "idle";
+    private String currentRequestId = "";
+    private volatile String utterancePrefix = "";
+
+    public static synchronized com.getcapacitor.JSObject playbackSnapshot() {
+        com.getcapacitor.JSObject result = new com.getcapacitor.JSObject();
+        result.put("requestId", playbackRequestId);
+        result.put("state", playbackState);
+        return result;
+    }
+
+    private void publishPlayback(String state) {
+        synchronized (NexusTtsService.class) {
+            playbackRequestId = currentRequestId;
+            playbackState = state;
+        }
+        Intent event = new Intent(ACTION_PLAYBACK);
+        event.setPackage(getPackageName());
+        event.putExtra("requestId", currentRequestId);
+        event.putExtra("state", state);
+        sendBroadcast(event);
+    }
+
     private static final String CHANNEL_ID = "raje3_tts_playback";
     private static final int NOTIFICATION_ID = 7410;
 
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private TextToSpeech tts;
     private boolean ready = false;
     private Intent pendingSpeakIntent;
-    private String lastUtteranceId = "";
+    private volatile String lastUtteranceId = "";
 
     @Override
     public void onCreate() {
@@ -49,6 +77,12 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
         }
 
         if (ACTION_SPEAK.equals(action)) {
+            utterancePrefix = "";
+            lastUtteranceId = "";
+            if (tts != null) tts.stop();
+            currentRequestId = intent.getStringExtra("requestId");
+            if (currentRequestId == null) currentRequestId = "";
+            publishPlayback("loading");
             pendingSpeakIntent = intent;
             if (ready) speakPending();
         }
@@ -60,27 +94,45 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
     public void onInit(int status) {
         ready = status == TextToSpeech.SUCCESS;
         if (!ready) {
-            stopPlayback();
+            stopPlayback("error");
             return;
         }
 
         tts.setPitch(1.0f);
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override public void onStart(String utteranceId) {
-                updateNotification(true);
+                mainHandler.post(() -> {
+                    if (utteranceId == null || !utteranceId.startsWith(utterancePrefix) || utterancePrefix.isEmpty()) return;
+                    publishPlayback("speaking");
+                    updateNotification(true);
+                });
             }
 
             @Override public void onDone(String utteranceId) {
-                if (utteranceId != null && utteranceId.equals(lastUtteranceId)) {
-                    stopForeground(true);
-                    stopSelf();
-                }
+                mainHandler.post(() -> {
+                    if (utteranceId != null && !utterancePrefix.isEmpty() && utteranceId.equals(lastUtteranceId)) {
+                        publishPlayback("done");
+                        utterancePrefix = "";
+                        stopForeground(true);
+                        stopSelf();
+                    }
+                });
+            }
+
+            @Override public void onStop(String utteranceId, boolean interrupted) {
+                mainHandler.post(() -> {
+                    if (utteranceId != null && !utterancePrefix.isEmpty() && utteranceId.startsWith(utterancePrefix)) {
+                        stopPlayback();
+                    }
+                });
             }
 
             @Override public void onError(String utteranceId) {
-                if (utteranceId != null && utteranceId.equals(lastUtteranceId)) {
-                    stopPlayback();
-                }
+                mainHandler.post(() -> {
+                    if (utteranceId != null && !utterancePrefix.isEmpty() && utteranceId.startsWith(utterancePrefix)) {
+                        stopPlayback("error");
+                    }
+                });
             }
         });
 
@@ -116,7 +168,8 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
         }
 
         tts.stop();
-        String baseId = "raje3_tts_" + System.currentTimeMillis();
+        String baseId = "raje3_tts_" + System.nanoTime();
+        utterancePrefix = baseId + "_";
         lastUtteranceId = baseId + "_" + (chunks.size() - 1);
 
         for (int i = 0; i < chunks.size(); i++) {
@@ -124,7 +177,7 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
             String id = baseId + "_" + i;
             int result = tts.speak(chunks.get(i), queueMode, null, id);
             if (result == TextToSpeech.ERROR) {
-                stopPlayback();
+                stopPlayback("error");
                 return;
             }
         }
@@ -216,7 +269,11 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
         return chunks;
     }
 
-    private void stopPlayback() {
+    private void stopPlayback() { stopPlayback("stopped"); }
+
+    private void stopPlayback(String state) {
+        utterancePrefix = "";
+        publishPlayback(state);
         if (tts != null) {
             try { tts.stop(); } catch (Exception ignored) {}
         }
@@ -279,6 +336,8 @@ public class NexusTtsService extends Service implements TextToSpeech.OnInitListe
 
     @Override
     public void onDestroy() {
+        if ("loading".equals(playbackState) || "speaking".equals(playbackState)) publishPlayback("stopped");
+        utterancePrefix = "";
         if (tts != null) {
             try { tts.stop(); } catch (Exception ignored) {}
             tts.shutdown();

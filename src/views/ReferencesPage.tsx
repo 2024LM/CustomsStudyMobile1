@@ -293,7 +293,7 @@ export const ReferencesPage: React.FC = () => {
 
   if (localSelected) {
     return (
-      <div className="flex flex-col gap-3 pb-8 text-right">
+      <div data-speech-scope className="flex flex-col gap-3 pb-8 text-right">
         <div className="sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md py-1">
           <div className="flex items-center justify-between gap-3">
             <button
@@ -330,7 +330,7 @@ export const ReferencesPage: React.FC = () => {
           />
         )}
 
-        <div className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
+        <div data-speech-text className="reference-reader bg-white rounded-[22px] p-3 border border-gray-100 shadow-xs min-h-[70vh]">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري فتح المرجع...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
           {!contentLoading && !contentError && localSelected.type === 'pdf' && pdfBlob && (
@@ -351,7 +351,7 @@ export const ReferencesPage: React.FC = () => {
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-3 pb-8 text-right">
+      <div data-speech-scope className="flex flex-col gap-3 pb-8 text-right">
         <div className="sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md py-1">
           <div className="flex items-center justify-between gap-3">
             <button onClick={() => { setSelected(null); setPdfBlob(null); }} className="w-10 h-10 rounded-[13px] bg-white border border-gray-100 flex items-center justify-center text-[#5B3FD6] shadow-xs cursor-pointer"><ChevronLeft className="w-5 h-5 rotate-180" /></button>
@@ -377,7 +377,7 @@ export const ReferencesPage: React.FC = () => {
           />
         )}
 
-        <div className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
+        <div data-speech-text className="reference-reader bg-white rounded-[22px] p-5 border border-gray-100 shadow-xs">
           {contentLoading && <div className="py-12 text-center text-sm text-gray-400">جاري تحميل المستند...</div>}
           {contentError && <div className="py-8 text-center text-sm text-[#C62828]">{contentError}</div>}
           {!contentLoading && !contentError && downloadableReferenceType(selected.type) === 'pdf' && pdfBlob && (

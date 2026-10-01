@@ -1002,7 +1002,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         {workspace.messages.map((item) => {
           const payloads = sentAttachmentPayloads[item.id] || [];
           return (
-            <div key={item.id} className={`group relative max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
+            <div data-speech-scope key={item.id} className={`group relative max-w-[88%] rounded-[17px] px-3.5 py-3 text-xs leading-6 ${item.role === 'user' ? 'self-start bg-[#5B3FD6] text-white rounded-tr-[5px]' : 'self-end bg-white dark:bg-[#211D2C] border border-gray-100 dark:border-[#373043] text-[#3D3550] dark:text-[#E7E1EF] rounded-tl-[5px]'}`}>
               <div className={`absolute -bottom-8 ${item.role === 'user' ? 'right-1' : 'left-1'} flex items-center gap-1`}>
                 <button
                   type="button"

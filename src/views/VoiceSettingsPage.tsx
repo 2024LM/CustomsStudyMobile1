@@ -3,6 +3,8 @@ import { Headphones, LoaderCircle, Play, RefreshCw, Volume2, Wifi } from 'lucide
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import {
   listTtsVoices,
+  readingFrameEnabled,
+  saveReadingFrameEnabled,
   previewTtsVoice,
   saveSelectedTtsRate,
   saveSelectedTtsVoiceId,
@@ -21,6 +23,7 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const [rate, setRate] = useState(() => selectedTtsRate());
   const [softTaa, setSoftTaa] = useState(() => softenFinalTaaMarbuta());
   const [sentencePause, setSentencePause] = useState(() => sentencePauseEnabled());
+  const [readingFrame, setReadingFrame] = useState(readingFrameEnabled);
   const [loading, setLoading] = useState(true);
   const [previewing, setPreviewing] = useState('');
   const [status, setStatus] = useState('');
@@ -155,6 +158,19 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
             }}
             className="w-5 h-5 accent-[#5B3FD6]"
           />
+        </label>
+      </div>
+
+      <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs">
+        <label className="flex items-center justify-between gap-3 cursor-pointer">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-[#2C2145]">إطار حول النص أثناء القراءة</div>
+            <div className="text-[10px] text-gray-400 mt-1">يحدد النص الجاري الاستماع إليه ويختفي عند انتهاء القراءة أو إيقافها.</div>
+          </div>
+          <input type="checkbox" checked={readingFrame} onChange={event => {
+            setReadingFrame(event.target.checked);
+            saveReadingFrameEnabled(event.target.checked);
+          }} className="w-5 h-5 accent-[#5B3FD6]" />
         </label>
       </div>
 

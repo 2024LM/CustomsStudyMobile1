@@ -44,11 +44,17 @@ jobs:
       - name: Verify resource regressions
         run: node tests/resource-regressions.mjs
 
+      - name: Verify text-to-speech preparation and lifecycle
+        run: node tests/tts-regressions.mjs
+
       - name: Install browser for layout checks
         run: npx playwright install --with-deps chromium
 
       - name: Verify banner layout
         run: node tests/banner-layout.mjs
+
+      - name: Verify reading frame
+        run: node tests/tts-layout.mjs
 
       - name: Create Android project
         run: npx cap add android
