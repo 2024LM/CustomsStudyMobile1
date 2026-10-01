@@ -54,6 +54,46 @@ function extractOfficialLinks(html, pageUrl, sourceId, category, matcher, limit 
   return items;
 }
 
+
+function articleFromBlock(sourceId, category, pageUrl, block, index) {
+  const text = strip(block);
+  if (text.length < 18) return null;
+  const deadline = text.match(/(?:Limite de dépôt|Date limite|آخر أجل)\s*:?\s*([^|]{4,45})/i)?.[1]?.trim();
+  const examDate = text.match(/(?:Date du concours|تاريخ المباراة)\s*:?\s*([^|]{4,45})/i)?.[1]?.trim();
+  const posts = text.match(/(\d+)\s+postes?/i)?.[1];
+  const title = text
+    .replace(/\s+(Annonce|Résultat|Resultat|Ouvert|Fermé|Consulter)\b[\s\S]*$/i, '')
+    .slice(0, 240)
+    .trim();
+  const meta = [
+    posts ? `${posts} منصب` : '',
+    deadline ? `آخر أجل: ${deadline}` : '',
+    examDate ? `تاريخ المباراة: ${examDate}` : '',
+  ].filter(Boolean).join(' • ');
+  return {
+    id: `${sourceId}-text-${Buffer.from(title + index).toString('base64url').slice(0, 44)}`,
+    sourceId,
+    title,
+    summary: meta || category,
+    url: pageUrl,
+    category,
+  };
+}
+
+function extractTextBlocks(plain, sourceId, category, pageUrl, startPattern, limit = 40) {
+  const starts = [];
+  const rx = new RegExp(startPattern.source, startPattern.flags.includes('g') ? startPattern.flags : startPattern.flags + 'g');
+  let match;
+  while ((match = rx.exec(plain)) && starts.length < limit + 1) starts.push(match.index);
+  const items = [];
+  for (let i = 0; i < starts.length && items.length < limit; i += 1) {
+    const end = starts[i + 1] ?? Math.min(plain.length, starts[i] + 700);
+    const item = articleFromBlock(sourceId, category, pageUrl, plain.slice(starts[i], end), i);
+    if (item) items.push(item);
+  }
+  return items;
+}
+
 async function fetchEmploiPublic() {
   const pages = [
     ['https://www.emploi-public.ma/fr/concours-liste', 'مباريات التوظيف'],
@@ -65,7 +105,17 @@ async function fetchEmploiPublic() {
   for (const [url, category] of pages) {
     try {
       const html = await fetchText(url);
-      articles.push(...extractOfficialLinks(html, url, 'emploi-public', category, matcher, 45));
+      const linked = extractOfficialLinks(html, url, 'emploi-public', category, matcher, 45);
+      const plain = strip(html);
+      const rows = extractTextBlocks(
+        plain,
+        'emploi-public',
+        category,
+        url,
+        /Avis de concours de recrutement de /gi,
+        45
+      );
+      articles.push(...(linked.length >= rows.length ? linked : rows));
     } catch (error) {
       console.warn('[news] emploi-public failed:', error instanceof Error ? error.message : error);
     }
@@ -84,7 +134,17 @@ async function fetchMen() {
   for (const [url, category] of pages) {
     try {
       const html = await fetchText(url);
-      articles.push(...extractOfficialLinks(html, url, 'men', category, matcher, 35));
+      const linked = extractOfficialLinks(html, url, 'men', category, matcher, 35);
+      const plain = strip(html);
+      const rows = extractTextBlocks(
+        plain,
+        'men',
+        category,
+        url,
+        /Avis (?:de concours|d’ouverture|d'ouverture|d’appel|d'appel)/gi,
+        35
+      );
+      articles.push(...(linked.length >= rows.length ? linked : rows));
     } catch (error) {
       console.warn('[news] MEN failed:', error instanceof Error ? error.message : error);
     }
@@ -103,21 +163,26 @@ async function fetchFinances() {
     try {
       const html = await fetchText(url);
       const links = extractOfficialLinks(html, url, 'finances', category, matcher, 35);
-      articles.push(...links);
-      // Some MEF pages expose useful rows with very short "FR/AR" links; keep a page-level entry
-      // so the source never appears empty when the table itself has no descriptive anchors.
-      if (!links.length) {
-        const plain = strip(html);
-        if (matcher.test(plain)) {
-          articles.push({
-            id: `finances-page-${Buffer.from(url).toString('base64url').slice(0, 40)}`,
-            sourceId: 'finances',
-            title: category,
-            summary: plain.slice(0, 220),
-            url,
-            category,
-          });
-        }
+      const plain = strip(html);
+      const rows = extractTextBlocks(
+        plain,
+        'finances',
+        category,
+        url,
+        /(?:Avis|Appel|Concours|Examen|مباراة|امتحان|ترشيح)\s/gi,
+        35
+      );
+      if (rows.length || links.length) {
+        articles.push(...(rows.length >= links.length ? rows : links));
+      } else if (matcher.test(plain)) {
+        articles.push({
+          id: `finances-page-${Buffer.from(url).toString('base64url').slice(0, 40)}`,
+          sourceId: 'finances',
+          title: category,
+          summary: 'آخر المستجدات المنشورة على الموقع الرسمي',
+          url,
+          category,
+        });
       }
     } catch (error) {
       console.warn('[news] finances failed:', error instanceof Error ? error.message : error);
