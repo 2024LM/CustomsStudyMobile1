@@ -74,12 +74,16 @@ async function fetchHcpRss() {
         return strip((m?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
       };
       const url = get('link') || 'https://www.hcp.ma/';
+      const enclosure = item.match(/<enclosure\b[^>]*url=["']([^"']+)["'][^>]*type=["']image\//i)
+        || item.match(/<media:(?:content|thumbnail)\b[^>]*url=["']([^"']+)["']/i);
+      const imageUrl = enclosure?.[1] || undefined;
       return {
         id: `hcp-${Buffer.from(url + index).toString('base64url').slice(0, 48)}`,
         sourceId: 'hcp',
         title: get('title') || 'المندوبية السامية للتخطيط',
         summary: get('description').slice(0, 500) || undefined,
         url,
+        imageUrl,
         publishedAt: get('pubDate') || undefined,
         category: 'أخبار وإحصائيات',
       };
@@ -105,6 +109,7 @@ async function fetchOpenData() {
       title: String(item.title || item.name || 'بيانات مغربية'),
       summary: strip(String(item.notes || '')).slice(0, 500) || undefined,
       url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/',
+      imageUrl: item.organization?.image_display_url || item.organization?.image_url || undefined,
       publishedAt: item.metadata_modified || item.metadata_created || undefined,
       category: 'بيانات مفتوحة',
     }));
