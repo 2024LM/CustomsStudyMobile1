@@ -72,4 +72,8 @@ assert.equal(android.api.currentTtsPlayback().state, 'loading');
 android.emit({ requestId: 'native-second', state: 'error' });
 assert.equal(android.api.currentTtsPlayback().state, 'error');
 assert.equal(android.nativeSpoken[1].requestId, 'native-second');
+await android.api.speakArabic('إيقاف', 1, 'native-stop');
+await android.api.stopArabicTts();
+android.emit({ requestId: 'native-stop', state: 'speaking' });
+assert.equal(android.api.currentTtsPlayback().state, 'stopped', 'Late native start events must not revive a cancelled reading');
 console.log('TTS text preparation and playback lifecycle checks passed.');

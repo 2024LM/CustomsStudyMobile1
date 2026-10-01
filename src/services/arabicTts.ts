@@ -50,7 +50,11 @@ export function subscribeTtsPlayback(listener: (state: TtsPlaybackState) => void
   return () => { playbackSubscribers.delete(listener); };
 }
 function receiveNativePlayback(event: TtsPlaybackState): void {
-  if (event.requestId === playbackState.requestId) publishPlayback(event);
+  if (event.requestId !== playbackState.requestId) return;
+  // A queued start event must not revive a locally cancelled or completed request.
+  if (['stopped', 'done', 'error'].includes(playbackState.state)
+      && (event.state === 'loading' || event.state === 'speaking')) return;
+  publishPlayback(event);
 }
 async function ensureNativePlayback(): Promise<void> {
   if (!nativeListener) {
