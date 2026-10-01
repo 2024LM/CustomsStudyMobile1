@@ -34,6 +34,10 @@ jobs:
       - name: Install Capacitor Android
         run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @playwright/test@1.58.2
 
+      - name: Refresh bundled Moroccan news
+        run: node scripts/fetch-news.mjs
+        continue-on-error: true
+
       - name: Build web application
         run: npm run build
         env:
