@@ -52,6 +52,7 @@ export const NewsPage: React.FC = () => {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sourceLoading, setSourceLoading] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState('');
 
   const sources = useMemo(() => newsService.sources().filter((source) => source.enabled), [version]);
@@ -91,6 +92,21 @@ export const NewsPage: React.FC = () => {
       setSelectedSource('ALL');
     }
   }, [selectedSource, sources]);
+
+  const selectSource = async (sourceId: string) => {
+    setSelectedSource(sourceId);
+    setSourceLoading(sourceId);
+    setFetchError('');
+    const startedAt = Date.now();
+    try {
+      await newsService.refresh();
+      setVersion((value) => value + 1);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 650) await new Promise((resolve) => setTimeout(resolve, 650 - elapsed));
+      setSourceLoading(null);
+    }
+  };
 
   const add = () => {
     try {
@@ -139,7 +155,7 @@ export const NewsPage: React.FC = () => {
       <div className="-mx-1 px-1 overflow-x-auto">
         <div className="flex gap-2 min-w-max pb-1">
           <button
-            onClick={() => setSelectedSource('ALL')}
+            onClick={() => void selectSource('ALL')}
             className={`px-4 py-2.5 rounded-2xl border text-xs font-black transition-all ${selectedSource === 'ALL' ? 'bg-[#2C2145] text-white border-[#2C2145] shadow-sm' : 'bg-white text-[#544B63] border-gray-100'}`}
           >
             الكل <span className="opacity-60 mr-1">{articles.length}</span>
@@ -151,7 +167,7 @@ export const NewsPage: React.FC = () => {
             return (
               <button
                 key={source.id}
-                onClick={() => setSelectedSource(source.id)}
+                onClick={() => void selectSource(source.id)}
                 className={`px-3.5 py-2.5 rounded-2xl border text-xs font-black flex items-center gap-2 transition-all ${active ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-sm' : theme.chip}`}
               >
                 <Icon className="w-4 h-4" />
@@ -165,7 +181,31 @@ export const NewsPage: React.FC = () => {
 
       {fetchError && <div className="rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 text-xs font-semibold">{fetchError}</div>}
 
-      {featured ? (() => {
+      {sourceLoading === selectedSource ? (
+        <div className="space-y-3" role="status" aria-live="polite">
+          <div className="bg-white border border-gray-100 rounded-[26px] p-5 shadow-xs overflow-hidden">
+            <div className="flex items-center gap-3 mb-5">
+              <Loader2 className="w-5 h-5 text-[#5B3FD6] animate-spin" />
+              <div>
+                <p className="font-black text-sm text-[#2C2145]">جارٍ جلب أحدث الأخبار…</p>
+                <p className="text-[11px] text-gray-400 mt-1">يتم فحص المصدر وتحديث المحتوى.</p>
+              </div>
+            </div>
+            <div className="h-4 w-3/4 rounded-full bg-gray-100 animate-pulse mb-3" />
+            <div className="h-3 w-full rounded-full bg-gray-100 animate-pulse mb-2" />
+            <div className="h-3 w-2/3 rounded-full bg-gray-100 animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[0, 1].map((item) => (
+              <div key={item} className="bg-white border border-gray-100 rounded-[22px] p-4">
+                <div className="h-3 w-1/3 rounded-full bg-gray-100 animate-pulse mb-4" />
+                <div className="h-4 w-full rounded-full bg-gray-100 animate-pulse mb-2" />
+                <div className="h-4 w-4/5 rounded-full bg-gray-100 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : featured ? (() => {
         const source = sources.find((item) => item.id === featured.sourceId);
         const theme = sourceTheme(featured.sourceId);
         const Icon = theme.icon;
