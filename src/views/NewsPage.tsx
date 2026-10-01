@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { ExternalLink, Newspaper, Plus, Trash2, X } from 'lucide-react';
-import { newsService } from '../features/news/service';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ExternalLink, Loader2, Newspaper, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { newsService } from '../features/news/services/newsService';
 
 export const NewsPage: React.FC = () => {
   const [version, setVersion] = useState(0);
@@ -8,8 +8,19 @@ export const NewsPage: React.FC = () => {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState('');
   const sources = useMemo(() => newsService.sources(), [version]);
   const articles = useMemo(() => newsService.cachedArticles(), [version]);
+
+  const refresh = async () => {
+    setLoading(true); setFetchError('');
+    const results = await newsService.refresh();
+    if (results.length && results.every((r) => r.error)) setFetchError('تعذر تحديث المصادر الآن. يمكنك فتح المصادر الرسمية مباشرة.');
+    setVersion((v) => v + 1); setLoading(false);
+  };
+
+  useEffect(() => { if (!newsService.cachedArticles().length) void refresh(); }, []);
 
   const add = () => {
     try {
@@ -23,7 +34,7 @@ export const NewsPage: React.FC = () => {
       <div className="-mx-4 -mt-4 px-5 pt-5 pb-5 bg-gradient-to-l from-[#392080] to-[#6841E8] text-white shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3"><div className="w-11 h-11 rounded-[14px] bg-white/15 flex items-center justify-center"><Newspaper className="w-6 h-6" /></div><div><h1 className="font-bold text-lg">أخبار المراجعة والمباريات</h1><p className="text-xs text-[#DDD5FF] mt-0.5">مصادر مغربية رسمية ومصادرك الخاصة</p></div></div>
-          <button onClick={() => setShowAdd(true)} className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center" aria-label="إضافة مصدر"><Plus /></button>
+          <div className="flex gap-2"><button onClick={() => void refresh()} disabled={loading} className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center" aria-label="تحديث الأخبار">{loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}</button><button onClick={() => setShowAdd(true)} className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center" aria-label="إضافة مصدر"><Plus /></button></div>
         </div>
       </div>
 
@@ -34,6 +45,8 @@ export const NewsPage: React.FC = () => {
           </a>
         ))}
       </div>
+
+      {fetchError && <div className="rounded-xl bg-amber-50 text-amber-700 p-3 text-xs font-semibold">{fetchError}</div>}
 
       {articles.length ? articles.map((article) => {
         const source = sources.find(s => s.id === article.sourceId);
