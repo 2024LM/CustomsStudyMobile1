@@ -117,7 +117,7 @@ export const NewsPage: React.FC = () => {
         <div className="relative flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-white/14 border border-white/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 flex items-center justify-center">
                 <Newspaper className="w-5 h-5" />
               </div>
               <span className="text-[11px] font-bold text-white/70">راجِع | الأخبار</span>
@@ -126,7 +126,7 @@ export const NewsPage: React.FC = () => {
             <p className="text-xs text-white/70 mt-1">مختارات مغربية مفيدة ومباشرة.</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => void refresh()} disabled={loading} className="w-10 h-10 rounded-2xl bg-white/14 border border-white/10 flex items-center justify-center active:scale-95" aria-label="تحديث الأخبار">
+            <button onClick={() => void refresh()} disabled={loading} className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 flex items-center justify-center active:scale-95" aria-label="تحديث الأخبار">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
             </button>
             <button onClick={() => setShowAdd(true)} className="w-10 h-10 rounded-2xl bg-white text-[#4C2FC4] flex items-center justify-center active:scale-95 shadow-sm" aria-label="إضافة مصدر">
@@ -221,7 +221,7 @@ export const NewsPage: React.FC = () => {
                   <div className={`h-20 bg-gradient-to-br ${theme.shell} relative overflow-hidden`}>
                     <div className="absolute -left-3 -top-4 w-20 h-20 rounded-full bg-white/10" />
                     <div className="absolute inset-0 flex items-center justify-between px-4">
-                      <div className="w-10 h-10 rounded-2xl bg-white/14 border border-white/10 text-white flex items-center justify-center"><Icon className="w-5 h-5" /></div>
+                      <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/10 text-white flex items-center justify-center"><Icon className="w-5 h-5" /></div>
                       <span className="text-[11px] font-bold text-white/75">{source?.name || 'مصدر'}</span>
                     </div>
                   </div>
