@@ -1,11 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import {
-  Home,
-  BookOpen,
-  BookMarked,
-  MoreHorizontal,
-  Sparkles,
-} from 'lucide-react';
+import { BottomNavigation } from './components/BottomNavigation';
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
 import { fetchRemoteConfig } from './services/remoteConfig';
@@ -296,7 +290,7 @@ export function App() {
       { target: 'home-progress', title: 'تقدمك العام', text: 'راقب عدد إجاباتك ونسبة نجاحك أثناء المراجعة.' },
       { target: 'home-activity', title: 'نشاط المراجعة', text: 'تابع نشاطك يوميًا وأسبوعيًا وشهريًا، واختر بنكًا محددًا عند توفر أكثر من بنك.' },
       { target: 'home-start-session', title: 'ابدأ جلسة مراجعة', text: 'ابدأ جلسة جديدة للمراجعة من هنا.' },
-      { target: 'bottom-navigation', title: 'التنقل داخل التطبيق', text: 'استخدم هذا الشريط للوصول إلى الأسئلة والمراجعة والذكاء الاصطناعي والمراجع والمزيد.' },
+      { target: 'bottom-navigation', title: 'التنقل داخل التطبيق', text: 'استخدم هذا الشريط للوصول إلى الأخبار والأسئلة والمراجعة والذكاء الاصطناعي والمراجع والمزيد.' },
     ],
     QUESTIONS: [
       { target: 'study-mode-switch', title: 'الأسئلة والجلسات في مكان واحد', text: 'بدّل هنا بين تصفح بنك الأسئلة وإعداد جلسة اختبار.' },
@@ -326,13 +320,6 @@ export function App() {
     localStorage.getItem(currentTourKey) !== '1'
   );
 
-  const navItems = [
-    { p: 'HOME' as Page, title: 'الرئيسية', icon: Home },
-    { p: 'QUESTIONS' as Page, title: 'الأسئلة', icon: BookOpen },
-    { p: 'AI_ASSISTANT' as Page, title: 'AI', icon: Sparkles },
-    { p: 'REFERENCES' as Page, title: 'مراجع', icon: BookMarked },
-    { p: 'MORE' as Page, title: 'المزيد', icon: MoreHorizontal },
-  ];
 
   return (
     <div className="app-shell h-[100dvh] min-h-0 overflow-hidden bg-[#F8F9FD] flex justify-center text-[#2C2145]">
@@ -498,45 +485,15 @@ export function App() {
 
         {/* Bottom Navigation Bar */}
         {!sessionFocus && (
-          <nav data-tour="bottom-navigation" className="fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-gray-100 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] px-1 z-40 shadow-sm">
-            <div className="flex items-center justify-around">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isSelected =
-                  page === item.p ||
-                  (item.p === 'QUESTIONS' && page === 'SESSION') ||
-                  (item.p === 'MORE' &&
-                    ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS', 'VOICE_SETTINGS'].includes(page));
-
-                return (
-                  <button
-                    key={item.p}
-                    onClick={() => {
-                      if (item.p === 'QUESTIONS') {
-                        setSessionTopic(null);
-                        setSessionCount(null);
-                        setSessionMode('classic');
-                        setSessionAutoStart(false);
-                      }
-                      setPage(item.p);
-                    }}
-                    className="flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 relative transition-colors cursor-pointer"
-                  >
-                    <div className={`w-10 h-8 rounded-full flex items-center justify-center transition-colors ${
-                      isSelected ? 'bg-[#F5F3FF] text-[#5B3FD6]' : 'text-gray-400 hover:text-gray-600'
-                    }`}>
-                      <Icon className={`w-5 h-5 ${item.p === 'AI_ASSISTANT' ? 'stroke-[2.3]' : ''}`} />
-                    </div>
-                    <span className={`text-[12px] sm:text-[12px] font-semibold tracking-tight mt-0.5 truncate max-w-full ${
-                      isSelected ? 'text-[#5B3FD6] font-bold' : 'text-gray-400'
-                    }`}>
-                      {item.title}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
+          <BottomNavigation page={page} onNavigate={next => {
+            if (next === 'QUESTIONS') {
+              setSessionTopic(null);
+              setSessionCount(null);
+              setSessionMode('classic');
+              setSessionAutoStart(false);
+            }
+            setPage(next);
+          }} />
         )}
       </div>
     </div>

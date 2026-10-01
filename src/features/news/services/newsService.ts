@@ -5,6 +5,10 @@ import { fetchRss } from '../providers/rssProvider';
 import { fetchCkan } from '../providers/ckanProvider';
 import { NewsArticle, NewsFetchResult, NewsSource } from '../types';
 
+let refreshTask: Promise<NewsFetchResult[]> | undefined;
+let refreshedAt = 0;
+const listeners = new Set<() => void>();
+
 function normalizeUrl(raw: string): URL {
   const parsed = new URL(raw.trim());
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('UNSUPPORTED_URL');
@@ -39,10 +43,26 @@ export const newsService = {
     newsStorage.saveCustomSources(newsStorage.customSources().filter((s) => s.id !== id));
   },
   cachedArticles: () => newsStorage.articles(),
-  async refresh(): Promise<NewsFetchResult[]> {
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  },
+  refreshIfStale(): Promise<NewsFetchResult[]> {
+    return refreshedAt && Date.now() - refreshedAt < 5 * 60 * 1000
+      ? Promise.resolve([]) : this.refresh();
+  },
+  refresh(): Promise<NewsFetchResult[]> {
+    if (refreshTask) return refreshTask;
+    const sources = this.sources().filter(s => s.enabled && s.kind !== 'web');
+    refreshTask = (async () => {
     const results: NewsFetchResult[] = [];
     const bundled = await bundledArticles();
-    for (const source of this.sources().filter((s) => s.enabled && s.kind !== 'web')) {
+    if (bundled.length) {
+      const cached = newsStorage.articles();
+      newsStorage.saveArticles(preferArabicArticles([...bundled, ...cached.filter(old => !bundled.some(item => item.id === old.id))]));
+      for (const listener of listeners) { try { listener(); } catch {} }
+    }
+    for (const source of sources) {
       try {
         const articles = source.kind === 'rss' ? await fetchRss(source) : await fetchCkan(source);
         results.push({ sourceId: source.id, articles });
@@ -59,6 +79,10 @@ export const newsService = {
     const merged = preferArabicArticles([...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))])
       .sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
     newsStorage.saveArticles(merged);
+    refreshedAt = Date.now();
+    for (const listener of listeners) { try { listener(); } catch {} }
     return results;
+    })().finally(() => { refreshTask = undefined; });
+    return refreshTask;
   },
 };

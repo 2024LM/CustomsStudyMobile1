@@ -66,6 +66,9 @@ jobs:
       - name: Verify inline news translation
         run: node tests/news-layout.mjs
 
+      - name: Verify home news carousel and six navigation destinations
+        run: node tests/home-news-layout.mjs
+
       - name: Create Android project
         run: npx cap add android
 
