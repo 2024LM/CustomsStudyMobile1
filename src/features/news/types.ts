@@ -1,11 +1,10 @@
-export type NewsSourceKind = 'rss' | 'ckan' | 'web';
+export type NewsSourceKind = 'rss' | 'web';
 
 export interface NewsSource {
   id: string;
   name: string;
   url: string;
   feedUrl?: string;
-  apiUrl?: string;
   kind: NewsSourceKind;
   builtIn: boolean;
   enabled: boolean;

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { collectLocalizedPages, discoverArabicUrls, isArabicText, localizedValue, preferArabicStories, stableNewsId } from './news-language.mjs';
+import { collectLocalizedPages, discoverArabicUrls, isArabicText, preferArabicStories, stableNewsId } from './news-language.mjs';
 
 import { inlineImage, feedImage, enrichArticleImages } from './news-images.mjs';
 
@@ -252,77 +252,9 @@ async function fetchHcpRss() {
   return preferArabicStories(articles);
 }
 
-async function fetchOpenData() {
-  const arabicNewsUrl = 'https://data.gov.ma/index.php/ar/actualites';
-  try {
-    const html = await fetchText(arabicNewsUrl);
-    const rows = extractTableRows(html);
-    const linked = extractOfficialLinks(
-      html,
-      arabicNewsUrl,
-      'open-data-ma',
-      'مستجدات البيانات المفتوحة',
-      /[\u0600-\u06FF]{8,}/i,
-      40
-    );
-
-    const plain = strip(html);
-    const dateRx = /(\d{2}\/\d{2}\/\d{4})/g;
-    const dates = [...plain.matchAll(dateRx)];
-    const textItems = [];
-    for (let i = 0; i < dates.length; i += 1) {
-      const current = dates[i];
-      const start = i === 0 ? 0 : (dates[i - 1].index || 0) + dates[i - 1][0].length;
-      const end = current.index || plain.length;
-      const block = plain.slice(start, end).trim();
-      const title = block.split(/المزيد|\s{2,}/).find((part) => /[\u0600-\u06FF]/.test(part) && part.length > 25);
-      if (!title) continue;
-      const [day, month, year] = current[1].split('/');
-      textItems.push({
-        id: stableNewsId('open-data-ma', arabicNewsUrl + '|' + title),
-        sourceId: 'open-data-ma',
-        title: title.slice(0, 280),
-        summary: 'مستجدات البوابة الوطنية للبيانات المفتوحة',
-        url: arabicNewsUrl,
-        publishedAt: year && month && day ? `${year}-${month}-${day}` : undefined,
-        category: 'البيانات المفتوحة',
-      });
-    }
-
-    const arabicItems = [...linked, ...textItems].filter((item) => /[\u0600-\u06FF]/.test(item.title));
-    if (arabicItems.length) return arabicItems;
-  } catch (error) {
-    console.warn('[news] data.gov.ma Arabic news failed:', error instanceof Error ? error.message : error);
-  }
-
-  const url = new URL('https://data.gov.ma/data/api/3/action/package_search');
-  url.searchParams.set('q', '*:*');
-  url.searchParams.set('rows', '30');
-  url.searchParams.set('sort', 'metadata_modified desc');
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { accept: 'application/json' } });
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    const payload = await response.json();
-    if (!payload?.success) return [];
-    return (payload.result?.results || []).map((item, index) => ({
-      id: `open-data-ma-${item.name || index}`,
-      sourceId: 'open-data-ma',
-      title: localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية'))),
-      summary: strip(localizedValue(item.notes_translated, localizedValue(item.notes))).slice(0, 500) || undefined,
-      url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
-      imageUrl: undefined,
-      publishedAt: item.metadata_modified || item.metadata_created || undefined,
-      category: 'بيانات مفتوحة',
-    }));
-  } catch (error) {
-    console.warn('[news] data.gov.ma failed:', error instanceof Error ? error.message : error);
-    return [];
-  }
-}
-
-export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss, fetchOpenData };
+export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss };
 export async function refreshNews() {
-  const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss(), fetchOpenData()]);
+  const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss()]);
   const articles = preferArabicStories(batches.flat()).slice(0, 180);
   await enrichArticleImages(articles, fetchText);
   await mkdir(new URL('../public/', import.meta.url), { recursive: true });

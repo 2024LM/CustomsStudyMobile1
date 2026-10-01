@@ -2,24 +2,36 @@ import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { NewsArticle } from '../types';
 import { newsDate } from '../services/newsPresentation';
+import { sourceTheme } from '../config/sourceTheme';
+import { NewsSourceBadge } from './NewsSourceBadge';
 import { NewsImage } from './NewsImage';
 import { NewsArticleContent } from './NewsArticleContent';
 
-export function NewsArticleCard({ article, sourceName, featured = false }: { article: NewsArticle; sourceName?: string; featured?: boolean }) {
+export function NewsArticleCard({ article, sourceName, featured = false, preview = false }: { article: NewsArticle; sourceName?: string; featured?: boolean; preview?: boolean }) {
   const date = newsDate(article.publishedAt);
-  return <article data-news-card={article.id} className="h-full bg-white border border-gray-100 rounded-lg overflow-hidden text-right">
-    <NewsImage url={article.imageUrl} featured={featured} />
-    <div className={featured ? 'p-5' : 'p-4'}>
-      <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 mb-3 text-[11px]">
-        <span className="font-bold text-[#5B3FD6]">{sourceName || 'مصدر الخبر'}</span>
-        {date && <time dateTime={article.publishedAt} className="text-gray-500 shrink-0">{date}</time>}
+  const theme = sourceTheme(article.sourceId);
+  const style = { '--news-accent': theme.color, '--news-light': theme.light, borderInlineStartColor: theme.color } as React.CSSProperties;
+  const summary = (article.summary || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 180);
+  return <article data-news-card={article.id} style={style}
+    className={`news-content-card bg-white border border-gray-100 border-s-4 rounded-lg overflow-hidden text-right ${preview ? 'news-preview-card' : 'h-full'}`}>
+    <header className="news-card-header flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-3">
+      <NewsSourceBadge sourceId={article.sourceId} name={sourceName} />
+      {date && <time dateTime={article.publishedAt} className="text-gray-500 text-[10px] shrink-0">{date}</time>}
+    </header>
+    {preview ? <div className="news-preview-body flex items-start gap-3 px-3 pt-3">
+      <div className="min-w-0 flex-1">
+        <h3 dir="auto" className="font-black text-[14px] leading-6 text-[#2C2145] line-clamp-3">{article.title}</h3>
+        {summary && <p dir="auto" className="text-xs text-gray-500 leading-5 mt-2 line-clamp-2">{summary}</p>}
       </div>
-      <NewsArticleContent article={article} featured={featured} />
-      <div className="border-t border-gray-100 mt-4 pt-3">
-        <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 min-h-11 text-xs font-bold text-[#5B3FD6]">
-          {featured ? 'قراءة الخبر' : 'فتح المصدر'} <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      </div>
-    </div>
+      <NewsImage url={article.imageUrl} imageClassName="news-preview-photo" />
+    </div> : <>
+      <NewsImage url={article.imageUrl} featured={featured} />
+      <div className={featured ? 'p-5' : 'p-4'}><NewsArticleContent article={article} featured={featured} /></div>
+    </>}
+    <footer className={`border-t border-gray-100 px-3 py-2 ${preview ? 'mt-auto' : 'mt-1'}`}>
+      <a href={article.url} target="_blank" rel="noopener noreferrer" className="news-source-name inline-flex items-center gap-1.5 min-h-11 text-xs font-bold" style={{ color: theme.color }}>
+        {featured ? 'قراءة الخبر' : 'فتح المصدر'} <ExternalLink className="w-3.5 h-3.5" />
+      </a>
+    </footer>
   </article>;
 }

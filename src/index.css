@@ -255,4 +255,11 @@ html.dark .app-shell :focus-visible { outline-color: #b9a8ff; }
 html.dark .tts-reading-frame { outline-color: #b9a8ff; }
 
 /* Recent news are content rectangles; only fully prepared photos occupy space. */
-.home-news-rail img { max-height: 160px; }
+.news-preview-card { height: 300px; display: flex; flex-direction: column; }
+.news-preview-card .news-card-header { min-height: 64px; flex-shrink: 0; }
+.news-preview-body { position: relative; flex: 1; min-height: 0; }
+.news-preview-body > [data-news-image-state]:not([data-news-image-state="ready"]) { position: absolute; width: 0; height: 0; overflow: hidden; }
+.news-preview-body > [data-news-image-state] { flex-shrink: 0; }
+.news-preview-photo { width: 80px; height: 88px; object-fit: contain; border-radius: 4px; }
+.news-preview-card footer { flex-shrink: 0; }
+html.dark .news-source-name { color: var(--news-light) !important; }

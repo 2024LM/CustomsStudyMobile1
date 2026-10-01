@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-function PreparedImage({ url, featured, children }: { url: string; featured: boolean; children?: React.ReactNode }) {
+function PreparedImage({ url, featured, children, imageClassName }: { url: string; featured: boolean; children?: React.ReactNode; imageClassName?: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [nearby, setNearby] = useState(featured);
   const [phase, setPhase] = useState<'pending' | 'ready' | 'failed'>('pending');
@@ -56,14 +56,14 @@ function PreparedImage({ url, featured, children }: { url: string; featured: boo
             if (alive.current) setPhase('failed');
           }}
           style={{ display: phase === 'ready' ? 'block' : 'none' }}
-          className={featured ? 'relative w-full max-h-64 object-contain bg-black/10' : 'w-full max-h-56 object-contain bg-gray-50'} />
+          className={imageClassName || (featured ? 'relative w-full max-h-64 object-contain bg-black/10' : 'w-full max-h-56 object-contain bg-gray-50')} />
       )}
     </div>
   );
 }
 
-export function NewsImage({ url, featured = false, children }: { url?: string; featured?: boolean; children?: React.ReactNode }) {
+export function NewsImage({ url, featured = false, children, imageClassName }: { url?: string; featured?: boolean; children?: React.ReactNode; imageClassName?: string }) {
   let safeUrl: string | undefined;
   try { if (url && /^https?:$/.test(new URL(url).protocol)) safeUrl = url; } catch {}
-  return safeUrl ? <PreparedImage key={safeUrl} url={safeUrl} featured={featured}>{children}</PreparedImage> : <>{children}</>;
+  return safeUrl ? <PreparedImage key={safeUrl} url={safeUrl} featured={featured} imageClassName={imageClassName}>{children}</PreparedImage> : <>{children}</>;
 }

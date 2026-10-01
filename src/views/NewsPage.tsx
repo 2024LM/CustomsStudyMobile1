@@ -1,13 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
-  FileText,
-  Landmark,
   Loader2,
   Newspaper,
   Plus,
   RefreshCw,
-  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -15,14 +11,7 @@ import { NewsArticleCard } from '../features/news/components/NewsArticleCard';
 import { latestNews } from '../features/news/services/newsPresentation';
 import { newsService } from '../features/news/services/newsService';
 
-const sourceTheme = (id: string) => {
-  if (id === 'emploi-public') return { icon: Landmark, shell: 'from-[#2F5AA8] to-[#173B72]', chip: 'bg-blue-50 text-blue-700 border-blue-100' };
-  if (id === 'men') return { icon: FileText, shell: 'from-[#8B5CF6] to-[#5B21B6]', chip: 'bg-violet-50 text-violet-700 border-violet-100' };
-  if (id === 'finances') return { icon: Landmark, shell: 'from-[#0F766E] to-[#115E59]', chip: 'bg-teal-50 text-teal-700 border-teal-100' };
-  if (id === 'hcp') return { icon: CalendarDays, shell: 'from-[#B45309] to-[#92400E]', chip: 'bg-amber-50 text-amber-700 border-amber-100' };
-  if (id === 'open-data-ma') return { icon: Sparkles, shell: 'from-[#0F766E] to-[#0E7490]', chip: 'bg-cyan-50 text-cyan-700 border-cyan-100' };
-  return { icon: Newspaper, shell: 'from-[#5B3FD6] to-[#392080]', chip: 'bg-[#F5F3FF] text-[#5B3FD6] border-[#E7E1FF]' };
-};
+import { sourceTheme } from '../features/news/config/sourceTheme';
 
 export const NewsPage: React.FC = () => {
   const [version, setVersion] = useState(0);
@@ -137,8 +126,9 @@ export const NewsPage: React.FC = () => {
             return (
               <button
                 key={source.id}
+                style={active ? { background: `linear-gradient(135deg, ${theme.color}, ${theme.end})`, borderColor: theme.color } : undefined}
                 onClick={() => void selectSource(source.id)}
-                className={`px-3.5 py-2.5 rounded-md border text-xs font-black flex items-center gap-2 transition-all ${active ? 'bg-[#5B3FD6] text-white border-[#5B3FD6] shadow-sm' : theme.chip}`}
+                className={`px-3.5 py-2.5 rounded-md border text-xs font-black flex items-center gap-2 transition-all ${active ? 'text-white shadow-sm' : theme.chip}`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{source.name}</span>
