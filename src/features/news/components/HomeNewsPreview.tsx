@@ -4,7 +4,7 @@ import { newsService } from '../services/newsService';
 import { latestNews } from '../services/newsPresentation';
 import { NewsArticleCard } from './NewsArticleCard';
 
-export function HomeNewsPreview({ onOpenNews }: { onOpenNews: () => void }) {
+export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: string) => void }) {
   const read = () => {
     const enabled = new Set(newsService.sources().filter(source => source.enabled).map(source => source.id));
     return latestNews(newsService.cachedArticles().filter(article => enabled.has(article.sourceId)), 8);
@@ -43,7 +43,7 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: () => void }) {
         <h2 className="font-black text-base text-[#2C2145]">آخر الأخبار</h2>
         <p className="text-[11px] text-gray-500 mt-1">أخبار المراجعة والمباريات</p>
       </div>
-      <button onClick={onOpenNews} type="button" className="text-xs font-bold text-[#5B3FD6] min-h-11 px-2">كل الأخبار</button>
+      <button onClick={()=>onOpenNews()} type="button" className="text-xs font-bold text-[#5B3FD6] min-h-11 px-2">كل الأخبار</button>
     </div>
     {articles.length ? <>
       <div ref={rail} dir="rtl" data-home-news-rail tabIndex={0} aria-label="تصفح آخر الأخبار"
@@ -53,7 +53,7 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: () => void }) {
         }}
         className="home-news-rail flex gap-3 overflow-x-auto snap-x snap-mandatory overscroll-x-contain p-3">
         {articles.map(article => <div key={article.id} className="shrink-0 w-[88%] sm:w-[360px] snap-start">
-          <NewsArticleCard preview article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
+          <NewsArticleCard preview onOpen={item=>onOpenNews(item.internalId || item.id)} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
         </div>)}
       </div>
       <div className="flex items-center justify-between px-3 pb-3">

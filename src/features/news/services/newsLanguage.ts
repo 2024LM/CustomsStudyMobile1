@@ -30,8 +30,11 @@ export function preferArabicArticles(articles: NewsArticle[]): NewsArticle[] {
     const previous = stories.get(key);
     if (!previous || (!isArabicText(previous.title) && isArabicText(article.title))) {
       stories.set(key, article.imageUrl || !previous?.imageUrl ? article : { ...article, imageUrl: previous.imageUrl });
-    } else if (!previous.imageUrl && article.imageUrl) {
-      stories.set(key, { ...previous, imageUrl: article.imageUrl });
+    } else {
+      stories.set(key, { ...previous, imageUrl: previous.imageUrl || article.imageUrl, content: previous.content || article.content,
+        publishedAt: previous.publishedAt || article.publishedAt,
+        publishedTimeKnown: previous.publishedAt ? previous.publishedTimeKnown : article.publishedTimeKnown,
+        publishedLocalTime: previous.publishedAt ? previous.publishedLocalTime : article.publishedLocalTime });
     }
   }
   return [...stories.values()];

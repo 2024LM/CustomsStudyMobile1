@@ -41,14 +41,22 @@ export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
         if (imageUrl) break;
       }
     }
+    const contentMarkup=node.getElementsByTagName('content:encoded')[0]?.textContent||text('content, description, summary');
+    const contentDocument=new DOMParser().parseFromString(contentMarkup,'text/html');
+    contentDocument.querySelectorAll('script,style,nav,footer').forEach(element=>element.remove());
+    contentDocument.querySelectorAll('br,p,li').forEach(element=>element.append('\n'));
+    const content=(contentDocument.body.textContent||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim().slice(0,12000);
+    const publishedAt=text('pubDate, published')||node.getElementsByTagName('dc:date')[0]?.textContent?.trim()||undefined;
     return {
       id: `${source.id}-${text('guid, id') || url || index}`,
       sourceId: source.id,
       title: text('title') || 'بدون عنوان',
       summary: text('description, summary, content').replace(/<[^>]+>/g, '').slice(0, 500),
+      content: content || undefined,
       url: url || source.url,
       imageUrl,
-      publishedAt: text('pubDate, published, updated') || undefined,
+      publishedAt,
+      publishedTimeKnown: !!publishedAt && /(?:T|\s)\d{1,2}:\d{2}/.test(publishedAt),
     };
   });
 }

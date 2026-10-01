@@ -4,12 +4,10 @@ import { NewsArticle } from '../types';
 import { needsArabicTranslation } from '../services/newsLanguage';
 import { cachedNewsTranslation, NewsTranslation, translateNews } from '../services/newsTranslation';
 
-function displayedSummary(value = '') {
-  const text = value.replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').replace(/^[\s|•·—-]+|[\s|•·—-]+$/g, '').trim();
-  return text.length > 180 ? text.slice(0, 177) + '…' : text;
-}
-export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boolean }> = ({ article, featured = false }) => {
-  const summary = displayedSummary(article.summary);
+import { newsSummary } from '../services/newsPresentation';
+
+export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boolean; translationLabel?: string }> = ({ article, featured = false, translationLabel = 'ترجمة للعربية' }) => {
+  const summary = newsSummary(article.summary);
   const key = JSON.stringify([article.title, summary]);
   const activeKey = useRef(key);
   activeKey.current = key;
@@ -48,7 +46,7 @@ export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boo
       <button type="button" disabled={busy} onClick={() => void translate()} aria-label={translated ? 'عرض النص الأصلي' : 'ترجمة الخبر إلى العربية'}
         className={'inline-flex items-center gap-1.5 text-xs font-bold rounded-md px-3 py-2 disabled:opacity-60 ' + 'text-[#5B3FD6] bg-[#F5F3FF]'}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
-        {busy ? 'جارٍ الترجمة…' : translated ? 'عرض الأصل' : 'ترجمة للعربية'}
+        {busy ? 'جارٍ الترجمة…' : translated ? 'عرض الأصل' : translationLabel}
       </button>
       {translated && <span className={'text-[10px] mr-2 ' + 'text-gray-400'}>ترجمة آلية</span>}
       {busy && <p role="status" className={'text-[11px] mt-2 ' + 'text-gray-500'}>قد يحتاج أول استخدام تنزيل حزمة اللغة.</p>}

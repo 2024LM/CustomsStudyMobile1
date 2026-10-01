@@ -49,6 +49,7 @@ export function App() {
   const darkMode = themeMode === 'dark' || (themeMode === 'system' && systemDark);
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
+  const [newsArticleId, setNewsArticleId] = useState<string>();
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
   const [sessionMode, setSessionMode] = useState<'classic' | 'review' | 'mistakes' | 'favorites' | 'smart'>('classic');
@@ -394,7 +395,7 @@ export function App() {
               onStartSession={startSessionWithTopic}
               onViewQuestions={() => setPage('QUESTIONS')}
               onViewMistakes={() => setPage('MISTAKES')}
-              onOpenNews={() => setPage('NEWS')}
+              onOpenNews={articleId=>{setNewsArticleId(articleId);setPage('NEWS');}}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               onOpenStudyCenter={() => setPage('ADVANCED')}
               unreadNotificationsCount={unreadNotificationsCount}
@@ -405,7 +406,7 @@ export function App() {
             />
           )}
 
-          {page === 'NEWS' && <NewsPage />}
+          {page === 'NEWS' && <NewsPage initialArticleId={newsArticleId} onClearInitial={()=>setNewsArticleId(undefined)} />}
 
           {(page === 'QUESTIONS' || page === 'SESSION') && (
             <StudyPage
@@ -492,6 +493,7 @@ export function App() {
               setSessionMode('classic');
               setSessionAutoStart(false);
             }
+            setNewsArticleId(undefined);
             setPage(next);
           }} />
         )}

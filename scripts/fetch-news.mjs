@@ -4,6 +4,8 @@ import { collectLocalizedPages, discoverArabicUrls, isArabicText, preferArabicSt
 
 import { inlineImage, feedImage, enrichArticleImages } from './news-images.mjs';
 
+import { enrichNewsDocuments, publicationDate, plainNewsText, retainNewsFeed } from './news-document.mjs';
+
 const OUT = new URL('../public/news-feed.json', import.meta.url);
 
 const strip = (value = '') => value
@@ -105,6 +107,7 @@ function articleFromBlock(sourceId, category, pageUrl, block, index) {
     sourceId,
     title,
     summary: meta || category,
+    content: text,
     url: pageUrl,
     category,
   };
@@ -155,6 +158,8 @@ async function fetchMen() {
       items.push({
         id: stableNewsId('men', url + '|' + title), sourceId: 'men', title: title.slice(0, 280),
         summary: date ? (page.mode === 'concours' ? 'آخر أجل: ' : 'نشر في: ') + date : page.category,
+        content: cells.join('\n'),
+        ...(page.mode === 'annonces' ? publicationDate(date) : {}),
         url, category: page.category,
       });
     }
@@ -187,7 +192,7 @@ async function fetchFinances() {
       if (!dates.length) continue;
       const examDate = dates[0];
       const [day, month, year] = examDate.split('/');
-      const publishedAt = year && month && day ? `${year}-${month}-${day}` : undefined;
+      const eventDate = year && month && day ? `${year}-${month}-${day}` : undefined;
       articles.push({
         id: stableNewsId('finances', url + '|' + grade),
         sourceId: 'finances',
@@ -198,7 +203,8 @@ async function fetchFinances() {
           posts ? `${posts} منصب` : '',
         ].filter(Boolean).join(' • '),
         url,
-        publishedAt,
+        eventDate,
+        content: cells.join('\n'),
         category: 'امتحانات الكفاءة المهنية',
       });
     }
@@ -244,7 +250,9 @@ async function fetchHcpRss() {
         const url = get('link') || root;
         const image = feedImage(item, url);
         articles.push({ id: stableNewsId('hcp', url), sourceId: 'hcp', title: get('title') || 'المندوبية السامية للتخطيط',
-          summary: get('description').slice(0, 500) || undefined, url, imageUrl: image, publishedAt: get('pubDate') || undefined, category: 'أخبار وإحصائيات' });
+          summary: get('description').slice(0, 500) || undefined,
+          content: plainNewsText((item.match(/<content:encoded[^>]*>([\s\S]*?)<\/content:encoded>/i)?.[1] || item.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1')) || undefined,
+          url, imageUrl: image, ...publicationDate(get('pubDate')), category: 'أخبار وإحصائيات' });
       }
       console.log('[news] HCP feed ' + sourceUrl + ': ' + items.length + ' items');
     } catch (error) { console.warn('[news] HCP RSS failed:', error instanceof Error ? error.message : error); }
@@ -255,8 +263,10 @@ async function fetchHcpRss() {
 export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss };
 export async function refreshNews() {
   const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss()]);
-  const articles = preferArabicStories(batches.flat()).slice(0, 180);
+  let articles = preferArabicStories(batches.flat()).slice(0, 180);
+  await enrichNewsDocuments(articles, fetchText);
   await enrichArticleImages(articles, fetchText);
+  articles = retainNewsFeed(articles);
   await mkdir(new URL('../public/', import.meta.url), { recursive: true });
   await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), articles }, null, 2) + '\n', 'utf8');
   console.log('[news] wrote ' + articles.length + ' articles to public/news-feed.json');
