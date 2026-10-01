@@ -15,8 +15,8 @@ export async function fetchCkan(source: NewsSource): Promise<NewsArticle[]> {
   return (payload.result?.results || []).map((item, index) => {
     const title = localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية')));
     const name = String(item.name || '');
-    const organization = (item.organization || {}) as Record<string, unknown>;
-    const imageUrl = String(organization.image_display_url || organization.image_url || '') || undefined;
+    // Organization logos are not article photos.
+    const imageUrl = undefined;
     return {
       id: `${source.id}-${name || index}`,
       sourceId: source.id,

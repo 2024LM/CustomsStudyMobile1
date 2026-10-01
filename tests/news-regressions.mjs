@@ -79,3 +79,28 @@ try {
   assert.equal((await fetchMen()).length,2,'Preserve different MEN entries with one listing URL');
 } finally {globalThis.fetch=originalFetch;}
 console.log('News Arabic preference, fallback, exact-content translation cache and parser checks passed.');
+
+const { imageUrl, inlineImage, articleImage, feedImage, enrichArticleImages } = await import('../scripts/news-images.mjs');
+assert.equal(imageUrl('/photo.jpg?a=1&amp;b=2', 'https://publisher.ma/news/1'), 'https://publisher.ma/photo.jpg?a=1&b=2');
+assert.equal(imageUrl('javascript:alert(1)', sourceUrl), undefined);
+assert.equal(articleImage('<meta content="/photo.jpg" property="og:image">', sourceUrl), 'https://publisher.ma/photo.jpg');
+assert.equal(articleImage('<img src="/logo.png"><article><img data-src="/news.jpg"></article>', sourceUrl), 'https://publisher.ma/news.jpg');
+assert.equal(articleImage('<header><img src="/logo.png"></header>', sourceUrl), undefined);
+assert.equal(feedImage('<enclosure type="audio/mp3" url="/audio.mp3"/><description><![CDATA[<img src="/news.jpg">]]></description>', sourceUrl), 'https://publisher.ma/news.jpg');
+assert.equal(feedImage('<media:thumbnail url="/thumb.jpg"/>', sourceUrl), 'https://publisher.ma/thumb.jpg');
+assert.equal(feedImage('<media:content medium="video" url="/movie.mp4"/>', sourceUrl), undefined);
+const imageArticles = [
+  {url:'https://publisher.ma/news/1'}, {url:'https://publisher.ma/news/2'},
+  {url:'https://publisher.ma/list'}, {url:'https://publisher.ma/list'},
+  {url:'https://publisher.ma/file.pdf'}, {url:'https://publisher.ma/news/3',imageUrl:'https://publisher.ma/existing.jpg'}
+];
+const fetchedImages=[];
+await enrichArticleImages(imageArticles,async url=>{
+  fetchedImages.push(url);
+  if(url.endsWith('/2'))throw new Error('Offline');
+  return '<meta property="og:image" content="/news.jpg">';
+});
+assert.equal(imageArticles[0].imageUrl,'https://publisher.ma/news.jpg');
+assert.equal(imageArticles[1].imageUrl,undefined);
+assert.deepEqual(fetchedImages,['https://publisher.ma/news/1','https://publisher.ma/news/2']);
+console.log('News image extraction and bounded enrichment regressions passed');

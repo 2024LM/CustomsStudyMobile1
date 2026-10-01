@@ -10,14 +10,37 @@ export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
     const text = (selector: string) => node.querySelector(selector)?.textContent?.trim() || '';
     const linkNode = node.querySelector('link');
     const url = linkNode?.getAttribute('href') || text('link');
-    const enclosure = node.querySelector('enclosure');
-    const mediaContent = node.getElementsByTagName('media:content')[0];
-    const mediaThumbnail = node.getElementsByTagName('media:thumbnail')[0];
-    const imageUrl =
-      (enclosure?.getAttribute('type')?.startsWith('image/') ? enclosure.getAttribute('url') : null) ||
-      mediaContent?.getAttribute('url') ||
-      mediaThumbnail?.getAttribute('url') ||
-      undefined;
+    const base = url || source.feedUrl;
+    const safeImage = (value: string | null | undefined) => {
+      try {
+        if (!value?.trim()) return undefined;
+        const parsed = new URL(value, base);
+        return /^https?:$/.test(parsed.protocol) ? parsed.href : undefined;
+      } catch { return undefined; }
+    };
+    const attachments = [...node.getElementsByTagName('*')].filter(element =>
+      ['enclosure', 'content', 'thumbnail'].includes(element.localName) &&
+      (element.localName === 'enclosure' || element.prefix === 'media'));
+    let imageUrl: string | undefined;
+    for (const attachment of attachments) {
+      const type = attachment.getAttribute('type') || '';
+      const medium = attachment.getAttribute('medium') || '';
+      if ((type && !type.startsWith('image/')) || (medium && medium !== 'image')) continue;
+      const candidate = safeImage(attachment.getAttribute('url'));
+      if (candidate && (type.startsWith('image/') || attachment.localName === 'thumbnail' ||
+        /\.(?:png|jpe?g|webp|gif|avif)(?:[?#]|$)/i.test(candidate))) {
+        imageUrl = candidate;
+        break;
+      }
+    }
+    if (!imageUrl) {
+      const markup = text('description, summary, content');
+      const document = new DOMParser().parseFromString(markup, 'text/html');
+      for (const image of document.querySelectorAll('img')) {
+        imageUrl = safeImage(image.getAttribute('data-src') || image.getAttribute('src'));
+        if (imageUrl) break;
+      }
+    }
     return {
       id: `${source.id}-${text('guid, id') || url || index}`,
       sourceId: source.id,
