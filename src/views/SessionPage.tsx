@@ -335,7 +335,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     };
 
     return (
-      <div className="flex flex-col gap-4 pb-8 text-right animate-in fade-in duration-200">
+      <div data-speech-scope className="flex flex-col gap-4 pb-8 text-right animate-in fade-in duration-200">
         {/* Focus-mode header */}
         <div className="flex flex-col gap-2 sticky top-0 z-20 bg-[#F8F9FD]/95 backdrop-blur-md pb-2">
           <div className="flex items-center justify-between gap-2">
@@ -376,9 +376,9 @@ export const SessionPage: React.FC<SessionPageProps> = ({
         </div>
 
         {/* Question Card */}
-        <div className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] relative flex items-center justify-center text-center">
+        <div data-speech-text className="bg-white rounded-[24px] p-6 shadow-xs border border-gray-100 min-h-[120px] relative flex items-center justify-center text-center">
           <SpeakButton
-            text={[currentQuestion.question, isAnswered ? `الإجابة الصحيحة: ${currentQuestion.correctAnswer}` : '', isAnswered && currentQuestion.explanation ? `الشرح: ${currentQuestion.explanation}` : ''].filter(Boolean).join('. ')}
+            text={[currentQuestion.question, isAnswered ? `الإجابة الصحيحة: ${currentQuestion.correctAnswer}` : '', isAnswered && showExplanation && currentQuestion.explanation ? `الشرح: ${currentQuestion.explanation}` : ''].filter(Boolean).join('. ')}
             title="قراءة السؤال"
             className="absolute top-3 left-3 bg-[#F5F3FF] text-[#5B3FD6]"
           />
@@ -416,6 +416,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
             return (
               <button
                 key={i}
+                data-speech-text={isAnswered && correct ? '' : undefined}
                 disabled={isAnswered}
                 onClick={() => handleSelectOption(opt)}
                 className={`w-full p-4 rounded-[18px] border transition-all text-right ${cardBg} active:scale-98 cursor-pointer`}

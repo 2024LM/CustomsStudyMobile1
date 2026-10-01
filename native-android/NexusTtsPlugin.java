@@ -2,6 +2,9 @@ package com.nexus.customsstudy;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
@@ -29,6 +32,8 @@ import java.util.Set;
     }
 )
 public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListener {
+    private String pendingRequestId = "";
+    private BroadcastReceiver playbackReceiver;
     private TextToSpeech tts;
     private boolean ready = false;
     private Locale activeLocale = null;
@@ -36,6 +41,20 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     @Override
     public void load() {
+        playbackReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(Context context, Intent intent) {
+                JSObject event = new JSObject();
+                event.put("requestId", intent.getStringExtra("requestId"));
+                event.put("state", intent.getStringExtra("state"));
+                notifyListeners("playback", event);
+            }
+        };
+        IntentFilter filter = new IntentFilter(NexusTtsService.ACTION_PLAYBACK);
+        if (Build.VERSION.SDK_INT >= 33) {
+            getContext().registerReceiver(playbackReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            getContext().registerReceiver(playbackReceiver, filter);
+        }
         tts = new TextToSpeech(getContext(), this);
     }
 
@@ -151,6 +170,16 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
     }
 
     @PluginMethod
+    public void playback(PluginCall call) {
+        call.resolve(NexusTtsService.playbackSnapshot());
+    }
+
+    @Override
+    protected void handleOnResume() {
+        notifyListeners("playback", NexusTtsService.playbackSnapshot());
+    }
+
+    @PluginMethod
     public void status(PluginCall call) {
         JSObject result = new JSObject();
         result.put("ready", ready);
@@ -202,6 +231,10 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
     }
 
     private void startSpeechService(PluginCall call) {
+        if (!pendingRequestId.equals(call.getString("requestId", ""))) {
+            call.reject("تم إيقاف القراءة.");
+            return;
+        }
         if (!ready || tts == null) {
             call.reject("TTS engine is not ready");
             return;
@@ -229,6 +262,7 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         intent.putExtra("text", text);
         intent.putExtra("rate", safeRate);
         intent.putExtra("voice", requestedVoice);
+        intent.putExtra("requestId", call.getString("requestId", "native-" + System.nanoTime()));
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getContext().startForegroundService(intent);
@@ -245,6 +279,7 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     @PluginMethod
     public void speak(PluginCall call) {
+        pendingRequestId = call.getString("requestId", "");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && getPermissionState("notifications") != PermissionState.GRANTED) {
             requestPermissionForAlias("notifications", call, "speakPermissionCallback");
@@ -265,6 +300,7 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     @PluginMethod
     public void stop(PluginCall call) {
+        pendingRequestId = "";
         if (tts != null) tts.stop();
         Intent intent = new Intent(getContext(), NexusTtsService.class);
         intent.setAction(NexusTtsService.ACTION_STOP);
@@ -276,6 +312,10 @@ public class NexusTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     @Override
     protected void handleOnDestroy() {
+        if (playbackReceiver != null) {
+            try { getContext().unregisterReceiver(playbackReceiver); } catch (Exception ignored) {}
+            playbackReceiver = null;
+        }
         if (tts != null) {
             tts.stop();
             tts.shutdown();

@@ -249,3 +249,7 @@ html.dark .app-shell .text-\\[\\#77717F\\] { color: #b9b2c8; }
   outline-offset: 3px;
 }
 html.dark .app-shell :focus-visible { outline-color: #b9a8ff; }
+
+/* Mark the block being read without shifting content or animating it. */
+.tts-reading-frame { outline: 2px solid #7c5ce7; outline-offset: 3px; }
+html.dark .tts-reading-frame { outline-color: #b9a8ff; }

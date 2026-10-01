@@ -43,7 +43,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
 
   return (
-    <div className={`bg-white border transition-all ${expanded ? 'border-[#CFC4F6] shadow-xs' : 'border-transparent hover:bg-[#FCFBFF]'}`}>
+    <div data-speech-scope className={`bg-white border transition-all ${expanded ? 'border-[#CFC4F6] shadow-xs' : 'border-transparent hover:bg-[#FCFBFF]'}`}>
       <div
         role="button"
         tabIndex={0}
@@ -64,7 +64,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
+        <div data-speech-text className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <span className="text-[12px] font-bold px-2 py-1 rounded-full bg-[#F5F3FF] text-[#5B3FD6]">
               {question.topic || 'عام'}
