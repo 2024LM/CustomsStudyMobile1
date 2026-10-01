@@ -20,11 +20,6 @@ import com.google.mlkit.nl.translate.TranslatorOptions;
 public class NexusNewsTranslatePlugin extends Plugin {
     private LanguageIdentifier identifier;
 
-    @Override public void load() {
-        identifier = LanguageIdentification.getClient(
-            new LanguageIdentificationOptions.Builder().setConfidenceThreshold(0.3f).build());
-    }
-
     private Task<String> translatePart(String text) {
         if (text.trim().isEmpty() || !text.matches("(?s).*\\p{L}.*")) return Tasks.forResult(text);
         if (identifier == null) return Tasks.forException(new IllegalStateException("الترجمة غير جاهزة."));
@@ -52,6 +47,8 @@ public class NexusNewsTranslatePlugin extends Plugin {
     }
 
     @PluginMethod public void translate(PluginCall call) {
+        if (identifier == null) identifier = LanguageIdentification.getClient(
+            new LanguageIdentificationOptions.Builder().setConfidenceThreshold(0.3f).build());
         String title = call.getString("title", "");
         String summary = call.getString("summary", "");
         if (title.trim().isEmpty() || title.length() > 1000 || summary.length() > 1000) {

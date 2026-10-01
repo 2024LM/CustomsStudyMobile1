@@ -13,7 +13,7 @@ export async function fetchCkan(source: NewsSource): Promise<NewsArticle[]> {
   const payload = await response.json() as { success?: boolean; result?: { results?: Array<Record<string, unknown>> } };
   if (!payload.success) throw new Error('CKAN_INVALID_RESPONSE');
   return (payload.result?.results || []).map((item, index) => {
-    const title = localizedValue(item.title_translated || item.title, String(item.name || 'بيانات مغربية'));
+    const title = localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية')));
     const name = String(item.name || '');
     const organization = (item.organization || {}) as Record<string, unknown>;
     const imageUrl = String(organization.image_display_url || organization.image_url || '') || undefined;
@@ -21,7 +21,7 @@ export async function fetchCkan(source: NewsSource): Promise<NewsArticle[]> {
       id: `${source.id}-${name || index}`,
       sourceId: source.id,
       title,
-      summary: localizedValue(item.notes_translated || item.notes).replace(/<[^>]+>/g, '').slice(0, 500) || undefined,
+      summary: localizedValue(item.notes_translated, localizedValue(item.notes)).replace(/<[^>]+>/g, '').slice(0, 500) || undefined,
       url: name ? portalUrl + '/dataset/' + encodeURIComponent(name) : source.url,
       imageUrl,
       publishedAt: String(item.metadata_modified || item.metadata_created || '') || undefined,

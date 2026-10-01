@@ -64,3 +64,17 @@ export async function collectLocalizedPages(pages, fetchText, extract) {
   }
   return preferArabicStories(articles);
 }
+
+export function localizedValue(value, fallback = '') {
+  if (typeof value === 'string') {
+    if (value.trim().startsWith('{')) {
+      try { return localizedValue(JSON.parse(value), fallback); } catch {}
+    }
+    return value;
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    for (const key of ['ar', 'ar_MA', 'ar-MA', 'fr', 'en']) if (typeof value[key] === 'string' && value[key].trim()) return value[key];
+    return Object.values(value).find(item => typeof item === 'string' && item.trim()) || fallback;
+  }
+  return fallback;
+}

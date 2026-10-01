@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { collectLocalizedPages, discoverArabicUrls, isArabicText, preferArabicStories, stableNewsId } from './news-language.mjs';
+import { collectLocalizedPages, discoverArabicUrls, isArabicText, localizedValue, preferArabicStories, stableNewsId } from './news-language.mjs';
 
 const OUT = new URL('../public/news-feed.json', import.meta.url);
 
@@ -304,8 +304,8 @@ async function fetchOpenData() {
     return (payload.result?.results || []).map((item, index) => ({
       id: `open-data-ma-${item.name || index}`,
       sourceId: 'open-data-ma',
-      title: (typeof item.title_translated?.ar === 'string' && item.title_translated.ar) || String(item.title || item.name || 'بيانات مغربية'),
-      summary: strip((typeof item.notes_translated?.ar === 'string' && item.notes_translated.ar) || String(item.notes || '')).slice(0, 500) || undefined,
+      title: localizedValue(item.title_translated, localizedValue(item.title, String(item.name || 'بيانات مغربية'))),
+      summary: strip(localizedValue(item.notes_translated, localizedValue(item.notes))).slice(0, 500) || undefined,
       url: item.name ? `https://data.gov.ma/data/dataset/${encodeURIComponent(item.name)}` : 'https://data.gov.ma/ar',
       imageUrl: item.organization?.image_display_url || item.organization?.image_url || undefined,
       publishedAt: item.metadata_modified || item.metadata_created || undefined,
