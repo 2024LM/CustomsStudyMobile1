@@ -125,6 +125,45 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 20
 
+      - name: Verify APK installation on Android 14
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+
+          "$SDKMANAGER" --install "platform-tools" "emulator" "system-images;android-34;google_apis;x86_64"
+          echo "no" | "$AVDMANAGER" create avd             --force             --name raje3_api34             --package "system-images;android-34;google_apis;x86_64"             --device "pixel_5"
+
+          sudo chmod 666 /dev/kvm || true
+
+          "$ANDROID_HOME/emulator/emulator"             -avd raje3_api34             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             -no-snapshot             > "$RUNNER_TEMP/raje3-emulator.log" 2>&1 &
+
+          adb wait-for-device
+
+          booted=""
+          for i in $(seq 1 120); do
+            booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            if [ "$booted" = "1" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$booted" != "1" ]; then
+            echo "::error::Android emulator did not finish booting."
+            cat "$RUNNER_TEMP/raje3-emulator.log" || true
+            exit 1
+          fi
+
+          adb shell input keyevent 82 || true
+          adb install -r "$APK"
+          adb shell pm path com.nexus.customsstudy
+          adb shell monkey -p com.nexus.customsstudy -c android.intent.category.LAUNCHER 1
+          adb shell dumpsys package com.nexus.customsstudy | grep -E "versionCode|versionName" | head -n 5
+          adb uninstall com.nexus.customsstudy
+
       - name: Prepare distributable APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Raje3.apk
 
