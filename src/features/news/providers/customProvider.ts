@@ -101,17 +101,24 @@ export function previewConfiguredSource(name: string, page: { text: string; url:
   return { source, articles };
 }
 export function aiPageExcerpt(page: { text: string; url: string }): string {
-  const document = htmlDocument(page.text);
+  // AI sanitization intentionally starts from the raw DOM rather than htmlDocument().
+  // htmlDocument() unwraps forms for publisher compatibility, which is correct for
+  // article extraction but would preserve form text that must never be sent to AI.
+  const document = new DOMParser().parseFromString(page.text, 'text/html');
 
-  // Never expose executable code, form contents, or hidden input values to the AI helper.
   document
-    .querySelectorAll('script, style, noscript, template, form, input, textarea, select, option, button')
+    .querySelectorAll(
+      'script, style, noscript, template, form, iframe, object, embed, input, textarea, select, option, button, [hidden], [aria-hidden="true"]'
+    )
     .forEach(node => node.remove());
 
   document.querySelectorAll('*').forEach(node => {
     for (const attribute of [...node.attributes]) {
-      if (!['class', 'id', 'href', 'datetime'].includes(attribute.name)) node.removeAttribute(attribute.name);
+      if (!['class', 'id', 'href', 'datetime'].includes(attribute.name)) {
+        node.removeAttribute(attribute.name);
+      }
     }
+
     if (node.hasAttribute('href')) {
       const url = samePublisher(node.getAttribute('href') || '', page.url);
       if (url) {
