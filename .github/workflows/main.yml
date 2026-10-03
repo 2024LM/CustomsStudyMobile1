@@ -37,6 +37,9 @@ jobs:
       - name: Verify Arabic news preference and translation cache
         run: node tests/news-regressions.mjs
 
+      - name: Verify news browsing and source preferences
+        run: node tests/news-browsing-regressions.mjs
+
       - name: Refresh bundled Moroccan news
         run: node scripts/fetch-news.mjs
         continue-on-error: true

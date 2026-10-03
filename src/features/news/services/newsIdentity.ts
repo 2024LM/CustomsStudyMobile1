@@ -39,10 +39,6 @@ export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[
     const value=Date.parse(article.publishedAt||'');
     return Number.isFinite(value)?value:0;
   };
-  const counts=new Map<string,number>();
-  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a)).filter(article=>{
-    const count=counts.get(article.sourceId)||0;
-    counts.set(article.sourceId,count+1);
-    return count<NEWS_LIMIT_PER_SOURCE;
-  });
+  // Browsing history is independent from the ten-ID notification watermark.
+  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a));
 }

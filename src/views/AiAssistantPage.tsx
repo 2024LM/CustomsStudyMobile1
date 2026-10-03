@@ -52,6 +52,8 @@ import { AiSourcePicker } from '../components/AiSourcePicker';
 import { SpeakButton } from '../components/SpeakButton';
 
 interface AiAssistantPageProps {
+  initialMessage?:string;
+  onConsumeInitial?:()=>void;
   onOpenSettings: () => void;
 }
 
@@ -227,7 +229,7 @@ async function copyToClipboard(text: string): Promise<void> {
   area.remove();
 }
 
-export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings }) => {
+export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings,initialMessage,onConsumeInitial }) => {
   const [workspace, setWorkspace] = useState<AiWorkspaceState>(() => loadAiWorkspace());
   const [sessions, setSessions] = useState<AiSessionSummary[]>(() => aiSessionSummaries());
   const [activeSessionId, setActiveSessionId] = useState(() => activeAiSessionId());
@@ -275,6 +277,8 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setSessions(aiSessionSummaries());
     setActiveSessionId(activeAiSessionId());
   }, [workspace.messages.length, workspace.task.updatedAt, busy]);
+
+  useEffect(()=>{if(initialMessage){setMessage(initialMessage.slice(0,3000));onConsumeInitial?.();}},[initialMessage]);
 
   const analytics = db.dashboardAnalytics(null);
   const banks = db.banks();

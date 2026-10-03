@@ -6,7 +6,7 @@ import { cachedNewsTranslation, NewsTranslation, translateNews } from '../servic
 
 import { newsSummary } from '../services/newsPresentation';
 
-export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boolean; translationLabel?: string }> = ({ article, featured = false, translationLabel = 'ترجمة للعربية' }) => {
+export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boolean; translationLabel?: string;onOpen?:()=>void }> = ({ article, featured = false, translationLabel = 'ترجمة للعربية',onOpen }) => {
   const summary = newsSummary(article.summary);
   const key = JSON.stringify([article.title, summary]);
   const activeKey = useRef(key);
@@ -17,7 +17,8 @@ export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boo
   const [error, setError] = useState('');
   useEffect(() => {
     activeKey.current = key;
-    setResult(undefined); setTranslated(false); setBusy(false); setError('');
+    const saved=cachedNewsTranslation(article.title,summary);
+    setResult(saved); setTranslated(!!saved); setBusy(false); setError('');
     return () => { activeKey.current = ''; };
   }, [key]);
   const translate = async () => {
@@ -40,7 +41,7 @@ export const NewsArticleContent: React.FC<{ article: NewsArticle; featured?: boo
   const text = translated && result ? result : { title: article.title, summary };
   const Heading = featured ? 'h2' : 'h3';
   return <>
-    <Heading dir="auto" className={featured ? 'text-[19px] leading-8 font-black text-[#2C2145]' : 'font-black text-[14px] leading-6 text-[#2C2145]'}>{text.title}</Heading>
+    <Heading dir="auto" className={featured ? 'text-[19px] leading-8 font-black text-[#2C2145]' : 'font-black text-[14px] leading-6 text-[#2C2145]'}>{onOpen?<button className="text-start" onClick={onOpen}>{text.title}</button>:text.title}</Heading>
     {!!text.summary && <p dir="auto" className={'text-xs text-gray-500 mt-2 leading-6'}>{text.summary}</p>}
     {needsArabicTranslation(article.title, summary) && <div className="mt-3">
       <button type="button" disabled={busy} onClick={() => void translate()} aria-label={translated ? 'عرض النص الأصلي' : 'ترجمة الخبر إلى العربية'}

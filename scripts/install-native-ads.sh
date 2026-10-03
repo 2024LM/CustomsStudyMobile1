@@ -3,6 +3,8 @@ set -euo pipefail
 JAVA_DIR="android/app/src/main/java/com/nexus/customsstudy"
 mkdir -p "$JAVA_DIR"
 cp native-android/NexusAdsPlugin.java "$JAVA_DIR/NexusAdsPlugin.java"
+cp native-android/NexusNewsUpdatesPlugin.java "$JAVA_DIR/NexusNewsUpdatesPlugin.java"
+cp native-android/NewsUpdatesJobService.java "$JAVA_DIR/NewsUpdatesJobService.java"
 cp native-android/MainActivity.java "$JAVA_DIR/MainActivity.java"
 cp native-android/NexusStoragePlugin.java "$JAVA_DIR/NexusStoragePlugin.java"
 cp native-android/NexusStudyAlarmPlugin.java "$JAVA_DIR/NexusStudyAlarmPlugin.java"
@@ -35,6 +37,8 @@ p=Path("android/app/build.gradle")
 s=p.read_text()
 needle="dependencies {"
 deps = []
+if "org.jsoup:jsoup" not in s:
+    deps.append("    implementation 'org.jsoup:jsoup:1.18.3'\n")
 if "com.google.mlkit:translate" not in s:
     deps.append("    implementation 'com.google.mlkit:translate:17.0.3'\n")
 if "com.google.mlkit:language-id" not in s:
@@ -56,6 +60,7 @@ p=Path("android/app/src/main/AndroidManifest.xml")
 s=p.read_text()
 
 permissions = [
+    '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />',
     '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
     '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
     '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
@@ -86,5 +91,8 @@ if receiver not in s:
 elif tts_service not in s:
     s=s.replace("</application>", tts_service + "\n    </application>", 1)
 
+news_service = '<service android:name=".NewsUpdatesJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />'
+if news_service not in s:
+    s=s.replace("</application>",news_service+"\n</application>",1)
 p.write_text(s)
 PY

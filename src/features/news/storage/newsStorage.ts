@@ -1,10 +1,10 @@
 import { NewsArticle, NewsSource } from '../types';
 import { internalNewsId, retainLatestNews } from '../services/newsIdentity';
 
-import { newsSummary } from '../services/newsPresentation';
 
 const SOURCES_KEY='raje3_news_sources_v1';
 const CACHE_KEY='raje3_news_cache_v1';
+const PREFS_KEY='raje3_news_preferences_v1';
 const TRACK_KEY='raje3_news_tracker_v1';
 type SourceTracker={seenIds:string[];pendingIds:string[];latestPublished:number};
 function parse<T>(value:string|null,fallback:T):T{
@@ -19,28 +19,18 @@ function tracker():Record<string,SourceTracker>{
   const value=parse<unknown>(localStorage.getItem(TRACK_KEY),{});
   return value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,SourceTracker>:{};
 }
-function pruneTranslations(kept:NewsArticle[]){
-  const key='raje3_news_translations_v1';
-  const raw=localStorage.getItem(key);
-  if(!raw)return;
-  const value=parse<unknown>(raw,[]);
-  if(!Array.isArray(value))return;
-  const allowed=new Set(kept.map(article=>JSON.stringify([article.title,newsSummary(article.summary)])));
-  const encoded=JSON.stringify(value.filter(entry=>typeof entry?.key==='string'&&allowed.has(entry.key)));
-  if(encoded!==raw)localStorage.setItem(key,encoded);
-}
 function migrate():NewsArticle[]{
   const old=rawArticles();
   const kept=retainLatestNews(old,old);
   const encoded=JSON.stringify(kept);
   if(encoded!==JSON.stringify(old))localStorage.setItem(CACHE_KEY,encoded);
-  pruneTranslations(kept);
+  // Preserve translations when an article leaves the browsing snapshot.
   return kept;
 }
-function sourceTransaction(write: () => void) {
-  const keys = [SOURCES_KEY, CACHE_KEY, TRACK_KEY, 'raje3_news_translations_v1'];
+function sourceTransaction<T>(write: () => T):T {
+  const keys = [SOURCES_KEY, CACHE_KEY, TRACK_KEY, PREFS_KEY, 'raje3_news_translations_v1'];
   const previous = keys.map(key => localStorage.getItem(key));
-  try { write(); } catch {
+  try { return write(); } catch {
     let recovered = true;
     keys.forEach((key, index) => {
       try {
@@ -60,15 +50,28 @@ export const newsStorage={
     newsStorage.saveCustomSources(newsStorage.customSources().filter(source=>source.id!==id));
     newsStorage.saveArticles(newsStorage.articles().filter(article=>article.sourceId!==id),false);
   }),
+  preferences:():Record<string,{enabled?:boolean;notificationsEnabled?:boolean}>=>{
+    const raw=parse<unknown>(localStorage.getItem(PREFS_KEY),{});
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
+    return Object.fromEntries(Object.entries(raw).filter(([,value])=>value&&typeof value==='object'&&!Array.isArray(value)).map(([id,value])=>{
+      const flags=value as Record<string,unknown>;
+      return [id,{...(typeof flags.enabled==='boolean'?{enabled:flags.enabled}:{}),...(typeof flags.notificationsEnabled==='boolean'?{notificationsEnabled:flags.notificationsEnabled}:{})}];
+    }));
+  },
+  savePreferences:(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean})=>sourceTransaction(()=>{
+    const state=newsStorage.preferences();
+    localStorage.setItem(PREFS_KEY,JSON.stringify({...state,[id]:{...state[id],...value}}));
+    newsStorage.markNewsNotified(newsStorage.articles().filter(item=>item.sourceId===id).map(item=>item.internalId!));
+  }),
   customSources:():NewsSource[]=>parse(localStorage.getItem(SOURCES_KEY),[]),
   saveCustomSources:(sources:NewsSource[])=>localStorage.setItem(SOURCES_KEY,JSON.stringify(sources)),
   articles:():NewsArticle[]=>migrate(),
-  saveArticles:(articles:NewsArticle[],trackChanges=true)=>{
+  saveArticles:(articles:NewsArticle[],trackChanges=true):NewsArticle[]=>sourceTransaction(()=>{
     const previous=migrate();
     const kept=retainLatestNews(articles,previous);
     const state=tracker();
     for(const sourceId of new Set(kept.map(article=>article.sourceId))){
-      const batch=kept.filter(article=>article.sourceId===sourceId);
+      const batch=kept.filter(article=>article.sourceId===sourceId).slice(0,10);
       const old=state[sourceId];
       const previousIds=new Set(previous.filter(article=>article.sourceId===sourceId).map(article=>article.internalId||internalNewsId(article)));
       const seen=new Set(old?.seenIds||[...previousIds]);
@@ -89,9 +92,9 @@ export const newsStorage={
     for(const sourceId of Object.keys(state))if(!kept.some(article=>article.sourceId===sourceId))delete state[sourceId];
     localStorage.setItem(CACHE_KEY,JSON.stringify(kept));
     localStorage.setItem(TRACK_KEY,JSON.stringify(state));
-    pruneTranslations(kept);
+    // Saved translations remain independent from the browsing snapshot.
     return kept;
-  },
+  }),
   pendingNewArticles:():NewsArticle[]=>{
     const state=tracker(),pending=new Set(Object.values(state).flatMap(source=>source.pendingIds||[]));
     return migrate().filter(article=>pending.has(article.internalId!));

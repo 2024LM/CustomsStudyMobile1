@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Loader2,
   Newspaper,
@@ -17,11 +17,11 @@ import { previewSource, previewConfiguredSource, aiPageExcerpt, UnsupportedNewsS
 import { proposeNewsExtraction } from '../services/geminiAi';
 import { sourceTheme } from '../features/news/config/sourceTheme';
 
-export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: () => void }> = ({initialArticleId,onClearInitial}) => {
+export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:string; onClearInitial?: () => void; onUseAi?: (text:string)=>void }> = ({initialArticleId,initialSourceId,onClearInitial,onUseAi}) => {
   const [opened,setOpened] = useState<NewsArticle | undefined>(()=>initialArticleId?newsService.cachedArticles().find(item=>item.internalId===initialArticleId||item.id===initialArticleId):undefined);
   const [version, setVersion] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
-  const [selectedSource, setSelectedSource] = useState('ALL');
+  const [selectedSource, setSelectedSource] = useState(initialSourceId||'ALL');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -33,14 +33,14 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
   const [sourceLoading, setSourceLoading] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState('');
 
-  const sources = useMemo(() => newsService.sources().filter((source) => source.enabled), [version]);
+  const sources = useMemo(() => newsService.sources(), [version]);
   const articles = useMemo(() => newsService.cachedArticles(), [version]);
   const filteredArticles = useMemo(() => {
     const selected = selectedSource === 'ALL'
-      ? articles
+      ? articles.filter(article=>sources.some(source=>source.id===article.sourceId&&source.enabled))
       : articles.filter((article) => article.sourceId === selectedSource);
     return latestNews(selected);
-  }, [articles, selectedSource]);
+  }, [articles, selectedSource, sources]);
 
   const articleCountBySource = useMemo(() => {
     const counts = new Map<string, number>();
@@ -52,13 +52,13 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
     setLoading(true);
     setFetchError('');
     try {
-      const results = await newsService.refresh();
+      const results = await newsService.refresh(selectedSource==='ALL'?undefined:selectedSource);
       const hasArticles = newsService.cachedArticles().length > 0;
       if (!hasArticles && results.length && results.every((result) => result.error)) {
         setFetchError('تعذر تحديث الأخبار الآن. حاول مجددًا بعد قليل.');
       }
       setVersion((value) => value + 1);
-    } finally {
+    } catch(error) {setFetchError(error instanceof Error?error.message:'تعذر حفظ تحديث الأخبار.');} finally {
       setLoading(false);
     }
   };
@@ -79,19 +79,21 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
     setFetchError('');
     const startedAt = Date.now();
     try {
-      const results = await newsService.refresh();
+      const results = await newsService.refresh(sourceId==='ALL'?undefined:sourceId);
       const sourceError = results.find(result => result.sourceId === sourceId)?.error;
       if (sourceError) setFetchError(sourceError);
       else if (sources.some(source => source.id === sourceId && !source.builtIn && source.kind === 'web' && !source.extraction)) {
         setFetchError('هذا المصدر أُضيف بالطريقة القديمة دون فحص. احذفه وأعد إضافته لاختبار قالب الأخبار.');
       }
       setVersion((value) => value + 1);
-    } finally {
+    } catch(error) {setFetchError(error instanceof Error?error.message:'تعذر حفظ تحديث الأخبار.');} finally {
       const elapsed = Date.now() - startedAt;
       if (elapsed < 650) await new Promise((resolve) => setTimeout(resolve, 650 - elapsed));
       setSourceLoading(null);
     }
   };
+
+  useEffect(()=>{if(initialSourceId)void selectSource(initialSourceId);},[initialSourceId]);
 
   const resetCheck = () => { setPreview(null); setUnsupportedPage(null); setAiConsent(false); setError(''); };
   const check = async (withAi = false) => {
@@ -124,10 +126,34 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
     if(article)setOpened(article);
   },[initialArticleId,version]);
 
+  const [olderBusy,setOlderBusy]=useState(false);
+  const [exhausted,setExhausted]=useState<string[]>([]);
+  const olderLock=useRef(false);
+  const sentinel=useRef<HTMLDivElement>(null);
+  useEffect(()=>newsService.subscribe(()=>setVersion(value=>value+1)),[]);
+  const loadOlder=async()=>{
+    if(olderLock.current||loading||sourceLoading)return;
+    olderLock.current=true;setOlderBusy(true);setFetchError('');
+    const targets=sources.filter(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id));
+    try{
+      for(const source of targets){
+        try{const more=await newsService.loadOlder(source.id);if(!more)setExhausted(value=>[...new Set([...value,source.id])]);}
+        catch(error){setFetchError(error instanceof Error?error.message:'تعذر جلب الصفحة التالية.');}
+      }
+      setVersion(value=>value+1);
+    }finally{olderLock.current=false;setOlderBusy(false);}
+  };
+  useEffect(()=>{
+    const node=sentinel.current;
+    if(!node||opened||olderBusy||fetchError)return;
+    const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))void loadOlder();},{rootMargin:'200px'});
+    observer.observe(node);return()=>observer.disconnect();
+  },[selectedSource,version,opened,olderBusy,fetchError,exhausted]);
+
   const featured = filteredArticles[0];
   const rest = filteredArticles.slice(1);
 
-  if(opened)return <NewsArticleDetail article={opened} sourceName={sources.find(source=>source.id===opened.sourceId)?.name} onBack={()=>{setOpened(undefined);onClearInitial?.();}} />;
+  if(opened)return <NewsArticleDetail onUseAi={onUseAi} onSelectSource={id=>{setOpened(undefined);onClearInitial?.();void selectSource(id);}} article={opened} sourceName={sources.find(source=>source.id===opened.sourceId)?.name} onBack={()=>{setOpened(undefined);onClearInitial?.();}} />;
 
   return (
     <div className="flex flex-col gap-4 pb-8 text-right">
@@ -150,7 +176,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
             onClick={() => void selectSource('ALL')}
             className={`px-4 py-2.5 rounded-md border text-xs font-black transition-all ${selectedSource === 'ALL' ? 'bg-[#2C2145] text-white border-[#2C2145] shadow-sm' : 'bg-white text-[#544B63] border-gray-100'}`}
           >
-            الكل <span className="opacity-60 mr-1">{articles.length}</span>
+            الكل <span className="opacity-60 mr-1">{articles.filter(article=>sources.some(source=>source.id===article.sourceId&&source.enabled)).length}</span>
           </button>
           {sources.map((source) => {
             const theme = sourceTheme(source.id);
@@ -199,7 +225,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
           </div>
         </div>
       ) : featured ? (
-        <NewsArticleCard onOpen={setOpened} article={featured} featured sourceName={sources.find(source => source.id === featured.sourceId)?.name} />
+        <NewsArticleCard onSelectSource={id=>void selectSource(id)} onOpen={setOpened} article={featured} featured sourceName={sources.find(source => source.id === featured.sourceId)?.name} />
       ) : (
         <div className="bg-white border border-gray-100 rounded-lg p-7 text-center shadow-xs">
           <div className="w-14 h-14 rounded-md bg-[#F3F0FF] text-[#5B3FD6] flex items-center justify-center mx-auto mb-3"><Newspaper className="w-7 h-7" /></div>
@@ -210,10 +236,13 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
 
       {!!rest.length && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rest.map(article => <NewsArticleCard onOpen={setOpened} key={article.internalId || article.id} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />)}
+          {rest.map(article => <NewsArticleCard onSelectSource={id=>void selectSource(id)} onOpen={setOpened} key={article.internalId || article.id} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />)}
         </div>
       )}
 
+      <div ref={sentinel} className="text-center py-3">
+        {olderBusy?<p role="status">جارٍ جلب أخبار أقدم…</p>:sources.some(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id))?<button onClick={()=>void loadOlder()} className="min-h-11 px-4 font-bold text-[#5B3FD6]">تحميل أخبار أقدم</button>:<p className="text-xs text-gray-500">لا توجد صفحة أقدم متاحة من هذه المصادر.</p>}
+      </div>
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-4">
           <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto bg-white rounded-lg p-5 text-right shadow-2xl">
