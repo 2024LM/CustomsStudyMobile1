@@ -19,3 +19,4 @@ dist/
 *.keystore
 google-services.json
 service-account*.json
+public/news-pages/

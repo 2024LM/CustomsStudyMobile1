@@ -18,11 +18,13 @@ const before=new Map(persisted);fail=true;assert.throws(()=>storage.saveArticles
 assert.deepEqual(persisted,before,'A tracker write failure restores the complete browsing snapshot');
 let fetched=[],cursorCalls=[],release;
 const service=load('src/features/news/services/newsService.ts',{
+ '@capacitor/core':{Capacitor:{isNativePlatform:()=>false}},
  './newsBundle':load('src/features/news/services/newsBundle.ts',{}),
  './newsLanguage':{preferArabicArticles:items=>items},
  '../config/defaultSources':{DEFAULT_NEWS_SOURCES:[source,{...source,id:'two'}]},
  '../storage/newsStorage':{newsStorage:storage},
- '../providers/customProvider':{fetchNewsPage:async(s,cursor)=>{fetched.push(s.id);cursorCalls.push(cursor);if(release)await new Promise(resolve=>{release=resolve;});return {articles:[article(cursor?'older':'fresh')],next:cursor?undefined:'https://publisher.ma/page/2'};}},
+ '../providers/customProvider':{fetchNewsPage:async(s,cursor)=>{fetched.push(s.id);cursorCalls.push(cursor);if(release)await new Promise(resolve=>{release=resolve;});return {articles:[article(cursor?'older':'fresh')],next:cursor?undefined:{url:'https://publisher.ma/page/2'}};}},
+ '../providers/newsPageArchive':{bundledNewsPage:async()=>undefined,cursorIdentity:cursor=>JSON.stringify([cursor.url,cursor.offset||0])},
  '../providers/sourceAccess':{publicNewsUrl:value=>new URL(value)},
 },{fetch:async()=>({ok:true,json:async()=>({articles:[]})}),crypto:{randomUUID:()=> 'fixed'}}).newsService;
 service.setSourcePreferences('one',{enabled:false});await service.refresh();assert.deepEqual(fetched,['two'],'Disabled source is not polled');
@@ -35,6 +37,10 @@ assert.equal(service.sources().find(s=>s.id==='one').autoTranslate,undefined,'En
 service.setSourcePreferences('two',{autoTranslate:false});
 assert.equal(service.sources().find(s=>s.id==='two').autoTranslate,false);
 service.removeSource('one');assert.equal(service.sources().length,2,'Built-in source cannot be deleted');
-cursorCalls=[];assert.equal(await service.loadOlder('one'),true);assert.equal(await service.loadOlder('one'),false);assert.equal(await service.loadOlder('one'),false);assert.deepEqual(cursorCalls,[undefined,'https://publisher.ma/page/2'],'Pagination follows the announced next page once and stops');
+cursorCalls=[];assert.equal((await service.loadOlder('one')).hasMore,true);assert.equal((await service.loadOlder('one')).hasMore,false);assert.equal((await service.loadOlder('one')).hasMore,false);assert.equal(JSON.stringify(cursorCalls),JSON.stringify([undefined,{url:'https://publisher.ma/page/2'}]),'Pagination follows the announced next page once and stops');
+service.resetOlderPages('one');cursorCalls=[];fail=true;
+await assert.rejects(()=>service.loadOlder('one'));
+assert.equal((await service.loadOlder('one')).hasMore,true);
+assert.equal(JSON.stringify(cursorCalls),JSON.stringify([undefined,undefined]),'A storage failure retries the same page rather than skipping its articles');
 const oldCount=storage.pendingNewArticles().length;storage.saveArticles([...storage.articles(),article('archive','2020-01-01')],false);assert.equal(storage.pendingNewArticles().length,oldCount,'Browsing older pages does not queue notifications');
 console.log('News preferences, transactional recovery, manual fetching and pagination checks passed');
