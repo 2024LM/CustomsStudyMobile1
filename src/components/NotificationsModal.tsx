@@ -20,8 +20,6 @@ interface NotificationsModalProps {
   onRefresh?: () => void;
 }
 
-const CURRENT_VERSION_CODE = 1;
-
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   remote,
   onClose,
