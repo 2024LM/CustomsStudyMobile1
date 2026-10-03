@@ -37,7 +37,29 @@ function migrate():NewsArticle[]{
   pruneTranslations(kept);
   return kept;
 }
+function sourceTransaction(write: () => void) {
+  const keys = [SOURCES_KEY, CACHE_KEY, TRACK_KEY, 'raje3_news_translations_v1'];
+  const previous = keys.map(key => localStorage.getItem(key));
+  try { write(); } catch {
+    let recovered = true;
+    keys.forEach((key, index) => {
+      try {
+        if (previous[index] === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, previous[index]!);
+      } catch { recovered = false; }
+    });
+    throw new Error(recovered ? 'تعذر الحفظ على الجهاز. لم تُعتمد الإضافة.' : 'تعذر الحفظ واستعادة بعض بيانات الأخبار؛ تحقق من مساحة الجهاز قبل إعادة المحاولة.');
+  }
+}
 export const newsStorage={
+  addValidatedSource:(source:NewsSource,articles:NewsArticle[])=>sourceTransaction(()=>{
+    newsStorage.saveCustomSources([...newsStorage.customSources(),source]);
+    newsStorage.saveArticles([...newsStorage.articles(),...articles],false);
+  }),
+  removeCustomSource:(id:string)=>sourceTransaction(()=>{
+    newsStorage.saveCustomSources(newsStorage.customSources().filter(source=>source.id!==id));
+    newsStorage.saveArticles(newsStorage.articles().filter(article=>article.sourceId!==id),false);
+  }),
   customSources:():NewsSource[]=>parse(localStorage.getItem(SOURCES_KEY),[]),
   saveCustomSources:(sources:NewsSource[])=>localStorage.setItem(SOURCES_KEY,JSON.stringify(sources)),
   articles:():NewsArticle[]=>migrate(),

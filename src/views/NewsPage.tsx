@@ -13,6 +13,8 @@ import { NewsArticleCard } from '../features/news/components/NewsArticleCard';
 import { latestNews } from '../features/news/services/newsPresentation';
 import { newsService } from '../features/news/services/newsService';
 
+import { previewSource, previewConfiguredSource, aiPageExcerpt, UnsupportedNewsSource, SourcePreview } from '../features/news/providers/customProvider';
+import { proposeNewsExtraction } from '../services/geminiAi';
 import { sourceTheme } from '../features/news/config/sourceTheme';
 
 export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: () => void }> = ({initialArticleId,onClearInitial}) => {
@@ -23,6 +25,10 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [preview, setPreview] = useState<SourcePreview | null>(null);
+  const [unsupportedPage, setUnsupportedPage] = useState<{ text: string; url: string } | null>(null);
+  const [aiConsent, setAiConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sourceLoading, setSourceLoading] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState('');
@@ -73,7 +79,12 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
     setFetchError('');
     const startedAt = Date.now();
     try {
-      await newsService.refresh();
+      const results = await newsService.refresh();
+      const sourceError = results.find(result => result.sourceId === sourceId)?.error;
+      if (sourceError) setFetchError(sourceError);
+      else if (sources.some(source => source.id === sourceId && !source.builtIn && source.kind === 'web' && !source.extraction)) {
+        setFetchError('هذا المصدر أُضيف بالطريقة القديمة دون فحص. احذفه وأعد إضافته لاختبار قالب الأخبار.');
+      }
       setVersion((value) => value + 1);
     } finally {
       const elapsed = Date.now() - startedAt;
@@ -82,17 +93,28 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
     }
   };
 
-  const add = () => {
+  const resetCheck = () => { setPreview(null); setUnsupportedPage(null); setAiConsent(false); setError(''); };
+  const check = async (withAi = false) => {
+    setChecking(true); setError(''); setPreview(null);
+    if (!withAi) { setUnsupportedPage(null); setAiConsent(false); }
     try {
-      const source = newsService.addSource({ name, url });
-      setName('');
-      setUrl('');
-      setError('');
-      setShowAdd(false);
-      setSelectedSource(source.id);
-      setVersion((value) => value + 1);
-    } catch {
-      setError('أدخل رابطًا صحيحًا يبدأ بـ https:// أو http://');
+      const result = withAi && unsupportedPage && aiConsent
+        ? previewConfiguredSource(name, unsupportedPage, await proposeNewsExtraction(aiPageExcerpt(unsupportedPage)))
+        : await previewSource(name, url);
+      setPreview(result); setUnsupportedPage(null); setAiConsent(false);
+    } catch (error) {
+      if (error instanceof UnsupportedNewsSource) setUnsupportedPage(error.page);
+      setError(error instanceof Error ? error.message : 'تعذر فحص المصدر. لم يُضف الموقع.');
+    } finally { setChecking(false); }
+  };
+  const add = () => {
+    if (!preview || checking) return;
+    try {
+      const source = newsService.addSource(preview);
+      setName(''); setUrl(''); resetCheck(); setShowAdd(false);
+      setSelectedSource(source.id); setVersion(value => value + 1);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'تعذر حفظ المصدر على الجهاز.');
     }
   };
 
@@ -118,7 +140,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
           <button onClick={() => void refresh()} disabled={loading} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="تحديث الأخبار">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
           </button>
-          <button onClick={() => setShowAdd(true)} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="إضافة مصدر"><Plus className="w-5 h-5" /></button>
+          <button onClick={() => { resetCheck(); setShowAdd(true); }} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="إضافة مصدر"><Plus className="w-5 h-5" /></button>
         </div>
       </header>
 
@@ -194,18 +216,43 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
 
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-lg p-5 text-right shadow-2xl">
+          <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto bg-white rounded-lg p-5 text-right shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="font-black text-[#2C2145]">إضافة مصدر</h2>
-                <p className="text-xs text-gray-400 mt-1">أضف موقعًا تريد متابعته داخل قسم الأخبار.</p>
+                <p className="text-xs text-gray-400 mt-1">نفحص قالب الأخبار أولًا، ثم تعرض المعاينة قبل الحفظ.</p>
               </div>
-              <button onClick={() => setShowAdd(false)} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center"><X className="w-4 h-4" /></button>
+              <button disabled={checking} aria-label="إغلاق إضافة المصدر" onClick={() => setShowAdd(false)} className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="اسم المصدر" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 mb-3 outline-none text-sm" />
-            <input value={url} onChange={(event) => setUrl(event.target.value)} dir="ltr" placeholder="https://example.ma" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 outline-none text-left text-sm" />
-            {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-            <button onClick={add} className="w-full mt-4 bg-[#5B3FD6] text-white rounded-md py-3.5 font-black">إضافة المصدر</button>
+            <input aria-label="اسم المصدر" disabled={checking} maxLength={100} value={name} onChange={(event) => { setName(event.target.value); resetCheck(); }} placeholder="اسم المصدر" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 mb-3 outline-none text-sm" />
+            <input aria-label="رابط قسم الأخبار أو RSS" disabled={checking} maxLength={2000} value={url} onChange={(event) => { setUrl(event.target.value); resetCheck(); }} dir="ltr" placeholder="https://example.ma" className="w-full bg-[#F8F9FD] border border-gray-100 rounded-md px-4 py-3 outline-none text-left text-sm" />
+            {error && <p role="alert" className="text-xs text-red-500 mt-2">{error}</p>}
+            <button disabled={checking || !url.trim()} onClick={() => void check()} className="w-full mt-4 bg-[#5B3FD6] text-white rounded-md py-3.5 font-black disabled:opacity-50">{checking ? 'جارٍ فحص المصدر…' : 'فحص ومعاينة الأخبار'}</button>
+            <p className="text-xs text-gray-400 mt-2">أدخل رابط قسم الأخبار أو RSS مباشرًا. بعض المواقع تمنع الجلب من نسخة الويب.</p>
+            {unsupportedPage && !preview && (
+              <div className="mt-4 border border-gray-100 rounded-md p-3">
+                <label className="flex gap-2 items-start text-xs text-gray-500">
+                  <input type="checkbox" checked={aiConsent} disabled={checking} onChange={event => setAiConsent(event.target.checked)} />
+                  <span>أوافق على إرسال مقتطف من الصفحة إلى Gemini بمفتاحي المتحقق لاقتراح إعدادات استخراج. لن يُحفظ المصدر إلا بعد نجاح الاختبار ومعاينتي.</span>
+                </label>
+                <button disabled={!aiConsent || checking} onClick={() => void check(true)} className="w-full mt-3 border border-gray-100 rounded-md py-3 text-sm font-bold disabled:opacity-50">محاولة إعداد المصدر بالذكاء الاصطناعي</button>
+              </div>
+            )}
+            {preview && (
+              <section aria-label="معاينة أخبار المصدر" className="mt-4 border border-gray-100 rounded-md p-3">
+                <h3 className="font-bold text-sm text-[#2C2145]">معاينة {preview.source.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">استخرجنا {preview.articles.length} خبرًا عبر {preview.source.kind === 'rss' ? 'RSS' : 'قالب HTML'}. تأكد أن العناوين أخبار فعلية قبل الاعتماد؛ النص الأصلي يُعرض دون تنفيذ HTML.</p>
+                <ul className="mt-3 space-y-3">
+                  {preview.articles.slice(0, 3).map(article => (
+                    <li key={article.url} className="text-xs border-t border-gray-100 pt-2">
+                      <a href={article.url} target="_blank" rel="noopener noreferrer" className="font-bold text-[#5B3FD6]">{article.title}</a>
+                      <p className="text-gray-500 mt-1">{article.publishedAt || 'تاريخ النشر غير متاح'}</p>
+                    </li>
+                  ))}
+                </ul>
+                <button disabled={checking} onClick={add} className="w-full mt-4 bg-[#5B3FD6] text-white rounded-md py-3 font-black">اعتماد وإضافة المصدر</button>
+              </section>
+            )}
 
             {sources.some((source) => !source.builtIn) && (
               <div className="mt-5 border-t border-gray-100 pt-3">
@@ -215,9 +262,11 @@ export const NewsPage: React.FC<{ initialArticleId?: string; onClearInitial?: ()
                     <span className="font-bold text-[#2C2145]">{source.name}</span>
                     <button
                       onClick={() => {
-                        newsService.removeSource(source.id);
-                        if (selectedSource === source.id) setSelectedSource('ALL');
-                        setVersion((value) => value + 1);
+                        try {
+                          newsService.removeSource(source.id);
+                          if (selectedSource === source.id) setSelectedSource('ALL');
+                          setVersion((value) => value + 1);
+                        } catch (error) { setError(error instanceof Error ? error.message : 'تعذر حذف المصدر.'); }
                       }}
                       className="w-8 h-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center"
                       aria-label={`حذف ${source.name}`}

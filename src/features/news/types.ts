@@ -5,6 +5,7 @@ export interface NewsSource {
   name: string;
   url: string;
   feedUrl?: string;
+  extraction?: NewsExtraction;
   kind: NewsSourceKind;
   builtIn: boolean;
   enabled: boolean;
@@ -31,4 +32,12 @@ export interface NewsFetchResult {
   sourceId: string;
   articles: NewsArticle[];
   error?: string;
+}
+
+export interface NewsExtraction {
+  item: string;
+  title: string;
+  link: string;
+  summary?: string;
+  date?: string;
 }
