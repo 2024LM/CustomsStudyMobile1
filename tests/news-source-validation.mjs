@@ -42,7 +42,9 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true});
 try {
 const page=await browser.newPage({viewport:{width:390,height:844}});
-await page.goto(`http://127.0.0.1:${server.address().port}`);
+page.on('pageerror',error=>console.error('Harness page error:',error.message));
+await page.goto(`http://127.0.0.1:${server.address().port}/`);
+await page.waitForFunction(()=>!!window.api,{},{timeout:5000});
 const results=await page.evaluate(async()=>{
  const {api}=window, verified=[];
  const check=(value,label)=>{if(!value)throw new Error(label);verified.push(label);};
