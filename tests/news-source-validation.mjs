@@ -37,7 +37,7 @@ const root=createRoot(document.getElementById('app')); window.__mount=()=>root.r
     `:`export const proposeNewsExtraction=async(excerpt)=>{window.__aiCalls.push(excerpt);return window.__settings;};
       export const translateNewsWithGemini=async()=>{throw new Error('Not used');};` }));
   }}] });
-const server=createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/app.js'?'application/javascript':'text/html');res.end(req.url==='/app.js'?fs.readFileSync(path.join(temp,'app.js')):'<html lang="ar" dir="rtl"><body><div id="app"></div><script src="/app.js"></script></body></html>');});
+const server=createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/app.js'?'application/javascript; charset=utf-8':'text/html; charset=utf-8');res.end(req.url==='/app.js'?fs.readFileSync(path.join(temp,'app.js')):'<html lang="ar" dir="rtl"><head><meta charset="utf-8"></head><body><div id="app"></div><script src="/app.js"></script></body></html>');});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true});
 try {
