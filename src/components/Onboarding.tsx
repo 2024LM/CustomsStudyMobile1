@@ -100,7 +100,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         <div className="flex items-center gap-3">
           {step > 0 && (
-            <button onClick={previous} className="w-12 h-12 rounded-[15px] border border-[#E6E2F0] bg-white flex items-center justify-center text-gray-600">
+            <button onClick={previous} aria-label="الخطوة السابقة" className="w-12 h-12 rounded-[15px] border border-[#E6E2F0] bg-white flex items-center justify-center text-gray-600">
               <ArrowRight className="w-5 h-5" />
             </button>
           )}

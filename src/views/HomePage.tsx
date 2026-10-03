@@ -104,6 +104,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <button
                   onClick={onOpenNotifications}
                   title="الإشعارات والتحديثات"
+                  aria-label={`الإشعارات والتحديثات${unreadNotificationsCount > 0 ? `، ${unreadNotificationsCount} غير مقروءة` : ''}`}
                   className="relative w-11 h-11 rounded-[14px] bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer shadow-xs"
                 >
                   <Bell className="w-5 h-5" />
@@ -138,8 +139,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       {onOpenNews && <HomeNewsPreview onOpenNews={onOpenNews} />}
 
       <div className="sm:col-span-2 bg-white rounded-[20px] p-3 border border-gray-100">
-        <label className="text-[12px] font-bold text-gray-500">إحصائيات</label>
+        <label htmlFor="home-stats-bank" className="text-[12px] font-bold text-gray-500">إحصائيات</label>
         <select
+          id="home-stats-bank"
           value={statsBankId}
           onChange={(e) => setStatsBankId(e.target.value)}
           className="w-full mt-2 rounded-[12px] bg-[#F8F9FD] border border-gray-100 p-3 text-sm font-semibold"

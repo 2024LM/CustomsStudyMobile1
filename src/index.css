@@ -87,6 +87,21 @@ html.dark .app-shell nav {
   border-color: #302a3c !important;
 }
 
+/* Preserve the purple hierarchy on dark surfaces without dimming white text
+   on solid purple buttons and gradient headers. */
+html.dark .app-shell .text-\[\#5B3FD6\],
+html.dark .app-shell .text-\[\#6B51E0\] {
+  color: #c4b5fd !important;
+}
+
+html.dark .app-shell .bg-\[\#FFE8E8\] {
+  background-color: #382126 !important;
+}
+
+html.dark .app-shell .text-red-800 {
+  color: #ffb4b4 !important;
+}
+
 /* Reference reader needs explicit dark colors because document prose uses
    fixed light-theme text/background utility classes. */
 html.dark .app-shell .reference-reader {
@@ -243,7 +258,7 @@ body::-webkit-scrollbar,
 /* Readable secondary copy and keyboard focus in both themes. */
 .app-shell .text-gray-400 { color: #6b7280; }
 html.dark .app-shell .text-gray-400 { color: #b9b2c8; }
-html.dark .app-shell .text-\\[\\#77717F\\] { color: #b9b2c8; }
+html.dark .app-shell .text-\[\#77717F\] { color: #b9b2c8; }
 .app-shell :focus-visible {
   outline: 3px solid #5b3fd6;
   outline-offset: 3px;

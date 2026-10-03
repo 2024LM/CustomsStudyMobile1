@@ -71,12 +71,14 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({ embedded = false }
           value={search}
           onChange={handleSearchChange}
           placeholder="البحث في الأسئلة والمحاور..."
+          aria-label="البحث في الأسئلة والمحاور"
           className="w-full bg-white rounded-[18px] py-3.5 pr-11 pl-10 border border-[#E6E2F0] focus:border-[#5B3FD6] focus:outline-hidden text-sm text-[#2C2145] placeholder-gray-400 transition-colors shadow-xs"
         />
         <Search className="w-5 h-5 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
         {search && (
           <button
             onClick={clearSearch}
+            aria-label="مسح البحث"
             className="absolute left-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full"
           >
             <X className="w-4 h-4" />
@@ -95,6 +97,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({ embedded = false }
         ].map(([value, label]) => (
           <button
             key={value}
+            aria-pressed={selectedType === value}
             onClick={() => {
               setSelectedType(value as 'ALL' | 'QCM' | 'TRUE_FALSE' | 'OPEN' | 'ORAL');
               setPage(0);
@@ -118,6 +121,7 @@ export const QuestionsPage: React.FC<QuestionsPageProps> = ({ embedded = false }
         {[['ALL', 'الكل'], ...topics.map((topic) => [topic, topic])].map(([value, label]) => (
           <button
             key={value}
+            aria-pressed={selectedTopic === value}
             onClick={() => { setSelectedTopic(value); setPage(0); }}
             className={`shrink-0 px-3.5 py-2 rounded-[12px] text-xs font-bold border transition-colors ${
               selectedTopic === value
