@@ -35,6 +35,19 @@ export function publicationDate(value) {
   return Number.isFinite(date.getTime())?{publishedAt:date.toISOString(),publishedTimeKnown:true}:{};
 }
 function attr(tag,name){return decode(tag.match(new RegExp('\\b'+name+'\\s*=\\s*["\\x27]([^"\\x27]*)["\\x27]','i'))?.[1]||'');}
+function articleBody(html) {
+  const opening = /<div\b[^>]*class=["'][^"']*\barticle__body\b[^"']*["'][^>]*>/i.exec(html);
+  if (!opening) return undefined;
+  const start = opening.index + opening[0].length;
+  const tags = /<\/?div\b[^>]*>/gi;
+  tags.lastIndex = start;
+  let depth = 1, match;
+  while ((match = tags.exec(html))) {
+    depth += /^<\//.test(match[0]) ? -1 : 1;
+    if (!depth) return html.slice(start, match.index);
+  }
+  return undefined;
+}
 export function newsDocument(html) {
   const result={};
   for(const tag of html.match(/<meta\b[^>]*>/gi)||[]){
@@ -64,7 +77,7 @@ export function newsDocument(html) {
       if(time)Object.assign(result,publicationDate(attr(time,'datetime')));
     }
     if(!result.content){
-      const body=plainNewsText(article);
+      const body=plainNewsText(articleBody(article) ?? article);
       if(body.length>=80)result.content=body;
     }
   }

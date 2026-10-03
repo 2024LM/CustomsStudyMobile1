@@ -67,7 +67,7 @@ globalThis.fetch=async raw=>{
   if(url.includes('emploi-public.ma/ar/قائمة-المباريات')) body='<a href="/ar/تفاصيل/المباريات/11111111-1111-1111-1111-111111111111">مباراة توظيف مهندسين وتقنيين</a>';
   else if(url.includes('emploi-public.ma/fr/concours-liste')) body='<a href="'+french.url.replace('publisher.ma','www.emploi-public.ma')+'">Concours de recrutement des ingénieurs</a><a href="'+onlyFrench.url.replace('publisher.ma','www.emploi-public.ma')+'">Concours de recrutement de techniciens</a>';
   else if(url.includes('emploi-public.ma'))body='';
-  else if(url.includes('men.gov.ma/مباريات'))body='<table><tr><td>مباراة توظيف أساتذة التعليم الابتدائي</td><td>01/10/2026</td></tr><tr><td>مباراة توظيف أساتذة التعليم الثانوي</td><td>02/10/2026</td></tr></table>';
+  else if(url.includes('men.gov.ma/مستجدات'))body='<nav><a href="/مباريات">مباراة توظيف من القائمة</a></nav><article><a href="/update-one/المستجدات"><h5>مستجد تربوي أول للتحقق من الاستخراج</h5><span datetime="2026-10-01T12:00:00+0100">1 أكتوبر</span></a></article><article><a href="/update-two/المستجدات"><h5>مستجد تربوي ثان للتحقق من الاستخراج</h5></a></article>';
   return {ok:true,text:async()=>body};
 };
 try {
@@ -76,7 +76,7 @@ try {
   assert.equal(emploi.length,2,'Prefer Arabic equivalent and retain French-only item');
   assert.ok(emploi.some(item=>item.title.includes('مهندسين')));
   assert.ok(emploi.some(item=>item.title.includes('techniciens')));
-  assert.equal((await fetchMen()).length,2,'Preserve different MEN entries with one listing URL');
+  assert.equal((await fetchMen()).length,2,'Extract MEN update cards, excluding navigation');
 } finally {globalThis.fetch=originalFetch;}
 console.log('News Arabic preference, fallback, exact-content translation cache and parser checks passed.');
 
@@ -163,3 +163,28 @@ assert.ok(Object.values(JSON.parse(persistent.get('raje3_news_tracker_v1'))).eve
 
 assert.notEqual(presentation.newsDate('2026-10-01T10:30:00Z',true),presentation.newsDate('2026-10-01',false),'Known hours are displayed while date-only publications do not acquire a fake time');
 console.log('News publication, identity, retention, detail extraction and future-notification baseline checks passed');
+
+const { extractMenUpdates, extractFinancesUpdates, extractEmploiAnnouncements } = await import('../scripts/news-official.mjs');
+const menCards = extractMenUpdates('<nav><a href="/مباريات">مباراة توظيف وهمية في التنقل</a></nav><article><a href="/school/المستجدات"><h5>افتتاح الموسم الدراسي الجديد بالمؤسسات التعليمية</h5><span datetime="2026-09-07T15:47:44+0100">7 شتنبر</span></a></article>', 'https://www.men.gov.ma/مستجدات');
+assert.equal(menCards.length,1);
+assert.equal(menCards[0].publishedAt,'2026-09-07T14:47:44.000Z');
+assert.equal(extractMenUpdates('<article><a href="https://unrelated.ma/story"><h5>خبر خارجي لا ينتمي إلى المصدر الرسمي</h5></a></article>','https://www.men.gov.ma/مستجدات').length,0);
+const financeCards = extractFinancesUpdates('<a href="/document.pdf">توظيف فائض الخزينة لمدة ستة أيام</a><div class="row"><div><h2><a href="مستجدة.aspx?fiche=7815">تمويل برنامج تطوير البنيات التحتية للمطارات</a></h2><p>29/09/2026</p><p>ملخص رسمي لبرنامج تمويل البنيات التحتية والمطارات المغربية.</p></div></div>', 'https://www.finances.gov.ma/ar/Pages/مستجدات.aspx');
+assert.equal(financeCards.length,1);
+assert.equal(financeCards[0].publishedAt,'2026-09-29');
+assert.ok(financeCards[0].summary.includes('ملخص رسمي'));
+assert.equal(extractEmploiAnnouncements('<a href="/ar/الجدول-الزمني/المباريات">الجدول الزمني للمباريات</a>', 'https://www.emploi-public.ma/ar/قائمة-المباريات').length,0);
+const bundles=loadModule('src/features/news/services/newsBundle.ts',{});
+const corrected={id:'new',sourceId:'men',title:'مستجد صحيح',url:'https://www.men.gov.ma/news'};
+const previous=[{...corrected,id:'wrong',title:'قائمة قديمة'}, {...corrected,id:'user',sourceId:'user-1'}];
+const bundle=bundles.parseNewsBundle({schemaVersion:2,refreshedSourceIds:['men','finances','user-1'],articles:[corrected,{...corrected,id:'bad',url:'javascript:alert(1)'}]});
+assert.equal(bundle.articles.length,1);
+assert.equal(bundles.mergeNewsBundle(bundle,previous).length,2,'Successful snapshots replace only their own old official news');
+assert.ok(bundles.mergeNewsBundle(bundle,previous).some(item=>item.id==='user'),'Custom-source cache survives');
+assert.equal(bundles.mergeNewsBundle(bundles.parseNewsBundle({schemaVersion:2,refreshedSourceIds:['men'],articles:[]}),previous).length,2,'Empty fetch preserves last successful cache');
+console.log('Official source sections, navigation exclusion, dates and snapshot recovery checks passed');
+
+const cleanMen=newsDocument('<article><div class="content article__body"><p>هذا متن خبر تربوي رسمي طويل بما يكفي لاختبار استخراج المحتوى من حاوية الخبر الصحيحة.</p><div><p>تفاصيل إضافية داخل حاوية متداخلة يجب الاحتفاظ بها.</p></div></div><h4>شارك هذا المقال</h4><p>المزيد من المستجدات وخبر آخر غير مرتبط</p></article>');
+assert.ok(cleanMen.content.includes('تفاصيل إضافية'));
+assert.equal(cleanMen.content.includes('شارك هذا المقال'),false);
+assert.equal(cleanMen.content.includes('خبر آخر'),false);

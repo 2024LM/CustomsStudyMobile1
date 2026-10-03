@@ -1,8 +1,9 @@
+import { mergeNewsBundle, parseNewsBundle, NewsBundle } from './newsBundle';
 import { preferArabicArticles } from './newsLanguage';
 import { DEFAULT_NEWS_SOURCES } from '../config/defaultSources';
 import { newsStorage } from '../storage/newsStorage';
 import { fetchRss } from '../providers/rssProvider';
-import { NewsArticle, NewsFetchResult, NewsSource } from '../types';
+import { NewsFetchResult, NewsSource } from '../types';
 
 let refreshTask: Promise<NewsFetchResult[]> | undefined;
 let refreshedAt = 0;
@@ -14,15 +15,14 @@ function normalizeUrl(raw: string): URL {
   return parsed;
 }
 
-async function bundledArticles(): Promise<NewsArticle[]> {
+async function bundledArticles(): Promise<NewsBundle> {
   try {
     const base = import.meta.env.BASE_URL || '/';
     const response = await fetch(`${base}news-feed.json`, { cache: 'no-store' });
-    if (!response.ok) return [];
-    const payload = await response.json() as { articles?: NewsArticle[] };
-    return Array.isArray(payload.articles) ? payload.articles.filter(article => article.sourceId !== 'open-data-ma') : [];
+    if (!response.ok) return { articles: [], refreshedSourceIds: [] };
+    return parseNewsBundle(await response.json());
   } catch {
-    return [];
+    return { articles: [], refreshedSourceIds: [] };
   }
 }
 
@@ -57,10 +57,11 @@ export const newsService = {
     const sources = this.sources().filter(s => s.enabled && s.kind !== 'web');
     refreshTask = (async () => {
     const results: NewsFetchResult[] = [];
-    const bundled = await bundledArticles();
+    const bundle = await bundledArticles();
+    const bundled = bundle.articles;
     if (bundled.length) {
       const cached = newsStorage.articles();
-      newsStorage.saveArticles(preferArabicArticles([...bundled, ...cached.filter(old => !bundled.some(item => item.id === old.id))]));
+      newsStorage.saveArticles(preferArabicArticles(mergeNewsBundle(bundle, cached)));
       for (const listener of listeners) { try { listener(); } catch {} }
     }
     for (const source of sources) {
