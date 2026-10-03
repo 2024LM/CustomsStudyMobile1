@@ -85,6 +85,15 @@ try {
   assert.equal(await page.getByRole('heading',{name:'خبر جديد',exact:true}).count(),1,'A home preview opens the selected story inside the app');
   assert.equal(await page.getByRole('link',{name:'التوجه إلى المصدر',exact:true}).count(),1);
   await page.getByRole('button',{name:'العودة إلى الأخبار',exact:true}).click();
+  for(const width of [320,1024]){
+    await nav.getByRole('button',{name:'الرئيسية',exact:true}).click();
+    await page.setViewportSize({width,height:800});
+    await rail.waitFor();
+    await rail.locator('article').last().scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>{const r=document.querySelector('[data-home-news-rail]');return Math.abs(r.scrollLeft)>=r.scrollWidth-r.clientWidth-2;});
+    await page.getByRole('button',{name:'الخبر التالي',exact:true}).click();
+    await page.getByRole('heading',{name:'أخبار المراجعة والمباريات',exact:true}).waitFor();
+  }
   await nav.getByRole('button',{name:'الرئيسية',exact:true}).click();
   await page.getByRole('button',{name:'كل الأخبار',exact:true}).click();
   await page.getByRole('heading',{name:'أخبار المراجعة والمباريات',exact:true}).waitFor();
