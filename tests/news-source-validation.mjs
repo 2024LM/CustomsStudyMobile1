@@ -108,7 +108,10 @@ await page.getByRole('region',{name:'معاينة أخبار المصدر'}).wai
 assert.equal(await page.evaluate(()=>window.api.newsService.sources().filter(s=>!s.builtIn).length),0,'AI preview not yet saved');
 assert.equal(await page.evaluate(()=>window.__aiCalls.length),1);
 await page.getByRole('button',{name:'اعتماد وإضافة المصدر'}).click();
-await page.getByRole('button',{name:'مصدر مخصص 2',exact:true}).waitFor();
+await page.waitForFunction(()=>window.api.newsService.sources().filter(s=>!s.builtIn).length===1);
+await page.getByRole('button',{name:/مصدر مخصص\s*2/}).waitFor();
+assert.equal(await page.getByRole('region',{name:'معاينة أخبار المصدر'}).count(),0,'approval closes preview');
+assert.equal(await page.evaluate(()=>window.api.newsService.cachedArticles().filter(a=>a.sourceId.startsWith('user-')).length),2,'approved news visible in cache');
 assert.equal(await page.evaluate(()=>window.api.newsService.sources().filter(s=>!s.builtIn).length),1);
 console.log('News source validation passed: '+results.length+' parser/security/storage checks; consent, preview and approval UI.');
 } finally {await browser.close();server.close();fs.rmSync(temp,{recursive:true,force:true});}
