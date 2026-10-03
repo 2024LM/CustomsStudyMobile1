@@ -116,11 +116,14 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
 
+      - name: Prepare distributable APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Raje3.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Raje3
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: Raje3.apk
           if-no-files-found: error
 
       - name: Publish direct APK download
@@ -128,10 +131,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SOURCE_APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          DIRECT_APK="Raje3.apk"
-          cp "$SOURCE_APK" "$DIRECT_APK"
           if ! gh release view current >/dev/null 2>&1; then
             gh release create current --title "Raje3 current APK" --notes "Direct APK download for the current Raje3 build." --target "$GITHUB_SHA"
           fi
-          gh release upload current "$DIRECT_APK" --clobber
+          gh release upload current Raje3.apk --clobber
