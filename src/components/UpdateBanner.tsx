@@ -1,16 +1,15 @@
 import React from 'react';
 import { RemoteState } from '../types';
 import { openUpdate } from '../services/remoteConfig';
+import { appConfig } from '../config/appConfig';
 
 interface UpdateBannerProps {
   remote: RemoteState;
 }
 
-const CURRENT_VERSION_CODE = 1;
-
 export const UpdateBanner: React.FC<UpdateBannerProps> = ({ remote }) => {
-  const isUnsupported = CURRENT_VERSION_CODE < remote.minimum;
-  const isUpdateAvailable = CURRENT_VERSION_CODE < remote.latest;
+  const isUnsupported = appConfig.versionCode < remote.minimum;
+  const isUpdateAvailable = appConfig.versionCode < remote.latest;
 
   if (isUnsupported) {
     return (
