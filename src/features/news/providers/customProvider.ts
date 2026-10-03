@@ -11,6 +11,7 @@ export class UnsupportedNewsSource extends Error {
 export function validateExtraction(value: unknown): NewsExtraction {
   if (!value || typeof value !== 'object') throw new Error('لم يُرجع الذكاء الاصطناعي إعدادات مدعومة.');
   const data = value as Record<string, unknown>, result: Record<string, string> = {};
+  if (data.unsupported === true) throw new Error('لم يجد الذكاء الاصطناعي قائمة أخبار قابلة للاستخراج بالقوالب المدعومة حاليًا. لم يُضف الموقع؛ جرّب رابط قسم الأخبار.');
   for (const key of ['item', 'title', 'link', 'summary', 'date']) {
     const selector = data[key];
     if (selector === undefined || selector === '') { if (['item', 'title', 'link'].includes(key)) throw new Error('إعدادات الاستخراج ناقصة.'); continue; }

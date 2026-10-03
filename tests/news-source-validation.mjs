@@ -89,6 +89,7 @@ const results=await page.evaluate(async()=>{
  check(!excerpt.includes('secret')&&!excerpt.includes('script'),'AI excerpt excludes forms scripts and query strings');
  const configured=api.previewConfiguredSource('مخصص',pageData,window.__settings);
  check(configured.articles.length===2,'AI selectors tested against real DOM');
+ let declaredUnsupported=false;try{api.previewConfiguredSource('غير مدعوم',pageData,{unsupported:true});}catch(e){declaredUnsupported=e.message.includes('القوالب المدعومة');}check(declaredUnsupported,'AI unsupported result has explicit explanation');
  let fabricated=false;try{api.previewConfiguredSource('خيال',pageData,{item:'.missing',title:'h2',link:'a'});}catch{fabricated=true;}check(fabricated,'fabricated AI selectors rejected');
  let unsafe=false;try{api.validateExtraction({item:'article;alert(1)',title:'h2',link:'a'});}catch{unsafe=true;}check(unsafe,'code-like selector rejected');
  const before={...localStorage};const set=Storage.prototype.setItem;let fail=true;
