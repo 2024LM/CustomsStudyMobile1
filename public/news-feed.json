@@ -1,4 +1,382 @@
 {
-  "generatedAt": null,
-  "articles": []
+  "schemaVersion": 2,
+  "refreshedSourceIds": [
+    "emploi-public",
+    "men",
+    "finances",
+    "hcp"
+  ],
+  "generatedAt": "2026-10-03T12:43:52.862Z",
+  "articles": [
+    {
+      "id": "hcp-1bbbb6f320ccda8cf144c27d",
+      "sourceId": "hcp",
+      "title": "L’indice des prix à la production industrielle, énergétique et minière (IPPI) du mois d'Août 2026",
+      "summary": "L’indice des prix à la production du secteur des «Industries manufacturières hors raffinage de pétrole» a enregistré une hausse de 0,4% au cours du mois d’août 2026 par rapport au mois de juillet 2026. Cette hausse est la résultante de : - La hausse des prix de 1,4% de l’«Industrie chimique», de 1,5% de la «Métallurgie», de 0,3% de la «Fabrication d’équipements électriques», de 0,2% des «Industries alimentaires» et de 0,1% de l’«Industrie automobile» ; - La baisse des prix de 0,7% de l’«Industri",
+      "content": "L’indice des prix à la production du secteur des «Industries manufacturières hors raffinage de pétrole» a enregistré une hausse de 0,4% au cours du mois d’août 2026 par rapport au mois de juillet 2026. Cette hausse est la résultante de :\n\n- La hausse des prix de 1,4% de l’«Industrie chimique», de 1,5% de la «Métallurgie», de 0,3% de la «Fabrication d’équipements électriques», de 0,2% des «Industries alimentaires» et de 0,1% de l’«Industrie automobile» ;\n\n- La baisse des prix de 0,7% de l’«Industrie d’habillement».\n\nPar ailleurs, les indices des prix à la production des «Industries extractives», de la «Production et distribution d’électricité» et de la «Production et distribution d’eau» ont connu une stagnation au cours du mois d’août 2026.\n\nTélécharger la note d'information \n\nTélécharger la note d'information (version Ar)",
+      "url": "https://www.hcp.ma/L-indice-des-prix-a-la-production-industrielle-energetique-et-miniere-IPPI-du-mois-d-Aout-2026_a4351.html",
+      "imageUrl": "https://www.hcp.ma/photo/art/default/98216357-68436506.jpg?v=1738275377",
+      "publishedAt": "2026-09-30T10:16:00.000Z",
+      "publishedTimeKnown": true,
+      "category": "أخبار وإحصائيات"
+    },
+    {
+      "id": "hcp-46d958575980d208c311d6b4",
+      "sourceId": "hcp",
+      "title": "Situation économique nationale au deuxième trimestre 2026",
+      "summary": "Les résultats des comptes nationaux du deuxième trimestre 2026 font ressortir un ralentissement de la croissance économique nationale, qui s’est établie à 4% au lieu de 5,8% au même trimestre de l’année 2025. Cette évolution recouvre des dynamiques sectorielles contrastées. Les activités non agricoles ont enregistré un net ralentissement de leur croissance, passant de 4,9% à 1,5%, tandis que le secteur agricole a connu une nette accélération, avec une hausse de sa valeur ajoutée de 21,2% contre ",
+      "content": "Les résultats des comptes nationaux du deuxième trimestre 2026 font ressortir un ralentissement de la croissance économique nationale, qui s’est établie à 4% au lieu de 5,8% au même trimestre de l’année 2025. \n\nCette évolution recouvre des dynamiques sectorielles contrastées. Les activités non agricoles ont enregistré un net ralentissement de leur croissance, passant de 4,9% à 1,5%, tandis que le secteur agricole a connu une nette accélération, avec une hausse de sa valeur ajoutée de 21,2% contre 8,3% une année auparavant. \n\nSoutenue principalement par la demande intérieure, cette croissance s’est réalisée dans un contexte marqué par une maîtrise de l’inflation et une aggravation du besoin de financement de l’économie nationale. \nRalentissement de la croissance économique \nLa valeur ajoutée du secteur secondaire en volume, corrigée des variations saisonnières (cvs) s’est contractée de 3,9% au deuxième trimestre 2026, après avoir enregistré un accroissement de 5,8% le même trimestre de l’année précédente. Cette forte baisse a résulté de l’effet conjugué du repli des valeurs ajoutées : des activités de l’industrie d’extraction de 28,6% au lieu d’une hausse de 13,7% ;\ndes industries de transformation de 3,2% au lieu d’une hausse de 4,3%;\n\net du ralentissement des activités : de construction, à 2,8% au lieu de 7,6% ;\nde l’électricité et eau, à 1,9% au lieu de 3,8%. \n\nTélécharger la note d'information intégrale \n\nTélécharger la note d'information intégrale (version Ar)",
+      "url": "https://www.hcp.ma/Situation-economique-nationale-au-deuxieme-trimestre-2026_a4350.html",
+      "imageUrl": "https://www.hcp.ma/photo/art/default/98208649-68425206.jpg?v=1780858706",
+      "publishedAt": "2026-09-30T07:00:00.000Z",
+      "publishedTimeKnown": true,
+      "category": "أخبار وإحصائيات"
+    },
+    {
+      "id": "finances-a8daf324d98c83067065b73a",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7815",
+      "title": "حفل توقيع اتفاقية تمويل من البنك الإفريقي للتنمية لفائدة برنامج توسيع وتحديث البنيات التحتية للمطارات",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-09-29",
+      "publishedTimeKnown": false,
+      "summary": "ترأست السيدة نادية فتاح، وزيرة الاقتصاد والمالية، مناصفةً، يوم الثلاثاء 29 شتنبر 2026 بمدينة الدار البيضاء، إلى جانب السيد سيدي ولد طاه، رئيس مجموعة البنك الإفريقي للتنمية، مراسم توقيع اتفاقية تمويل بمبلغ قدره 270 مليون يورو، ممنوح من طرف البنك الإفريقي للتنمية إلى المكتب الوطني للمطارات (ONDA) لتمويل برنامج توسيع وتحديث البنيات التحتية للمطارات.",
+      "content": "ترأست السيدة نادية فتاح، وزيرة الاقتصاد والمالية، مناصفةً، يوم الثلاثاء 29 شتنبر 2026 بمدينة الدار البيضاء، إلى جانب السيد سيدي ولد طاه، رئيس مجموعة البنك الإفريقي للتنمية، مراسم توقيع اتفاقية تمويل بمبلغ قدره 270 مليون يورو، ممنوح من طرف البنك الإفريقي للتنمية إلى المكتب الوطني للمطارات (ONDA) لتمويل برنامج توسيع وتحديث البنيات التحتية للمطارات.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Actu_20260930_113306/Actu_20260930_113306_768.jpg"
+    },
+    {
+      "id": "hcp-4144e55288cc8a28465fa508",
+      "sourceId": "hcp",
+      "title": "Rapport qualité : Recensement Général de la Population et de l’Habitat 2014",
+      "summary": "Introduction Le Recensement Général de la Population et de l'Habitat (RGPH) constitue une opération statistique nationale d'envergure qui permet de déterminer la population légale du Royaume et de produire des données démographiques, socio-économiques et relatives à l'habitat. Ces données sont indispensables à la connaissance de la population, à l'élaboration, au suivi et à l'évaluation des politiques publiques, ainsi qu'à la constitution des bases de sondage des enquêtes auprès des ménages. Dep",
+      "content": "Introduction \nLe Recensement Général de la Population et de l'Habitat (RGPH) constitue une opération statistique nationale d'envergure qui permet de déterminer la population légale du Royaume et de produire des données démographiques, socio-économiques et relatives à l'habitat. Ces données sont indispensables à la connaissance de la population, à l'élaboration, au suivi et à l'évaluation des politiques publiques, ainsi qu'à la constitution des bases de sondage des enquêtes auprès des ménages. \n\nDepuis l’indépendance, le Maroc a réalisé plusieurs recensements, le RGPH 2014 constituant la sixième édition. Celui-ci a consolidé la modernisation du dispositif censitaire engagée en 2004, notamment à travers le maintien et l’optimisation de la Lecture Automatique des Documents (LAD) pour le traitement exhaustif des questionnaires. Cette technologie, qui a remplacé la saisie manuelle, a contribué à réduire les délais d’exploitation des données. La cartographie censitaire s’est également appuyée sur des images satellitaires à très haute résolution et sur un Système d’Information Géographique afin d’assurer une couverture exhaustive du territoire national. \n\nLe présent rapport documente les principales caractéristiques du RGPH 2014, les méthodes mises en oeuvre et les principaux aspects liés à la qualité des données produites. Il est structuré en référence au Single Integrated Metadata Structure (SIMS 2.0), tel que présenté dans le Manuel du Système Statistique Européen pour les rapports sur la qualité et les métadonnées – édition 2021.\n\nTélécharger le rapport qualité intégral (version Fr) \n\nRapport qualité : Recensement Général de la Population et de l’Habitat 2014 (Version Fr) \n\nTélécharger le rapport qualité intégral (version Ar) \n\nRapport qualité : Recensement Général de la Population et de l’Habitat 2014 (Version Ar) \n\nTélécharger le rapport qualité intégral (version En) \n\nRapport qualité : Recensement Général de la Population et de l’Habitat 2014 (Version En)",
+      "url": "https://www.hcp.ma/Rapport-qualite-Recensement-General-de-la-Population-et-de-l-Habitat-2014_a4349.html",
+      "imageUrl": "https://wmaker.net/testhcp/docs/icones/pdf.jpg",
+      "publishedAt": "2026-09-23T11:16:00.000Z",
+      "publishedTimeKnown": true,
+      "category": "أخبار وإحصائيات"
+    },
+    {
+      "id": "hcp-6d6b989a1ca340403f200abb",
+      "sourceId": "hcp",
+      "title": "L'Indice des prix à la consommation (IPC) du mois d'Août 2026",
+      "summary": "Hausse de 0,8% de l’indice des prix à la consommation, résultant de la hausse de 0,9% de l’indice des produits alimentaires et de 0,7% de l’indice des produits non alimentaires. L’indicateur d’inflation sous-jacente en hausse de 0,2% sur un mois et de 0,1% sur une année. L’indice des prix à la consommation a connu, au cours du mois d’août 2026, une hausse de 0,8% par rapport au mois précédent. Cette variation est le résultat de la hausse de 0,9% de l’indice des produits alimentaires et de 0,7% d",
+      "content": "Hausse de 0,8% de l’indice des prix à la consommation, résultant de la hausse de 0,9% de l’indice des produits alimentaires et de 0,7% de l’indice des produits non alimentaires. L’indicateur d’inflation sous-jacente en hausse de 0,2% sur un mois et de 0,1% sur une année. \n\nL’indice des prix à la consommation a connu, au cours du mois d’août 2026, une hausse de 0,8% par rapport au mois précédent. Cette variation est le résultat de la hausse de 0,9% de l’indice des produits alimentaires et de 0,7% de l’indice des produits non alimentaires. \n\nLes hausses des produits alimentaires observées entre juillet et août 2026 concernent principalement les «Poissons et fruits de mer» et le «Lait, fromage et oeufs» avec 2,8%, les «Viandes» avec 2,2%, les «Légumes» avec 1,0% et le «Café, thé et cacao» avec 0,3%. En revanche, les prix ont diminué de 1,9% pour les «Fruits». Pour les produits non alimentaires, la hausse a concerné principalement les prix des «Carburants» avec 9,8%. \n\nLes hausses les plus importantes de l’IPC ont été enregistrées à Al-hoceima avec 1,6%, à Agadir avec 1,4%, à Tétouan, Safi et Beni-Mellal avec 1,2%, à Oujda avec 1,1%, à Fès avec 1,0%, à Tanger avec 0,9%, à Rabat, Settat et Errachidia avec 0,8%, à Marrakech, Meknès, Laâyoune, Dakhla et à Guelmim avec 0,6% et à Casablanca et Kénitra avec 0,5%. \n\nComparé au même mois de l’année précédente, l’indice des prix à la consommation a enregistré une baisse de 0,3% au cours du mois d’août 2026 conséquence de la baisse de l’indice des produits alimentaires de 3,9% et de la hausse de celui des produits non alimentaires de 2,5%. Pour les produits non alimentaires, les variations vont d’une baisse de 0,2% pour la «Communication» à une hausse de 7,3% pour le «Transport». \n\nDans ces conditions, l’indicateur d’inflation sous-jacente, qui exclut les produits à prix volatiles et les produits à tarifs publics, aurait connu au cours du mois d’août 2026 une hausse de 0,2% par rapport au mois de juillet 2026 et de 0,1% par rapport au mois d’août 2025.\n\nTélécharger \n\nTélécharger la version arabe",
+      "url": "https://www.hcp.ma/L-Indice-des-prix-a-la-consommation-IPC-du-mois-d-Aout-2026_a4348.html",
+      "imageUrl": "https://www.hcp.ma/photo/art/default/98107381-68315588.jpg?v=1737496837",
+      "publishedAt": "2026-09-22T07:00:00.000Z",
+      "publishedTimeKnown": true,
+      "category": "أخبار وإحصائيات"
+    },
+    {
+      "id": "finances-f62c75d4500a70095647cc10",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7810",
+      "title": "توقيع اتفاقيتي تمويل مع البنك الإفريقي للتنمية لفائدة برنامج التكوين المهني ومشروع تطوير البنيات التحتية السككية",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-09-17",
+      "publishedTimeKnown": false,
+      "summary": "أشرف السيد فوزي لقجع، الوزير المنتدب المكلف بالميزانية والسيد أشرف ترسيم، الممثل المقيم لمكتب البنك الافريقي للتنمية بالرباط، بحضور السيد يونس السكوري وزير الإدماج الاقتصادي والمقاولة الصغرى والتشغيل والكفاءات والسيد محمد ربيع الخليع، المدير العام للمكتب الوطني للسكك الحديدية ، يوم الخميس 17 شتنبر 2026 على الساعة التاسعة والنصف صباحا، بمقر وزارة الاقتصاد و المالية، على توقيع اتفاقيتي تمويل مع البنك الإفريقي للتنمية لفائدة البرنامج والمشروع التاليين :",
+      "content": "أشرف السيد فوزي لقجع، الوزير المنتدب المكلف بالميزانية والسيد أشرف ترسيم، الممثل المقيم لمكتب البنك الافريقي للتنمية بالرباط، بحضور السيد يونس السكوري وزير الإدماج الاقتصادي والمقاولة الصغرى والتشغيل والكفاءات والسيد محمد ربيع الخليع، المدير العام للمكتب الوطني للسكك الحديدية ، يوم الخميس 17 شتنبر 2026 على الساعة التاسعة والنصف صباحا، بمقر وزارة الاقتصاد و المالية، على توقيع اتفاقيتي تمويل مع البنك الإفريقي للتنمية لفائدة البرنامج والمشروع التاليين :",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Auto_20260917_114052_2/2accords-fin-768.jpg"
+    },
+    {
+      "id": "hcp-203bbdb30d7c404a6b87644c",
+      "sourceId": "hcp",
+      "title": "L’indice de la production industrielle, énergétique et minière (IPI), deuxième trimestre 2026",
+      "summary": "L'indice de la production des industries manufacturières hors raffinage de pétrole a enregistré une baisse de 4,5% au cours du deuxième trimestre 2026 par rapport à la même période de 2025. Cette diminution s'explique essentiellement par la baisse des indices de production dans plusieurs branches, en particulier : l’ «industrie chimique» (29,5%), l’«industrie de l'habillement» (10,0%), la «fabrication de produits informatiques, électroniques et optiques» (19,5%), l’«imprimerie et reproduction d'",
+      "content": "L'indice de la production des industries manufacturières hors raffinage de pétrole a enregistré une baisse de 4,5% au cours du deuxième trimestre 2026 par rapport à la même période de 2025. \n\nCette diminution s'explique essentiellement par la baisse des indices de production dans plusieurs branches, en particulier : l’ «industrie chimique» (29,5%), l’«industrie de l'habillement» (10,0%), la «fabrication de produits informatiques, électroniques et optiques» (19,5%), l’«imprimerie et reproduction d'enregistrements» (12,3%) et la «fabrication de meubles» (5,0%). \n\nEn revanche, l’indice des «industries alimentaires» a enregistré une hausse de 5,7%, tandis que ceux de la «fabrication d'autres produits minéraux non métalliques», la «fabrication de produits métalliques, à l’exception des machines et des équipements», l'«industrie automobile» et la «métallurgie» ont augmenté respectivement de 5,9%, 14,1%, 6,0% et 11,6%. \n\nPar ailleurs, l'indice de la production des industries extractives a enregistré une baisse de 28,8%, résultant de la baisse de l'indice des «produits divers des industries extractives» de 29,6% et de la hausse de celui des «minerais métalliques» de 0,6%. \n\nEnfin, l'indice de la production de l'énergie électrique a enregistré, de son côté, une hausse de 1,9%.\n\nTélécharger \n\nTélécharger la version arabe",
+      "url": "https://www.hcp.ma/L-indice-de-la-production-industrielle-energetique-et-miniere-IPI--deuxieme-trimestre-2026_a4347.html",
+      "imageUrl": "https://www.hcp.ma/photo/art/default/98035155-68252886.jpg?v=1741898126",
+      "publishedAt": "2026-09-15T07:00:00.000Z",
+      "publishedTimeKnown": true,
+      "category": "أخبار وإحصائيات"
+    },
+    {
+      "id": "finances-ba9974c60d09b33d5c5a50ec",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7807",
+      "title": "وزارة الاقتصاد والمالية تنظم «أيام التبرع بالدم» لتعزيز مخزون الدم",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-09-15",
+      "publishedTimeKnown": false,
+      "summary": "في إطار انخراطها المتواصل في المجهود الوطني الرامي إلى تعزيز مخزون الدم والحد من الخصاص المسجل في هذه المادة الحيوية، تنظم وزارة الاقتصاد والمالية، بتعاون مع الوكالة المغربية للدم ومشتقاته، «أيام التبرع بالدم»، وذلك خلال الفترة الممتدة من 14 إلى 16 شتنبر 2026، بمختلف مواقع الوزارة.",
+      "content": "في إطار انخراطها المتواصل في المجهود الوطني الرامي إلى تعزيز مخزون الدم والحد من الخصاص المسجل في هذه المادة الحيوية، تنظم وزارة الاقتصاد والمالية، بتعاون مع الوكالة المغربية للدم ومشتقاته، «أيام التبرع بالدم»، وذلك خلال الفترة الممتدة من 14 إلى 16 شتنبر 2026، بمختلف مواقع الوزارة.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Auto_20260915_114803/Auto_20260915_114803_768.jpg"
+    },
+    {
+      "id": "finances-372b6bfc2175aa90fd5a64ae",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7803",
+      "title": "توشيح الدكتور محمد سليمان الجاسر، رئيس مجموعة البنك الإسلامي للتنمية بالوسام العلوي من درجة قائد",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-09-09",
+      "publishedTimeKnown": false,
+      "summary": "خلال مراسيم أقيمت صباح يوم الأربعاء 9 شتنبر 2026 بمقر وزارة الاقتصاد والمالية، أشرفت السيدة نادية فتاح، وزيرة الاقتصاد والمالية، على تسليم الدكتور محمد سليمان الجاسر، رئيس مجموعة البنك الإسلامي للتنمية، الوسام العلوي من درجة قائد. وقلد صاحب الجلالة الملك محمد السادس، نصره الله وأيده، السيد رئيس مجموعة البنك الإسلامي للتنمية بهذا الوسام العلوي تقديراً لما قدمه، منذ انتخابه على رأس مجموعة البنك، من دعم متواصل للمشاريع والبرامج التنموية بمختلف جهات المملكة، ولا سيما بالأقاليم الجنوبية.",
+      "content": "خلال مراسيم أقيمت صباح يوم الأربعاء 9 شتنبر 2026 بمقر وزارة الاقتصاد والمالية، أشرفت السيدة نادية فتاح، وزيرة الاقتصاد والمالية، على تسليم الدكتور محمد سليمان الجاسر، رئيس مجموعة البنك الإسلامي للتنمية، الوسام العلوي من درجة قائد. وقلد صاحب الجلالة الملك محمد السادس، نصره الله وأيده، السيد رئيس مجموعة البنك الإسلامي للتنمية بهذا الوسام العلوي تقديراً لما قدمه، منذ انتخابه على رأس مجموعة البنك، من دعم متواصل للمشاريع والبرامج التنموية بمختلف جهات المملكة، ولا سيما بالأقاليم الجنوبية.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/BID2026-ouissam/BID2026-alaune768.jpg"
+    },
+    {
+      "id": "men-d99ad66c937929ec3d276ca3",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D8%B3%D9%8A%D8%AF-%D8%A7%D9%84%D9%88%D8%B2%D9%8A%D8%B1-%D9%8A%D8%B9%D8%B7%D9%8A-%D8%A7%D9%84%D8%A7%D9%86%D8%B7%D9%84%D8%A7%D9%82%D8%A9-%D8%A7%D9%84%D8%B1%D8%B3%D9%85%D9%8A%D8%A9-%D9%84%D9%84%D9%85%D9%88%D8%B3%D9%85-%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D9%8A-2026-2027-%D9%85%D9%86-%D9%85%D8%AF%D8%B1%D8%B3%D8%A9-%D8%A7%D8%A8%D9%86-%D8%A8%D8%B7%D9%88%D8%B7%D8%A9-%D8%A7%D9%84%D8%A7%D8%A8%D8%AA%D8%AF%D8%A7%D8%A6%D9%8A%D8%A9-%D8%A8%D8%AC%D9%85%D8%A7%D8%B9%D8%A9-%D8%B9%D8%A7%D9%85%D8%B1-%D8%A7%D9%84%D8%AA%D8%A7%D8%A8%D8%B9%D8%A9-%D9%84%D9%84%D9%85%D8%AF%D9%8A%D8%B1%D9%8A%D8%A9-%D8%A7%D9%84%D8%A5%D9%82%D9%84%D9%8A%D9%85%D9%8A%D8%A9-%D8%B3%D9%84%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "السيد الوزير يعطي الانطلاقة الرسمية للموسم الدراسي 2026-2027 من مدرسة ابن بطوطة الابتدائية بجماعة عامر التابعة للمديرية الإقليمية سلا",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-09-07T14:47:44.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/themes/custom/stack/img/filter.svg",
+      "content": "أعطى السيد محمد سعد برادة، وزير التربية الوطنية والتعليم الأولي والرياضة، يوم الإثنين 7 شتنبر 2026، الانطلاقة الرسمية للموسم الدراسي 2026-2027 من مدرسة ابن بطوطة الابتدائية بجماعة عامر التابعة للمديرية الإقليمية سلا، المنخرطة في مشروع «مؤسسات الريادة»، وذلك في إطار الوقوف ميدانياً على ظروف انطلاق الموسم الدراسي الجديد، وتتبع مختلف الترتيبات والإجراءات المتخذة لإنجاح الدخول المدرسي الحالي. \nوخلال هذه الزيارة، اطلع السيد الوزير على المعطيات المتعلقة بالبنية التربوية والإدارية للمؤسسة، كما عاين مختلف المرافق والتجهيزات التي تم توفيرها بهدف الارتقاء بجودة التعلمات، وتعزيز تفتح التلميذات والتلاميذ، والحد من الهدر المدرسي. \nوتندرج هذه الزيارة في إطار التتبع الميداني لسير الدخول المدرسي، والوقوف على مدى جاهزية المؤسسات التعليمية، بما يضمن توفير بيئة مدرسية ملائمة ومحفزة، ويسهم في تحسين جودة التعلمات والارتقاء بأداء المدرسة العمومية."
+    },
+    {
+      "id": "men-ceaae47c55d08fd4ecf7d5da",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D9%85%D8%B4%D8%A7%D8%B1%D9%83%D8%A9-%D9%81%D9%8A-%D8%A7%D9%84%D8%A5%D9%82%D8%B5%D8%A7%D8%A6%D9%8A%D8%A7%D8%AA-%D8%A7%D9%84%D8%AF%D9%88%D9%84%D9%8A%D8%A9-%D9%84%D9%84%D8%AA%D8%A8%D8%A7%D8%B1%D9%8A-%D8%AD%D9%88%D9%84-%D8%A7%D9%84%D9%85%D8%B1%D8%A7%D8%AA%D8%A8-%D8%A7%D9%84%D8%A3%D9%88%D9%84%D9%89-%D9%81%D9%8A-%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A9-%D8%AA%D8%AD%D8%AF%D9%8A-%D8%A7%D9%84%D9%82%D8%B1%D8%A7%D8%A1%D8%A9-%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A-%D9%81%D9%8A-%D9%86%D8%B3%D8%AE%D8%AA%D9%87%D8%A7-%D8%A7%D9%84%D8%B9%D8%A7%D8%B4%D8%B1%D8%A9-%E2%80%93-2026-%E2%80%93-%D9%84%D9%85%D9%85%D8%AB%D9%84%D9%8A-%D8%A7%D9%84%D9%85%D9%85%D9%84%D9%83%D8%A9-%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8%D9%8A%D8%A9/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "المشاركة في الإقصائيات الدولية للتباري حول المراتب الأولى في مسابقة تحدي القراءة العربي في نسختها العاشرة – 2026 – لممثلي المملكة المغربية",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-08-11T12:48:42.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-08/%D8%AE%D8%AF%D9%8A%D8%AC%D8%A9%20%D8%A8%D9%88%D9%85%D9%84%D9%8A%D9%83%20-%20%D8%AD%D9%85%D8%B2%D8%A9%20%D9%83%D9%85%D9%8A%D9%84%D9%8A.jpeg.webp?itok=yhjXbdtg",
+      "content": "اجتازت كل من التلميذة خديجة بومليك، بطلة تحدي القراءة العربي بالمملكة المغربية في الموسم العاشر، وكذا التلميذ حمزة كميلي، بطل فئة ذوي الهمم في تحدي القراءة العربي بالمملكة المغربية للموسم العاشر، الإقصائيات الدولية النهائية لمسابقة تحدي القراءة العربي في دورتها العاشرة. وقد أجريت هذه الإقصائيات عن بعد، بمشاركة أبطال تحدي القراءة العربي من مختلف الدول العربية، في أجواء تنافسية متميزة تعكس مكانة القراءة وأهميتها في بناء جيل مبدع ومتميز.\nوقد خاض البطلان المغربيان هذه المرحلة بكل جدية وتميز، ممثلين المملكة المغربية في هذا الاستحقاق العربي، ومواصلين مسيرتهما في رحاب القراءة والمعرفة والطموح. \nكل التوفيق للبطلين المغربيين في هذه المسابقة العربية والدولية، مع أصدق المتمنيات لهما بالتألق وتحقيق المراتب الأولى."
+    },
+    {
+      "id": "men-78155cbb2662cdd86406b673",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D8%AA%D8%B0%D9%83%D9%8A%D8%B1-%D8%A8%D9%85%D9%88%D8%A7%D8%B9%D9%8A%D8%AF-%D8%A7%D9%84%D8%AF%D8%AE%D9%88%D9%84-%D8%A7%D9%84%D9%85%D8%AF%D8%B1%D8%B3%D9%8A-2027/2026/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "التذكير بمواعيد الدخول المدرسي 2027/2026",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-08-07T15:36:05.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-08/bg-2.png.webp?itok=LcE159Xd",
+      "content": "تنهي وزارة التربية الوطنية والتعليم الأولي والرياضة إلى علم كافة الأمهات والآباء وأولياء الأمور، والتلميذات والتلاميذ، والأطر الإدارية والتربوية وإلى الرأي العام الوطني، أن الدخول المدرسي برسم الموسم الدراسي 2027/2026 سيتم في موعده الرسمي المحدد سلفا طبقا لمقتضيات المقرر الوزاري رقم 047.26 الصادر بتاريخ 3 يوليوز 2026 بشأن تنظيم السنة الدراسية 2026/2027.\nوعليه، فإن عملية التحاق الأطر الإدارية والتربوية بمقرات عملهم بالمؤسسات التعليمية، وكذا الانطلاقة الفعلية للدراسة بمختلف الأسلاك والمستويات الدراسية، ستجرى وفق الجدولة الزمنية التالية:\nالثلاثاء 1 شتنبر 2026 : التحاق أطر وموظفي هيئة الإدارة التربوية والتدبير، وهيئة التفتيش والتأطير والمراقبة والتقييم، وهيئة متصرفي التربية الوطنية بمقرات عملهم، لتوقيع محاضر الدخول ؛\nالأربعاء 2 شتنبر 2026 : التحاق أطر وموظفي هيئة التربية والتعليم وهيئة الأساتذة الباحثين في التربية والتكوين بمقرات عملهم بالمؤسسات التعليمية، لتوقيع محاضر الدخول ؛\nالخميس 3 شتنبر 2026 : التحاق أطفال التعليم الأولي، وتلاميذ السنتين الأولى والثانية من سلك التعليم الابتدائي، والسنة الأولى من سلك التعليم الثانوي الإعدادي، والجذوع المشتركة من سلك التعليم الثانوي التأهيلي بالمؤسسات التعليمية ؛\nالجمعة 4 شتنبر 2026 : التحاق تلاميذ السنتين الثالثة والرابعة من سلك التعليم الابتدائي، والسنة الثانية من سلك التعليم الثانوي الإعدادي، والسنة الأولى بكالوريا بالمؤسسات التعليمية ؛\nالسبت 5 شتنبر 2026 : التحاق تلاميذ السنتين الخامسة والسادسة من سلك التعليم الابتدائي، والسنة الثالثة من سلك التعليم الثانوي الإعدادي، والسنة الثانية بكالوريا بالمؤسسات التعليمية ؛\nالإثنين 7 شتنبر 2026 : الانطلاقة الفعلية والإلزامية للدراسة بجميع الأسلاك والمستويات التعليمية ؛\nالإثنين 5 أكتوبر 2026 : انطلاق الدراسة بالنسبة لأقسام التربية غير النظامية واقسام الفرصة الثانية.\nوبهذه المناسبة، تجدد الوزارة دعوتها لجميع الفاعلين التربويين والإداريين والأسر والشركاء إلى التعبئة الجماعية لإنجاح كافة محطات هذا الدخول المدرسي، وضمان تأمين الزمن المدرسي وزمن التعلم لكافة التلميذات والتلاميذ بمختلف الأسلاك المؤسسات التعليمية."
+    },
+    {
+      "id": "men-b78b855c018d5b805c8d24ff",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8-%D9%8A%D9%88%D8%A7%D8%B5%D9%84-%D8%A7%D9%84%D8%AA%D8%A3%D9%84%D9%82-%D9%82%D8%A7%D8%B1%D9%8A%D8%A7-%D9%81%D9%8A-%D8%A7%D9%84%D8%A3%D9%88%D9%84%D9%85%D8%A8%D9%8A%D8%A7%D8%AF-%D8%A7%D9%84%D8%A5%D9%81%D8%B1%D9%8A%D9%82%D9%8A%D8%A9-%D9%84%D9%84%D8%B1%D9%8A%D8%A7%D8%B6%D9%8A%D8%A7%D8%AA/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "المغرب يواصل التألق قاريا في الأولمبياد الإفريقية للرياضيات",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-08-01T11:00:01.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-08/%D8%A7%D9%84%D8%A3%D9%88%D9%84%D9%85%D8%A8%D9%8A%D8%A7%D8%AF%20%D8%A7%D9%84%D8%A5%D9%81%D8%B1%D9%8A%D9%82%D9%8A%D8%A9%20%D9%84%D9%84%D8%B1%D9%8A%D8%A7%D8%B6%D9%8A%D8%A7%D8%AA%202026.jpg.webp?itok=aTSxbQro",
+      "content": "حقق الفريق الوطني المغربي إنجازا متميزا بإحراز المرتبة الثانية إفريقيا في الدورة الـ33 للأولمبياد الإفريقية للرياضيات (PAMO2026) ، بمشاركة 159 متنافسا من 26 دولة. وحصد المغرب 9 ميداليات : \n3 ميداليات ذهبية؛ \n6 ميداليات فضية.\nكما تألقت التلميذات المغربيات في أولمبياد الفتيات (PAMO Girls)، بإحراز ميدالية ذهبية وميداليتين فضيتين. ويؤكد هذا الإنجاز المستوى المتميز للتلميذات والتلاميذ المغاربة، ويعكس نجاح جهود دعم التميز العلمي وتعزيز حضور المملكة في المحافل العلمية القارية والدولية.\nويؤكد هذا الإنجاز المكانة المتقدمة التي باتت تحتلها المدرسة المغربية في مجال التميز العلمي، كما يجسد نجاح الاستراتيجية الوطنية الرامية إلى تشجيع التفوق والابتكار، وتعزيز حضور المملكة ضمن الدول الرائدة في الأولمبيادات العلمية.\nوتتقدم وزارة التربية الوطنية والتعليم الأولي والرياضة بأحر التهاني إلى أعضاء الفريق الوطني المغربي وإلى أطر التأطير والتكوين أعضاء اللجنة المركزية للأولمبياد الوطنية في الرياضيات، وإلى كل من ساهم في تحقيق هذا الإنجاز، مؤكدة مواصلة جهودها من أجل تعزيز ثقافة التميز العلمي، وترسيخ مكانة المملكة المغربية ضمن الدول الرائدة في الأولمبيادات العلمية. مع متمنياتنا لبلدنا بمواصلة التألق في الدورة القادمة من الأولمبياد الإفريقية للرياضيات 2027."
+    },
+    {
+      "id": "men-24d9a77188ee661111983e9e",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D9%85%D9%84%D8%AA%D9%82%D9%89-%D8%A7%D9%84%D9%81%D8%A7%D8%A6%D8%B2%D9%8A%D9%86-%D9%81%D9%8A-%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D8%A7%D8%A9-%D8%A7%D9%84%D8%B9%D8%A7%D9%85%D8%A9-%D9%84%D9%84%D8%B9%D9%84%D9%88%D9%85-%D9%88%D8%A7%D9%84%D8%AA%D9%82%D9%86%D9%8A%D8%A7%D8%AA-%E2%80%93-%D8%AF%D9%88%D8%B1%D8%A9-2026/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "ملتقى الفائزين في المباراة العامة للعلوم والتقنيات – دورة 2026",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-07-28T09:01:24.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-07/%D9%85%D9%84%D8%AA%D9%82%D9%89%20%D8%A7%D9%84%D9%81%D8%A7%D8%A6%D8%B2%D9%8A%D9%86%20%D9%81%D9%8A%20%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D8%A7%D8%A9%20%D8%A7%D9%84%D8%B9%D8%A7%D9%85%D8%A9%20%D9%84%D9%84%D8%B9%D9%84%D9%88%D9%85%20%D9%88%D8%A7%D9%84%D8%AA%D9%82%D9%86%D9%8A%D8%A7%D8%AA%20%E2%80%93%20%D8%AF%D9%88%D8%B1%D8%A9%202026.jpg.webp?itok=aooJft1z",
+      "content": "شارك السيد محمد سعد برادة، وزير التربية الوطنية والتعليم الأولي والرياضة، يوم الثلاثاء 28 يوليوز 2026 بالرباط، في أشغال الملتقى السنوي للفائزات والفائزين في المباراة العامة للعلوم والتقنيات برسم سنة 2026، الذي نظمته أكاديمية الحسن الثاني للعلوم والتقنيات بشراكة مع وزارة التربية الوطنية والتعليم الأولي والرياضة. \nوفي كلمة له بالمناسبة، أكد السيد الوزير أن تشجيع التميز العلمي والاستثمار في الكفاءات الوطنية الشابة يشكلان ركيزة أساسية لمواصلة إصلاح المنظومة التربوية، وبناء مدرسة الجودة والابتكار، مشيداً بما تحققه المباراة العامة للعلوم والتقنيات من إسهام في اكتشاف المواهب العلمية ومواكبتها وتحفيزها على مواصلة مسارها الأكاديمي والبحثي. \nوتميز هذا اللقاء بتسليم منح التميز للفائزات والفائزين، وهي منح تغطي كامل مسارهم الدراسي في التعليم العالي إلى غاية نيل شهادة الدكتوراه، شريطة الحفاظ على مستوى عالٍ من التفوق الأكاديمي. ومنذ إطلاق هذا البرنامج سنة 2010، استفاد من هذه المنحة 148 متوجاً ومتوجة، من بينهم 104 من الذكور و44 من الإناث. \nوعرفت هذه الدورة مشاركة التلميذات والتلاميذ الحاصلين على شهادة البكالوريا – دورة يونيو 2026، الذين حققوا أفضل النتائج في المواد العلمية والتكنولوجية، في تجسيد لالتزام الوزارة والأكاديمية بدعم التميز وترسيخ ثقافة الاستحقاق، وإعداد جيل من الكفاءات القادرة على الإسهام في التنمية والابتكار وخدمة البحث العلمي وطنياً ودولياً. \nكما شكل هذا اللقاء مناسبة للتأكيد على أهمية مواصلة توطيد جسور التواصل مع الكفاءات المغربية المتألقة في الخارج، وتعزيز مساهمتها في تطوير البحث العلمي والابتكار، انسجاما مع التوجيهات الملكية السامية الرامية إلى تثمين الرأسمال البشري الوطني داخل المغرب وخارجه."
+    },
+    {
+      "id": "men-fa627001e554c6b5397a5a18",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AE%D8%A8-%D8%A7%D9%84%D9%88%D8%B7%D9%86%D9%8A-%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8%D9%8A-%D9%84%D9%84%D8%AA%D9%86%D8%B3-%D9%84%D9%84%D9%81%D8%AA%D9%8A%D8%A7%D9%86-%D9%8A%D8%AD%D8%B1%D8%B2-%D9%84%D9%82%D8%A8-%D8%A8%D8%B7%D9%88%D9%84%D8%A9-%D8%A5%D9%81%D8%B1%D9%8A%D9%82%D9%8A%D8%A7-%D9%88%D9%8A%D8%AD%D8%AC%D8%B2-%D8%A8%D8%B7%D8%A7%D9%82%D8%A9-%D8%A7%D9%84%D8%AA%D8%A3%D9%87%D9%84-%D8%A5%D9%84%D9%89-%D8%A8%D8%B7%D9%88%D9%84%D8%A9-%D8%A7%D9%84%D8%B9%D8%A7%D9%84%D9%85/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "المنتخب الوطني المغربي للتنس للفتيان يحرز لقب بطولة إفريقيا ويحجز بطاقة التأهل إلى بطولة العالم",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-07-27T15:34:51.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-07/%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AE%D8%A8%20%D8%A7%D9%84%D9%88%D8%B7%D9%86%D9%8A%20%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8%D9%8A%20%D9%84%D9%84%D8%AA%D9%86%D8%B3%20%D9%84%D9%84%D9%81%D8%AA%D9%8A%D8%A7%D9%86%20%28%D8%A3%D9%82%D9%84%20%D9%85%D9%86%2016%20%D8%B3%D9%86%D8%A9.jpg.webp?itok=VW96vZAS",
+      "content": "حقق المنتخب الوطني المغربي للتنس للفتيان (أقل من 16 سنة) إنجازا مميزا بإحرازه لقب بطولة إفريقيا للفرق، التي احتضنتها مدينة بولوكواني بجنوب إفريقيا، ليضمن بذلك تأهله إلى بطولة العالم للفرق لفئة أقل من 16 سنة. وجاء هذا التتويج بعد مسار متميز للمنتخب الوطني، توج بانتصارات على منتخبات كينيا ومصر وزيمبابوي وجنوب إفريقيا والجزائر، مؤكداً بذلك المستوى المتقدم الذي بلغته رياضة التنس الوطنية. كما بصم المنتخب الوطني للفتيات على مشاركة مشرفة، حيث احتل مركز الوصافة، بعد تحقيقه الفوز على منتخبات الجزائر وتوغو ومصر وجنوب إفريقيا، قبل أن ينهزم في المباراة النهائية أمام المنتخب التونسي. \nوضم المنتخب الوطني للفتيان كلا من رضا العوني، ومهدي اللعبي، وسامي العراقي، فيما تكوّن منتخب الفتيات من ياسمين الدويب، ولارا فراج، وهند الحناوي، تحت إشراف المدربين الوطنيين مهدي الطاهري ومحمد الغابة. \nوبهذه المناسبة، نتقدم بأحر التهاني إلى أبطالنا وبطلاتنا، وإلى الأطر التقنية والإدارية المشرفة عليهم، متمنين لهم مزيدا من التألق والنجاحات في الاستحقاقات المقبلة."
+    },
+    {
+      "id": "men-07e0615bf12a8234219e17fc",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D8%B3%D9%8A%D8%AF-%D8%A7%D9%84%D9%88%D8%B2%D9%8A%D8%B1-%D9%8A%D8%B4%D8%A7%D8%B1%D9%83-%D9%81%D9%8A-%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9-%D8%A7%D9%84%D9%84%D8%AC%D9%86%D8%A9-%D8%A7%D9%84%D8%AF%D8%A7%D8%A6%D9%85%D8%A9-%D9%84%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF-%D9%88%D9%85%D9%84%D8%A7%D8%A1%D9%85%D8%A9-%D8%A7%D9%84%D9%85%D9%86%D8%A7%D9%87%D8%AC-%D9%88%D8%A7%D9%84%D8%A8%D8%B1%D8%A7%D9%85%D8%AC/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "السيد الوزير يشارك في اجتماع اللجنة الدائمة لتجديد وملاءمة المناهج والبرامج",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-07-27T08:48:04.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-07/%D8%A7%D8%AC%D8%AA%D9%85%D8%A7%D8%B9%20%D8%A7%D9%84%D9%84%D8%AC%D9%86%D8%A9%20%D8%A7%D9%84%D8%AF%D8%A7%D8%A6%D9%85%D8%A9%20%D9%84%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF%20%D9%88%D9%85%D9%84%D8%A7%D8%A1%D9%85%D8%A9%20%D8%A7%D9%84%D9%85%D9%86%D8%A7%D9%87%D8%AC%20%D9%88%D8%A7%D9%84%D8%A8%D8%B1%D8%A7%D9%85%D8%AC.jpg.webp?itok=i0XAyfUy",
+      "content": "شارك السيد محمد سعد برادة، وزير التربية الوطنية والتعليم الأولي والرياضة، يوم الإثنين 27 يوليوز 2026، بمركز التكوينات والملتقيات الوطنية بالرباط، في اجتماع اللجنة الدائمة لتجديد وملاءمة المناهج والبرامج، الذي خصص لتقديم ومناقشة الصيغة الأولية للإطار المرجعي للمنهاج. \nويشكل هذا الإطار المرجعي وثيقة مؤطرة للاختيارات الكبرى التي ستوجه بناء المناهج والبرامج والتكوينات، بما يضمن انسجام مختلف مكونات منظومة التربية والتكوين، ويعزز جودة التعلمات وتكافؤ الفرص بين المتعلمات والمتعلمين. \nكما يندرج هذا الورش الاستراتيجي في إطار تفعيل مقتضيات القانون-الإطار 51.17 المتعلق بمنظومة التربية والتكوين والبحث العلمي، بهدف تطوير نموذج بيداغوجي حديث يرتكز على تنمية الكفايات، وترسيخ قيم المواطنة والانفتاح، وتعزيز التفكير النقدي والابتكار، مع اعتماد حكامة فعالة."
+    },
+    {
+      "id": "finances-cc7ae4914bbb9780781f23f2",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7798",
+      "title": "مجلس إدارة المكتب الوطني للكهرباء والماء الصالح للشرب",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-27",
+      "publishedTimeKnown": false,
+      "summary": "انعقدت يوم الاثنين 27 يوليوز بالرباط الدورة التاسعة لمجلس إدارة المكتب الوطني للكهرباء والماء الصالح للشرب، برئاسة السيدة نادية فتاح، وزيرة الاقتصاد والمالية، بتفويض من رئيس الحكومة.",
+      "content": "انعقدت يوم الاثنين 27 يوليوز بالرباط الدورة التاسعة لمجلس إدارة المكتب الوطني للكهرباء والماء الصالح للشرب، برئاسة السيدة نادية فتاح، وزيرة الاقتصاد والمالية، بتفويض من رئيس الحكومة.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/CA_ONEE_27072026/CA_ONEE_27072026_768.jpg"
+    },
+    {
+      "id": "men-1e401ad7afb373296cc0bcb9",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AE%D8%A8-%D8%A7%D9%84%D9%88%D8%B7%D9%86%D9%8A-%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8%D9%8A-%D9%84%D9%84%D8%AA%D9%86%D8%B3-%D9%84%D9%84%D9%81%D8%AA%D9%8A%D8%A7%D9%86-%D9%8A%D8%AD%D8%B1%D8%B2-%D9%84%D9%82%D8%A8-%D8%A8%D8%B7%D9%88%D9%84%D8%A9-%D8%A5%D9%81%D8%B1%D9%8A%D9%82%D9%8A%D8%A7-%D9%88%D9%8A%D8%AD%D8%AC%D8%B2-%D8%A8%D8%B7%D8%A7%D9%82%D8%A9-%D8%A7%D9%84%D8%AA%D8%A3%D9%87%D9%84-%D8%A5%D9%84%D9%89-%D8%A8%D8%B7%D9%88%D9%84%D8%A9-%D8%A7%D9%84%D8%B9%D8%A7%D9%84%D9%85/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA-0",
+      "title": "المنتخب الوطني المغربي للتنس للفتيان يحرز لقب بطولة إفريقيا ويحجز بطاقة التأهل إلى بطولة العالم",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-07-26T15:34:51.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_410x290/public/2026-07/%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AE%D8%A8%20%D8%A7%D9%84%D9%88%D8%B7%D9%86%D9%8A%20%D8%A7%D9%84%D9%85%D8%BA%D8%B1%D8%A8%D9%8A%20%D9%84%D9%84%D8%AA%D9%86%D8%B3%20%D9%84%D9%84%D9%81%D8%AA%D9%8A%D8%A7%D9%86%20%28%D8%A3%D9%82%D9%84%20%D9%85%D9%86%2016%20%D8%B3%D9%86%D8%A9.jpg.webp?itok=HZGXT16y",
+      "content": "حقق المنتخب الوطني المغربي للتنس للفتيان (أقل من 16 سنة) إنجازا مميزا بإحرازه لقب بطولة إفريقيا للفرق، التي احتضنتها مدينة بولوكواني بجنوب إفريقيا، ليضمن بذلك تأهله إلى بطولة العالم للفرق لفئة أقل من 16 سنة.\r\n\r\nوجاء هذا التتويج بعد مسار متميز للمنتخب الوطني، توج بانتصارات على منتخبات كينيا ومصر وزيمبابوي وجنوب إفريقيا والجزائر، مؤكداً بذلك المستوى المتقدم الذي بلغته رياضة التنس الوطنية.\r\n\r\nكما بصم المنتخب الوطني للفتيات على مشاركة مشرفة، حيث احتل مركز الوصافة، بعد تحقيقه الفوز على منتخبات الجزائر وتوغو ومصر وجنوب إفريقيا، قبل أن ينهزم في المباراة النهائية أمام المنتخب التونسي.\r\nوضم المنتخب الوطني للفتيان كلا من رضا العوني، ومهدي اللعبي، وسامي العراقي، فيما تكوّن منتخب الفتيات من ياسمين الدويب، ولارا فراج، وهند الحناوي، تحت إشراف المدربين الوطنيين مهدي الطاهري ومحمد الغابة.\r\nوبهذه المناسبة، نتقدم بأحر التهاني إلى أبطالنا وبطلاتنا، وإلى الأطر التقنية والإدارية المشرفة عليهم، متمنين لهم مزيدا من التألق والنجاحات في الاستحقاقات المقبلة."
+    },
+    {
+      "id": "men-36485aa14a7075f28445ba0a",
+      "sourceId": "men",
+      "url": "https://www.men.gov.ma/%D8%A7%D9%84%D8%B3%D9%8A%D8%AF-%D8%A7%D9%84%D9%83%D8%A7%D8%AA%D8%A8-%D8%A7%D9%84%D8%B9%D8%A7%D9%85-%D9%84%D9%84%D9%88%D8%B2%D8%A7%D8%B1%D8%A9-%D9%8A%D8%B3%D8%AA%D9%82%D8%A8%D9%84-%D9%88%D9%81%D8%AF%D8%A7-%D9%85%D9%86-%D8%A7%D9%84%D8%AC%D9%85%D9%87%D9%88%D8%B1%D9%8A%D8%A9-%D8%A7%D9%84%D8%A5%D8%B3%D9%84%D8%A7%D9%85%D9%8A%D8%A9-%D8%A7%D9%84%D9%85%D9%88%D8%B1%D9%8A%D8%AA%D8%A7%D9%86%D9%8A%D8%A9-%D9%84%D8%AA%D8%A8%D8%A7%D8%AF%D9%84-%D8%A7%D9%84%D8%AE%D8%A8%D8%B1%D8%A7%D8%AA-%D9%81%D9%8A-%D9%85%D8%AC%D8%A7%D9%84-%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%D9%85/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A7%D8%AA",
+      "title": "السيد الكاتب العام للوزارة يستقبل وفدا من الجمهورية الإسلامية الموريتانية لتبادل الخبرات في مجال التعليم",
+      "category": "مستجدات وزارة التربية الوطنية",
+      "publishedAt": "2026-07-24T08:23:36.000Z",
+      "publishedTimeKnown": true,
+      "imageUrl": "https://www.men.gov.ma/sites/default/files/styles/thumb_900x600/public/2026-07/mauritanie.jpeg.webp?itok=LcoAuWtP",
+      "content": "استقبل السيد الحسين قضاض، الكاتب العام لوزارة التربية الوطنية والتعليم الأولي والرياضة، وفداً من وزارة التربية الوطنية وإصلاح النظام التعليمي بالجمهورية الإسلامية الموريتانية، وذلك في إطار مهمة لتبادل الخبرات نُظمت بدعم من البنك الدولي. \nويأتي هذا اللقاء في سياق تعزيز التعاون وتبادل المعارف وأفضل الممارسات بين البلدين الشقيقين في مجال إصلاح المنظومة التربوية، من خلال تقاسم التجربة المغربية في تنزيل خارطة الطريق 2022-2026، واستعراض آليات الحكامة والقيادة المعتمدة لمواكبة تنفيذها. \nكما شكل الاجتماع مناسبة لتقديم التجربة المغربية في تنفيذ برنامج دعم قطاع التربية الممول من طرف البنك الدولي وفق آلية \"البرنامج من أجل النتائج\"، مع تسليط الضوء على أهم النتائج المحققة، وعوامل النجاح، والدروس المستفادة في مجالات الحكامة، وتتبع الأداء، والارتقاء بجودة التعلمات لدى المتعلمات والمتعلمين."
+    },
+    {
+      "id": "finances-e1ee18e4f9072f374c0121c4",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7786",
+      "title": "عرض حول :تنفيذ ميزانية سنة 2026، والإطار العام لإعداد مشروع قانون المالية لسنة 2027، والبرمجة الميزانياتية لثلاث سنوات 2027-2029",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-22",
+      "publishedTimeKnown": false,
+      "summary": "قدمت السيدة نادية فتاح، وزيرة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز 2026، أمام لجنتي المالية بمجلسي البرلمان، عرضًا حول «تنفيذ ميزانية سنة 2026، والإطار العام لإعداد مشروع قانون المالية لسنة 2027، والبرمجة الميزانياتية لثلاث سنوات 2027-2029»، وذلك وفقًا لمقتضيات المادة 47 من القانون التنظيمي رقم 130.13 المتعلق بقانون المالية",
+      "content": "قدمت السيدة نادية فتاح، وزيرة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز 2026، أمام لجنتي المالية بمجلسي البرلمان، عرضًا حول «تنفيذ ميزانية سنة 2026، والإطار العام لإعداد مشروع قانون المالية لسنة 2027، والبرمجة الميزانياتية لثلاث سنوات 2027-2029»، وذلك وفقًا لمقتضيات المادة 47 من القانون التنظيمي رقم 130.13 المتعلق بقانون المالية",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/Parlement/parlement-bat768.jpg"
+    },
+    {
+      "id": "finances-2781c1c72fafaf885d17a76d",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7791",
+      "title": "تأكيد مختبر الاقتصاد الأزرق الثاني الرؤية المشتركة لجعل الاقتصاد الأزرق محركًا استراتيجيًا لتنمية المغرب",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-22",
+      "publishedTimeKnown": false,
+      "summary": "الرباط، 22 يوليوز 2026 – نظّمت وزارة الاقتصاد والمالية، المختبر الأزرق الثاني، من خلال وحدة تدبير برنامج تطوير الاقتصاد الأزرق، مشكّلة بذلك محطةً رئيسيةً للتشاور خُصصت لوضع الصيغة النهائية للاستراتيجية الوطنية للاقتصاد الأزرق.",
+      "content": "الرباط، 22 يوليوز 2026 – نظّمت وزارة الاقتصاد والمالية، المختبر الأزرق الثاني، من خلال وحدة تدبير برنامج تطوير الاقتصاد الأزرق، مشكّلة بذلك محطةً رئيسيةً للتشاور خُصصت لوضع الصيغة النهائية للاستراتيجية الوطنية للاقتصاد الأزرق.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Eco_Bleu_07-2026/Eco_bleu_072026_768.jpg"
+    },
+    {
+      "id": "finances-f0434d398467ccf7d10c3c94",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7784",
+      "title": "التوقيع مع مجموعة البنك الإسلامي للتنمية على وثيقة استراتيجية الشراكة للفترة 2026-2029",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-22",
+      "publishedTimeKnown": false,
+      "summary": "ترأس السيد محمد طارق بشير، مدير الخزينة والمالية الخارجية بمقر وزارة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز 2026، والسيد أحمد أج أبو بكرين، مدير المركز الإقليمي لمجموعة البنك الإسلامي للتنمية بالرباط، مراسم التوقيع على وثيقة إعطاء الانطلاقة لاستراتيجية الشراكة بين مجموعة البنك والمملكة المغربية للفترة 2026-2029، والتي من شأن تنزيلها إعطاء دفعة قوية لعلاقات التعاون الجيدة القائمة بين المغرب والمجموعة.",
+      "content": "ترأس السيد محمد طارق بشير، مدير الخزينة والمالية الخارجية بمقر وزارة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز 2026، والسيد أحمد أج أبو بكرين، مدير المركز الإقليمي لمجموعة البنك الإسلامي للتنمية بالرباط، مراسم التوقيع على وثيقة إعطاء الانطلاقة لاستراتيجية الشراكة بين مجموعة البنك والمملكة المغربية للفترة 2026-2029، والتي من شأن تنزيلها إعطاء دفعة قوية لعلاقات التعاون الجيدة القائمة بين المغرب والمجموعة.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/DTFE_BID_22072026/BID_22072026_768.jpg"
+    },
+    {
+      "id": "finances-e6fc75d6007027d01ce4f6b6",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7787",
+      "title": "اليوم الجهوي للتعريف بميثاق الممارسات الجيدة لحكامة المؤسسات والمقاولات العمومية",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-22",
+      "publishedTimeKnown": false,
+      "summary": "نظمت وزارة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز2026، يوماً دراسياً جهوياً خُصص للتعريف بميثاق الممارسات الجيدة لحكامة المؤسسات والمقاولات العمومية.",
+      "content": "نظمت وزارة الاقتصاد والمالية، يوم الأربعاء 22 يوليوز2026، يوماً دراسياً جهوياً خُصص للتعريف بميثاق الممارسات الجيدة لحكامة المؤسسات والمقاولات العمومية.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Fes_Charte_Gouvernance-22072026/Fes_Charte_Gouvernance-22072026_768.jpg"
+    },
+    {
+      "id": "finances-22917b50259386c823d3f5c1",
+      "sourceId": "finances",
+      "url": "https://www.finances.gov.ma/ar/Pages/%D9%85%D8%B3%D8%AA%D8%AC%D8%AF%D8%A9.aspx?fiche=7778",
+      "title": "إطلاق الاستشارة العمومية الموسعة حول مشروع التصنيف المالي الأخضر للمغرب",
+      "category": "مستجدات الاقتصاد والمالية",
+      "publishedAt": "2026-07-10",
+      "publishedTimeKnown": false,
+      "summary": "في إطار مواصلة مسار استكمال مشروع التصنيف المالي الأخضر للمغرب، تطلق وزارة الاقتصاد والمالية، وبنك المغرب، والهيئة المغربية لسوق الرساميل، وهيئة مراقبة التأمينات والاحتياط الاجتماعي، إلى جانب وزارة الانتقال الطاقي والتنمية المستدامة، استشارة عمومية حول مشروع التصنيف.",
+      "content": "في إطار مواصلة مسار استكمال مشروع التصنيف المالي الأخضر للمغرب، تطلق وزارة الاقتصاد والمالية، وبنك المغرب، والهيئة المغربية لسوق الرساميل، وهيئة مراقبة التأمينات والاحتياط الاجتماعي، إلى جانب وزارة الانتقال الطاقي والتنمية المستدامة، استشارة عمومية حول مشروع التصنيف.",
+      "imageUrl": "https://www.finances.gov.ma/PublishingImages/Actualit%C3%A9s/2026/Taxonomie_07-2026_768.jpg"
+    },
+    {
+      "id": "emploi-public-c048299b5111a50d2eeb3755",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/bd7d21e6-ce27-4590-9ae0-ba4755897c51",
+      "title": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية • 1 منصب آخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 17 أكتوبر 2026",
+      "content": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11\n\nوزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية\n\nالإعلان\n\n1 منصب\n\nآخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 17 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-f0ee6091921a14c9eb9f3f67",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/8cad4f28-8207-43e7-b653-29498a7ed5e0",
+      "title": "مباراة لتوظيف متصرف من الدرجة الثالثة - سلم 10",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية • 32 مناصب آخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 17 أكتوبر 2026",
+      "content": "مباراة لتوظيف متصرف من الدرجة الثالثة - سلم 10\n\nوزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية\n\nالإعلان\n\n32 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 17 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-8e4f43b6752ecd70f87ab9fc",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/8056cf15-3c75-4428-a0b1-a75387b069bd",
+      "title": "مباراة لتوظيف متصرف من الدرجة الثانية - سلم 11",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية • 2 مناصب آخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 17 أكتوبر 2026",
+      "content": "مباراة لتوظيف متصرف من الدرجة الثانية - سلم 11\n\nوزارة التربية الوطنية والتعليم الأولي والرياضة - قطاع التربية الوطنية\n\nالإعلان\n\n2 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 7 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 17 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-21b7772a84b64d7f333bc11a",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/78213ebc-6540-4ee1-8732-f5b9d4219945",
+      "title": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة الداخلية -المديرية العامة للوقاية المدنية- • 4 مناصب آخر أجل لإيداع ملفات الترشيح : 5 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 25 أكتوبر 2026",
+      "content": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11\n\nوزارة الداخلية -المديرية العامة للوقاية المدنية-\n\nالإعلان\n\n4 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 5 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 25 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-9df1167b1dbc3c46bbca0548",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/52e12b8e-9551-4cd5-913c-a6af6b39db73",
+      "title": "مباراة لتوظيف تقني من الدرجة الثالثة - سلم 9",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة الداخلية -المديرية العامة للوقاية المدنية- • 12 مناصب آخر أجل لإيداع ملفات الترشيح : 5 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 25 أكتوبر 2026",
+      "content": "مباراة لتوظيف تقني من الدرجة الثالثة - سلم 9\n\nوزارة الداخلية -المديرية العامة للوقاية المدنية-\n\nالإعلان\n\n12 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 5 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 25 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-0179ef287f956817624ac925",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/1ca7c692-2941-4aed-8903-a6d7758252d0",
+      "title": "مباراة لتوظيف صيدلي من الدرجة الأولى - سلم 11",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة الداخلية • 1 منصب آخر أجل لإيداع ملفات الترشيح : 30 شتنبر 2026 - 16:30 تاريخ إجراء المباراة : 11 أكتوبر 2026",
+      "content": "مباراة لتوظيف صيدلي من الدرجة الأولى - سلم 11\n\nوزارة الداخلية\n\nالإعلان\n\n1 منصب\n\nآخر أجل لإيداع ملفات الترشيح : 30 شتنبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 11 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-9c84fe64441aa21e4aef65e7",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/0bcfe0ed-c273-4358-947a-76594b2f2dde",
+      "title": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11",
+      "category": "مباريات التوظيف",
+      "summary": "المندوبية السامية للتخطيط • 20 مناصب آخر أجل لإيداع ملفات الترشيح : 15 أكتوبر 2026 - 16:30 تاريخ إجراء المباراة : 25 أكتوبر 2026",
+      "content": "مباراة لتوظيف مهندس دولة من الدرجة الأولى - سلم 11\n\nالمندوبية السامية للتخطيط\n\nالإعلان\n\nالايداع الالكتروني\n\n20 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 15 أكتوبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 25 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-8800d1781cab2e52d2da7bc8",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/163393e4-8773-494e-ba2d-ad108262c366",
+      "title": "لائحة المدعوين لإجراء الاختبار الكتابي لمباراة توظيف تقني من الدرجة الثالثة - سلم 9",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة التضامن والإدماج الاجتماعي والأسرة • 2 مناصب آخر أجل لإيداع ملفات الترشيح : 27 شتنبر 2026 - 16:30 تاريخ إجراء المباراة : 4 أكتوبر 2026",
+      "content": "لائحة المدعوين لإجراء الاختبار الكتابي لمباراة توظيف تقني من الدرجة الثالثة - سلم 9\n\nوزارة التضامن والإدماج الاجتماعي والأسرة\n\nالاستدعاء\n\n2 مناصب\n\nآخر أجل لإيداع ملفات الترشيح : 27 شتنبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 4 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-dfa9e31067132b1a95761aee",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/610a541b-4cfe-4d44-8cac-c963b740652f",
+      "title": "لائحة المدعوين لإجراء الاختبار الكتابي لمباراة توظيف متصرف من الدرجة الثالثة - سلم 10",
+      "category": "مباريات التوظيف",
+      "summary": "وزارة التضامن والإدماج الاجتماعي والأسرة • 1 منصب آخر أجل لإيداع ملفات الترشيح : 27 شتنبر 2026 - 16:30 تاريخ إجراء المباراة : 4 أكتوبر 2026",
+      "content": "لائحة المدعوين لإجراء الاختبار الكتابي لمباراة توظيف متصرف من الدرجة الثالثة - سلم 10\n\nوزارة التضامن والإدماج الاجتماعي والأسرة\n\nالاستدعاء\n\n1 منصب\n\nآخر أجل لإيداع ملفات الترشيح : 27 شتنبر 2026\n- 16:30\n\nتاريخ إجراء المباراة : 4 أكتوبر 2026"
+    },
+    {
+      "id": "emploi-public-6284c2fc490f3a071fb2600f",
+      "sourceId": "emploi-public",
+      "url": "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/bca396eb-03a2-4648-94e9-2f4bd888ee07",
+      "title": "تقني من الدرجة الثالثة بكلية العلوم التطبيقية بتارودانت تخصص développement informatique 1 أيام متبقية جامعة ابن زهر - أكادير الإعلان 1 منصب آخر أجل لإيداع ملفات الترشيح : 4 أكتوبر 2026 تاريخ إجراء المباراة : 11 أكتوبر 2026",
+      "category": "مباريات التوظيف",
+      "summary": "جامعة ابن زهر - أكادير • 1 منصب آخر أجل لإيداع ملفات الترشيح : 4 أكتوبر 2026 تاريخ إجراء المباراة : 11 أكتوبر 2026",
+      "content": "تقني من الدرجة الثالثة بكلية العلوم التطبيقية بتارودانت تخصص développement informatique\n\n1 أيام متبقية\n\nجامعة ابن زهر - أكادير\n\nالإعلان\n\n1 منصب\n\nآخر أجل لإيداع ملفات الترشيح : 4 أكتوبر 2026\n\nتاريخ إجراء المباراة : 11 أكتوبر 2026",
+      "imageUrl": "https://www.emploi-public.ma/backoffice/files/images/administrations/673d4e683bf65fbf906fa190831359e7.png"
+    }
+  ]
 }

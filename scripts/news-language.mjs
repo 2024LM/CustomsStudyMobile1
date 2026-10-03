@@ -52,14 +52,15 @@ export async function collectLocalizedPages(pages, fetchText, extract) {
     const candidates = [page.url, ...(page.fallbackUrls || [])];
     for (let i = 0; i < candidates.length && i < 6; i++) {
       const url = candidates[i];
-      if (visited.has(url)) continue;
-      visited.add(url);
+      const visitKey = new URL(url).href;
+      if (visited.has(visitKey)) continue;
+      visited.add(visitKey);
       try {
         const html = await fetchText(url);
         const extracted = extract(html, url, page);
         articles.push(...extracted);
         // Use actual links advertised by the publisher rather than inventing /ar routes.
-        for (const alternate of discoverArabicUrls(html, url)) if (!visited.has(alternate)) candidates.push(alternate);
+        for (const alternate of discoverArabicUrls(html, url)) if (!visited.has(new URL(alternate).href)) candidates.push(alternate);
         console.log('[news] ' + url + ': ' + extracted.length + ' articles, ' + extracted.filter(item => isArabicText(item.title)).length + ' Arabic');
       } catch (error) {
         console.warn('[news] ' + url + ': ' + (error instanceof Error ? error.message : error));
