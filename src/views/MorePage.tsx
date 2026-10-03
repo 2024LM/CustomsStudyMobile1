@@ -1,5 +1,4 @@
 import React from 'react';
-import {NewsSourceSettings} from '../features/news/components/NewsSourceSettings';
 import {
   AlertCircle,
   Heart,
@@ -17,6 +16,7 @@ import {
   Instagram,
   Youtube,
   Globe2,
+  Newspaper,
 } from 'lucide-react';
 import { RemoteState } from '../types';
 import { appConfig } from '../config/appConfig';
@@ -38,6 +38,7 @@ interface MorePageProps {
   onGoToAdvanced: () => void;
   onGoToAiSettings: () => void;
   onGoToVoiceSettings: () => void;
+  onGoToNewsSettings: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   remote: RemoteState;
@@ -54,6 +55,7 @@ export const MorePage: React.FC<MorePageProps> = ({
   onGoToAdvanced,
   onGoToAiSettings,
   onGoToVoiceSettings,
+  onGoToNewsSettings,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   remote,
@@ -95,6 +97,7 @@ export const MorePage: React.FC<MorePageProps> = ({
     }
   };
   const menuItems = [
+    {icon: Newspaper, title: 'إعدادات الأخبار', subtitle: 'المصادر، الإشعارات والترجمة التلقائية', action: onGoToNewsSettings},
     {
       icon: BrainCircuit,
       title: 'مركز الدراسة',
@@ -171,8 +174,6 @@ export const MorePage: React.FC<MorePageProps> = ({
           </div>
         </div>
       </div>
-
-      <NewsSourceSettings />
 
       <div data-tour="more-menu" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {menuItems.map((item, idx) => {

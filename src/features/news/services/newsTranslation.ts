@@ -62,8 +62,11 @@ export function cachedArticleBody(title:string,content:string):string|undefined{
   const chunks=contentChunks(content),saved=chunks.map(chunk=>cachedNewsTranslation(title,chunk));
   return chunks.length&&saved.every(Boolean)?saved.map(item=>item!.summary).join('\n'):undefined;
 }
-export async function translateArticleBody(title:string,content:string):Promise<string>{
+export async function translateArticleBody(title:string,content:string,shouldContinue:()=>boolean=()=>true):Promise<string>{
   const translated:string[]=[];
-  for(const chunk of contentChunks(content.slice(0,12000)))translated.push((await translateNews(title,chunk)).summary);
+  for(const chunk of contentChunks(content.slice(0,12000))){
+    if(!shouldContinue())throw new Error('توقفت الترجمة.');
+    translated.push((await translateNews(title,chunk)).summary);
+  }
   return translated.join('\n');
 }

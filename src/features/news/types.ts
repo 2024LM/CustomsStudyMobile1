@@ -10,6 +10,7 @@ export interface NewsSource {
   builtIn: boolean;
   enabled: boolean;
   notificationsEnabled?: boolean;
+  autoTranslate?: boolean;
 }
 
 export interface NewsArticle {

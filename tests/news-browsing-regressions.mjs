@@ -29,6 +29,11 @@ service.setSourcePreferences('one',{enabled:false});await service.refresh();asse
 fetched=[];await service.refresh('one');assert.deepEqual(fetched,['one'],'Explicitly opening a disabled source fetches only it');
 service.setSourcePreferences('two',{notificationsEnabled:false});fetched=[];await service.refresh();assert.equal(fetched.length,0,'Muted sources are not periodically polled');
 assert.equal(service.sources().find(s=>s.id==='two').enabled,true,'Muting keeps the source visible');
+service.setSourcePreferences('two',{autoTranslate:true});
+assert.equal(service.sources().find(s=>s.id==='two').autoTranslate,true,'Automatic translation preference is persisted per source');
+assert.equal(service.sources().find(s=>s.id==='one').autoTranslate,undefined,'Enabling translation does not affect another source');
+service.setSourcePreferences('two',{autoTranslate:false});
+assert.equal(service.sources().find(s=>s.id==='two').autoTranslate,false);
 service.removeSource('one');assert.equal(service.sources().length,2,'Built-in source cannot be deleted');
 cursorCalls=[];assert.equal(await service.loadOlder('one'),true);assert.equal(await service.loadOlder('one'),false);assert.equal(await service.loadOlder('one'),false);assert.deepEqual(cursorCalls,[undefined,'https://publisher.ma/page/2'],'Pagination follows the announced next page once and stops');
 const oldCount=storage.pendingNewArticles().length;storage.saveArticles([...storage.articles(),article('archive','2020-01-01')],false);assert.equal(storage.pendingNewArticles().length,oldCount,'Browsing older pages does not queue notifications');

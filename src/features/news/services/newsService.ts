@@ -49,7 +49,7 @@ export const newsService = {
     if (this.sources().find(source => source.id === id)?.builtIn) return;
     newsStorage.removeCustomSource(id); pageState.delete(id); changed();
   },
-  setSourcePreferences(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean}) {
+  setSourcePreferences(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean;autoTranslate?:boolean}) {
     if(!this.sources().some(source=>source.id===id)) throw new Error('المصدر غير موجود.');
     newsStorage.savePreferences(id,value); refreshedAt=0; changed();
   },
