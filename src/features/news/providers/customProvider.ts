@@ -102,16 +102,29 @@ export function previewConfiguredSource(name: string, page: { text: string; url:
 }
 export function aiPageExcerpt(page: { text: string; url: string }): string {
   const document = htmlDocument(page.text);
+
+  // Never expose executable code, form contents, or hidden input values to the AI helper.
+  document
+    .querySelectorAll('script, style, noscript, template, form, input, textarea, select, option, button')
+    .forEach(node => node.remove());
+
   document.querySelectorAll('*').forEach(node => {
     for (const attribute of [...node.attributes]) {
       if (!['class', 'id', 'href', 'datetime'].includes(attribute.name)) node.removeAttribute(attribute.name);
     }
     if (node.hasAttribute('href')) {
       const url = samePublisher(node.getAttribute('href') || '', page.url);
-      if (url) { const clean = new URL(url); clean.search = ''; node.setAttribute('href', clean.href); }
-      else node.removeAttribute('href');
+      if (url) {
+        const clean = new URL(url);
+        clean.search = '';
+        clean.hash = '';
+        node.setAttribute('href', clean.href);
+      } else {
+        node.removeAttribute('href');
+      }
     }
   });
+
   return document.body.innerHTML.slice(0, 30000);
 }
 export async function fetchCustomSource(source: NewsSource): Promise<NewsArticle[]> {
