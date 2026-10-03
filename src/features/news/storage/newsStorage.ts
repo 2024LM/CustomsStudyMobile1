@@ -50,7 +50,14 @@ export const newsStorage={
     newsStorage.saveCustomSources(newsStorage.customSources().filter(source=>source.id!==id));
     newsStorage.saveArticles(newsStorage.articles().filter(article=>article.sourceId!==id),false);
   }),
-  preferences:():Record<string,{enabled?:boolean;notificationsEnabled?:boolean}>=>parse(localStorage.getItem(PREFS_KEY),{}),
+  preferences:():Record<string,{enabled?:boolean;notificationsEnabled?:boolean}>=>{
+    const raw=parse<unknown>(localStorage.getItem(PREFS_KEY),{});
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
+    return Object.fromEntries(Object.entries(raw).filter(([,value])=>value&&typeof value==='object'&&!Array.isArray(value)).map(([id,value])=>{
+      const flags=value as Record<string,unknown>;
+      return [id,{...(typeof flags.enabled==='boolean'?{enabled:flags.enabled}:{}),...(typeof flags.notificationsEnabled==='boolean'?{notificationsEnabled:flags.notificationsEnabled}:{})}];
+    }));
+  },
   savePreferences:(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean})=>sourceTransaction(()=>{
     const state=newsStorage.preferences();
     localStorage.setItem(PREFS_KEY,JSON.stringify({...state,[id]:{...state[id],...value}}));
@@ -85,7 +92,7 @@ export const newsStorage={
     for(const sourceId of Object.keys(state))if(!kept.some(article=>article.sourceId===sourceId))delete state[sourceId];
     localStorage.setItem(CACHE_KEY,JSON.stringify(kept));
     localStorage.setItem(TRACK_KEY,JSON.stringify(state));
-    // Translation cache has its own bounded retention.
+    // Saved translations remain independent from the browsing snapshot.
     return kept;
   }),
   pendingNewArticles:():NewsArticle[]=>{

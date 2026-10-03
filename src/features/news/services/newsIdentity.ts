@@ -40,5 +40,5 @@ export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[
     return Number.isFinite(value)?value:0;
   };
   // Browsing history is independent from the ten-ID notification watermark.
-  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a)).slice(0, 2000);
+  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a));
 }
