@@ -77,7 +77,10 @@ export const newsService = {
         results.push({ sourceId: source.id, articles: [], error: error instanceof Error ? error.message : 'FETCH_FAILED' });
       }
     }
-    const fresh = preferArabicArticles([...bundled, ...results.flatMap((r) => r.articles)]);
+    // A source removed while its request was pending must not return to the cache.
+    const activeIds = new Set(this.sources().filter(source => source.enabled).map(source => source.id));
+    const fresh = preferArabicArticles([...bundled, ...results.flatMap((r) => r.articles)].filter(article => activeIds.has(article.sourceId)));
+
     const previous = newsStorage.articles();
     const timestamp = (value?: string) => {
       const parsed = Date.parse(value || '');

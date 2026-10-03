@@ -64,8 +64,15 @@ const results=await page.evaluate(async()=>{
  window.__fixtures['https://publisher.ma/news']={body:markup.replace('عنوان خبر مهم','عنوان خبر محدث')};
  await api.newsService.refresh();
  check(api.newsService.cachedArticles().some(a=>a.sourceId===saved.id&&a.title.includes('محدث')),'custom HTML refresh actually fetches');
- api.newsService.removeSource(saved.id);
- check(!api.newsService.cachedArticles().some(a=>a.sourceId===saved.id),'deletion removes cached custom news');
+ const regularFetch=window.fetch;let release;let startedResolve;
+ const started=new Promise(resolve=>{startedResolve=resolve;});
+ window.fetch=async(raw,options)=>{
+   if(String(raw)==='https://publisher.ma/news') {startedResolve();return new Promise(resolve=>{release=()=>resolve(new Response(markup));});}
+   return regularFetch(raw,options);
+ };
+ const pendingRefresh=api.newsService.refresh();await started;
+ api.newsService.removeSource(saved.id);release();await pendingRefresh;window.fetch=regularFetch;
+ check(!api.newsService.cachedArticles().some(a=>a.sourceId===saved.id),'deleted source cannot return after pending refresh');
  const rss='<rss><channel><item><title>عنوان RSS صحيح</title><link>https://publisher.ma/news/1</link><pubDate>bad date</pubDate><description><![CDATA[<script>alert(1)</script><p>متن آمن</p>]]></description></item><item><title>خبر خارجي</title><link>javascript:alert(1)</link></item></channel></rss>';
  window.__fixtures['https://publisher.ma/feed']={body:rss};
  window.__fixtures['https://publisher.ma/']={body:'<link rel="alternate" type="application/rss+xml" href="/feed">'};
