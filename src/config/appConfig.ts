@@ -2,6 +2,8 @@ export interface AppTemplateConfig {
   schemaVersion: number;
   appId: string;
   appName: string;
+  versionCode: number;
+  versionName: string;
   defaultDomainId: string;
   defaultDomainName: string;
   defaultDomainDescription: string;
@@ -19,6 +21,8 @@ export const appConfig: AppTemplateConfig = {
   schemaVersion: 1,
   appId: 'com.nexus.customsstudy',
   appName: 'Raje3',
+  versionCode: 10001,
+  versionName: '1.0.01',
   defaultDomainId: 'customs_ma',
   defaultDomainName: 'الجمارك المغربية',
   defaultDomainDescription: 'المجال الافتراضي المرفق مع التطبيق',
