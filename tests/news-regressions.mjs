@@ -188,3 +188,20 @@ const cleanMen=newsDocument('<article><div class="content article__body"><p>هذ
 assert.ok(cleanMen.content.includes('تفاصيل إضافية'));
 assert.equal(cleanMen.content.includes('شارك هذا المقال'),false);
 assert.equal(cleanMen.content.includes('خبر آخر'),false);
+
+const {extractTawjihFeed,extractAlwadifaPublic}=await import('../scripts/news-platforms.mjs');
+const tawjihItems=extractTawjihFeed('<rss><channel><item><title><![CDATA[مباراة ولوج ماستر الاقتصاد والتدبير 2026]]></title><link>https://www.tawjihnet.net/master-2026/</link><pubDate>Thu, 01 Oct 2026 09:17:54 +0000</pubDate><description><![CDATA[<p>تفاصيل التسجيل الرسمية في مباراة الماستر.</p><script>evil()</script>]]></description></item><item><title>خبر خارج نطاق المصدر لا يجب قبوله</title><link>https://other.ma/news</link></item></channel></rss>');
+assert.equal(tawjihItems.length,1);
+assert.equal(tawjihItems[0].category,'الماستر والدراسات العليا');
+assert.equal(tawjihItems[0].publishedAt,'2026-10-01T09:17:54.000Z');
+assert.equal(tawjihItems[0].summary.includes('evil'),false);
+const wadifaItems=extractAlwadifaPublic('<nav><a href="/offre/public">مباريات الوظيفة العمومية</a></nav><article class="content-card" data-id="offre_123"><h2><a href="/offre/show/id/123">وزارة العدل: استدعاءات مباراة مهنية جديدة</a></h2><div class="content-description"><p>آخر أجل للترشيح 20 أكتوبر 2026.</p></div><div class="content-meta"><span>2026-10-03</span><span>9999 مشاهدة</span></div></article>');
+assert.equal(wadifaItems.length,1);
+assert.equal(wadifaItems[0].publishedAt,'2026-10-03');
+assert.equal(wadifaItems[0].publishedTimeKnown,false);
+assert.equal(wadifaItems[0].category,'النتائج والاستدعاءات');
+assert.equal(bundles.parseNewsBundle({schemaVersion:2,refreshedSourceIds:['tawjihnet','alwadifa'],articles:[...tawjihItems,...wadifaItems]}).refreshedSourceIds.length,2);
+console.log('Tawjihnet RSS and Alwadifa announcement extraction checks passed');
+
+assert.equal(extractAlwadifaPublic('<article class="content-card"><h2><a href="/offre/show/id/999">بطاقة ترويجية دون هوية إعلان في قائمة الموقع</a></h2></article>').length,0);
+assert.equal(plainNewsText('<p>First</p>\r\n\r\n<p>Second</p>').includes('\r'),false);
