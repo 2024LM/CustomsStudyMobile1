@@ -13,6 +13,7 @@ export type Page =
   | 'ADVANCED'
   | 'AI_SETTINGS'
   | 'VOICE_SETTINGS'
+  | 'NEWS_SETTINGS'
   | 'AI_ASSISTANT'
   | 'MORE';
 

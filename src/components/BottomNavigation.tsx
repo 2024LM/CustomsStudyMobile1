@@ -18,7 +18,7 @@ export function BottomNavigation({ page, onNavigate }: { page: Page; onNavigate:
         const Icon = item.icon;
         const selected = page === item.page ||
           (item.page === 'QUESTIONS' && page === 'SESSION') ||
-          (item.page === 'MORE' && ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS', 'VOICE_SETTINGS'].includes(page));
+          (item.page === 'MORE' && ['MISTAKES', 'FAVORITES', 'BANKS', 'DOMAINS', 'PLAN', 'DOWNLOADS', 'ADVANCED', 'AI_SETTINGS', 'VOICE_SETTINGS', 'NEWS_SETTINGS'].includes(page));
         return <button key={item.page} type="button" aria-current={selected ? 'page' : undefined}
           onClick={() => onNavigate(item.page)}
           className="min-w-0 min-h-14 flex flex-col items-center justify-center px-0.5 py-1 text-[11px] font-semibold rounded-lg">

@@ -127,18 +127,23 @@ public class NewsUpdatesJobService extends JobService {
         String url=article.getString("url"),title=article.getString("title"),summary=article.optString("summary");
         JSONArray translations=new JSONArray(prefs.getString("translations","[]"));
         for(int i=0;i<translations.length();i++){JSONObject row=translations.getJSONObject(i);if(row.optString("url").equals(url)){title=row.optString("title",title);summary=row.optString("summary",summary);break;}}
-        if(!title.matches("(?s).*[\\u0600-\\u06ff].*")){
+        boolean autoTranslate=false;
+        JSONArray sourceSettings=new JSONArray(prefs.getString("sources","[]"));
+        for(int i=0;i<sourceSettings.length();i++){JSONObject row=sourceSettings.getJSONObject(i);if(row.optString("id").equals(article.getString("sourceId"))){autoTranslate=row.optBoolean("autoTranslate",false);break;}}
+        boolean translateTitle=!title.matches("(?s).*[\\u0600-\\u06ff].*");
+        boolean translateSummary=!summary.isEmpty()&&!summary.matches("(?s).*[\\u0600-\\u06ff].*");
+        if(autoTranslate&&(translateTitle||translateSummary)){
             try{
                 com.google.mlkit.nl.languageid.LanguageIdentifier detector=com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
                 String language;
-                try{language=com.google.android.gms.tasks.Tasks.await(detector.identifyLanguage(title+" "+summary),10,java.util.concurrent.TimeUnit.SECONDS);}finally{detector.close();}
+                try{language=com.google.android.gms.tasks.Tasks.await(detector.identifyLanguage(translateTitle?title:summary),10,java.util.concurrent.TimeUnit.SECONDS);}finally{detector.close();}
                 String code=com.google.mlkit.nl.translate.TranslateLanguage.fromLanguageTag(language);
                 if(code!=null&&!"ar".equals(code)){
                     com.google.mlkit.nl.translate.Translator translator=com.google.mlkit.nl.translate.Translation.getClient(new com.google.mlkit.nl.translate.TranslatorOptions.Builder().setSourceLanguage(code).setTargetLanguage("ar").build());
                     try{
                         // Translate using an already available local model; never download a model in a background job.
-                        title=com.google.android.gms.tasks.Tasks.await(translator.translate(title),10,java.util.concurrent.TimeUnit.SECONDS);
-                        summary=com.google.android.gms.tasks.Tasks.await(translator.translate(summary),10,java.util.concurrent.TimeUnit.SECONDS);
+                        if(translateTitle)title=com.google.android.gms.tasks.Tasks.await(translator.translate(title),10,java.util.concurrent.TimeUnit.SECONDS);
+                        if(translateSummary)summary=com.google.android.gms.tasks.Tasks.await(translator.translate(summary),10,java.util.concurrent.TimeUnit.SECONDS);
                     }finally{translator.close();}
                 }
             }catch(Exception ignored){/* Missing offline model: retain truthful original text. */}

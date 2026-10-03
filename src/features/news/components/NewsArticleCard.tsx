@@ -1,8 +1,6 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { NewsArticle } from '../types';
-import {cachedNewsTranslation} from '../services/newsTranslation';
-import {newsSummary} from '../services/newsPresentation';
 import { newsDate } from '../services/newsPresentation';
 import { sourceTheme } from '../config/sourceTheme';
 import { NewsSourceBadge } from './NewsSourceBadge';
@@ -13,8 +11,6 @@ export function NewsArticleCard({ article, sourceName, featured = false, preview
   const date = newsDate(article.publishedAt,article.publishedTimeKnown,article.publishedLocalTime);
   const theme = sourceTheme(article.sourceId);
   const style = { '--news-accent': theme.color, '--news-light': theme.light, borderInlineStartColor: theme.color } as React.CSSProperties;
-  const saved=cachedNewsTranslation(article.title,newsSummary(article.summary));
-  const summary = (article.summary || '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 180);
   return <article data-news-card={article.id} onClick={onOpen?event=>{if(!(event.target as Element).closest('button,a,input'))onOpen(article);}:undefined} style={style}
     className={`news-content-card bg-white border border-gray-100 border-s-4 rounded-lg overflow-hidden text-right ${preview ? 'news-preview-card' : 'h-full'}`}>
     <header className="news-card-header flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-3">
@@ -23,8 +19,7 @@ export function NewsArticleCard({ article, sourceName, featured = false, preview
     </header>
     {preview ? <div className="news-preview-body flex items-start gap-3 px-3 pt-3">
       <div className="min-w-0 flex-1">
-        <h3 dir="auto" className="font-black text-[14px] leading-6 text-[#2C2145] line-clamp-3">{onOpen?<button className="text-start" onClick={()=>onOpen(article)}>{saved?.title||article.title}</button>:saved?.title||article.title}</h3>
-        {summary && <p dir="auto" className="text-xs text-gray-500 leading-5 mt-2 line-clamp-2">{saved?.summary||summary}</p>}
+        <NewsArticleContent compact article={article} onOpen={onOpen?()=>onOpen(article):undefined}/>
       </div>
       <NewsImage url={article.imageUrl} imageClassName="news-preview-photo" />
     </div> : <>

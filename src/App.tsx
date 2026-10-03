@@ -29,6 +29,7 @@ const AdvancedStudyPage = lazy(() => import('./views/AdvancedStudyPage').then(mo
 const AiSettingsPage = lazy(() => import('./views/AiSettingsPage').then(module => ({ default: module.AiSettingsPage })));
 const AiAssistantPage = lazy(() => import('./views/AiAssistantPage').then(module => ({ default: module.AiAssistantPage })));
 const VoiceSettingsPage = lazy(() => import('./views/VoiceSettingsPage').then(module => ({ default: module.VoiceSettingsPage })));
+const NewsSettingsPage = lazy(() => import('./views/NewsSettingsPage').then(module => ({ default: module.NewsSettingsPage })));
 import { consumePendingQuestion } from './services/studyAlarm';
 
 type ThemeMode = 'system' | 'light' | 'dark';
@@ -470,6 +471,7 @@ export function App() {
           {page === 'AI_SETTINGS' && <AiSettingsPage onBack={() => setPage('MORE')} />}
 
           {page === 'VOICE_SETTINGS' && <VoiceSettingsPage onBack={() => setPage('MORE')} />}
+          {page === 'NEWS_SETTINGS' && <NewsSettingsPage onBack={() => setPage('MORE')} />}
 
           {page === 'AI_ASSISTANT' && (
             <AiAssistantPage initialMessage={newsAiDraft} onConsumeInitial={()=>setNewsAiDraft(undefined)} onOpenSettings={() => setPage('AI_SETTINGS')} />
@@ -488,6 +490,7 @@ export function App() {
               onGoToAdvanced={() => setPage('ADVANCED')}
               onGoToAiSettings={() => setPage('AI_SETTINGS')}
               onGoToVoiceSettings={() => setPage('VOICE_SETTINGS')}
+              onGoToNewsSettings={() => setPage('NEWS_SETTINGS')}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               unreadNotificationsCount={unreadNotificationsCount}
               remote={remote}

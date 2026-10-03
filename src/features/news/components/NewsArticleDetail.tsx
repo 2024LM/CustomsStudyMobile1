@@ -8,6 +8,7 @@ import { sourceTheme } from '../config/sourceTheme';
 import { NewsSourceBadge } from './NewsSourceBadge';
 import { NewsArticleContent } from './NewsArticleContent';
 import { NewsImage } from './NewsImage';
+import {useNewsAutoTranslation} from './useNewsAutoTranslation';
 
 export function NewsArticleDetail({ article, sourceName, onBack, onUseAi, onSelectSource }: { article: NewsArticle; sourceName?: string; onBack: () => void; onUseAi?: (text:string)=>void; onSelectSource?: (id:string)=>void }) {
   const theme=sourceTheme(article.sourceId);
@@ -16,7 +17,14 @@ export function NewsArticleDetail({ article, sourceName, onBack, onUseAi, onSele
   const original=content||article.summary||'';
   const [body,setBody]=useState(()=>cachedArticleBody(article.title,original)||original);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const autoTranslate=useNewsAutoTranslation(article.sourceId);
   useEffect(()=>{setBody(cachedArticleBody(article.title,original)||original);setError('');},[article.id,original]);
+  useEffect(()=>{
+    if(!autoTranslate||!original||cachedArticleBody(article.title,original)||!needsArabicTranslation(article.title,original))return;
+    let alive=true;setBusy(true);
+    void translateArticleBody(article.title,original,()=>alive).then(next=>{if(alive)setBody(next);}).catch(err=>{if(alive)setError(err instanceof Error?err.message:'تعذر ترجمة المحتوى.');}).finally(()=>{if(alive)setBusy(false);});
+    return()=>{alive=false;setBusy(false);};
+  },[article.id,original,autoTranslate]);
   return <article data-news-detail={article.internalId || article.id} className="bg-white border border-gray-100 rounded-lg overflow-hidden text-right"
     style={{'--news-light':theme.light} as React.CSSProperties}>
     <header className="px-4 py-3 border-b border-gray-100">

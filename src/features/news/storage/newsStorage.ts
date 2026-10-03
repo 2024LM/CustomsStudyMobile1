@@ -50,18 +50,18 @@ export const newsStorage={
     newsStorage.saveCustomSources(newsStorage.customSources().filter(source=>source.id!==id));
     newsStorage.saveArticles(newsStorage.articles().filter(article=>article.sourceId!==id),false);
   }),
-  preferences:():Record<string,{enabled?:boolean;notificationsEnabled?:boolean}>=>{
+  preferences:():Record<string,{enabled?:boolean;notificationsEnabled?:boolean;autoTranslate?:boolean}>=>{
     const raw=parse<unknown>(localStorage.getItem(PREFS_KEY),{});
     if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
     return Object.fromEntries(Object.entries(raw).filter(([,value])=>value&&typeof value==='object'&&!Array.isArray(value)).map(([id,value])=>{
       const flags=value as Record<string,unknown>;
-      return [id,{...(typeof flags.enabled==='boolean'?{enabled:flags.enabled}:{}),...(typeof flags.notificationsEnabled==='boolean'?{notificationsEnabled:flags.notificationsEnabled}:{})}];
+      return [id,{...(typeof flags.enabled==='boolean'?{enabled:flags.enabled}:{}),...(typeof flags.notificationsEnabled==='boolean'?{notificationsEnabled:flags.notificationsEnabled}:{}),...(typeof flags.autoTranslate==='boolean'?{autoTranslate:flags.autoTranslate}:{})}];
     }));
   },
-  savePreferences:(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean})=>sourceTransaction(()=>{
+  savePreferences:(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean;autoTranslate?:boolean})=>sourceTransaction(()=>{
     const state=newsStorage.preferences();
     localStorage.setItem(PREFS_KEY,JSON.stringify({...state,[id]:{...state[id],...value}}));
-    newsStorage.markNewsNotified(newsStorage.articles().filter(item=>item.sourceId===id).map(item=>item.internalId!));
+    if(value.enabled!==undefined||value.notificationsEnabled!==undefined)newsStorage.markNewsNotified(newsStorage.articles().filter(item=>item.sourceId===id).map(item=>item.internalId!));
   }),
   customSources:():NewsSource[]=>parse(localStorage.getItem(SOURCES_KEY),[]),
   saveCustomSources:(sources:NewsSource[])=>localStorage.setItem(SOURCES_KEY,JSON.stringify(sources)),
