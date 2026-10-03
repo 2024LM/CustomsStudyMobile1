@@ -46,14 +46,24 @@ export async function translateNews(title: string, summary = ''): Promise<NewsTr
 
 
 function contentChunks(content:string):string[]{
-  return content.match(/[\s\S]{1,900}/g)||[];
+  const chunks:string[]=[];
+  let remaining=content;
+  while(remaining.length){
+    let end=Math.min(900,remaining.length);
+    if(end<remaining.length){
+      const boundary=Math.max(remaining.lastIndexOf(' ',end-1),remaining.lastIndexOf('\n',end-1));
+      if(boundary>=450)end=boundary+1;
+    }
+    chunks.push(remaining.slice(0,end));remaining=remaining.slice(end);
+  }
+  return chunks;
 }
 export function cachedArticleBody(title:string,content:string):string|undefined{
   const chunks=contentChunks(content),saved=chunks.map(chunk=>cachedNewsTranslation(title,chunk));
-  return chunks.length&&saved.every(Boolean)?saved.map(item=>item!.summary).join(''):undefined;
+  return chunks.length&&saved.every(Boolean)?saved.map(item=>item!.summary).join('\n'):undefined;
 }
 export async function translateArticleBody(title:string,content:string):Promise<string>{
   const translated:string[]=[];
   for(const chunk of contentChunks(content.slice(0,12000)))translated.push((await translateNews(title,chunk)).summary);
-  return translated.join('');
+  return translated.join('\n');
 }
