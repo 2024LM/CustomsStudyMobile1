@@ -116,6 +116,15 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
 
+      - name: Verify APK integrity and signature
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -f "$APK"
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 20
+
       - name: Prepare distributable APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Raje3.apk
 
