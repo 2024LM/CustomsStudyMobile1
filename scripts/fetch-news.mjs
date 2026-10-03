@@ -8,6 +8,8 @@ import { enrichNewsDocuments, publicationDate, plainNewsText, retainNewsFeed } f
 
 import { extractMenUpdates, extractFinancesUpdates, extractEmploiAnnouncements } from './news-official.mjs';
 
+import { extractTawjihFeed, extractAlwadifaPublic } from './news-platforms.mjs';
+
 const OUT = new URL('../public/news-feed.json', import.meta.url);
 
 const strip = (value = '') => value
@@ -113,9 +115,18 @@ async function fetchHcpRss() {
   return preferArabicStories(articles);
 }
 
+async function fetchTawjihnet() {
+  try { return extractTawjihFeed(await fetchText('https://www.tawjihnet.net/feed/')); }
+  catch (error) { console.warn('[news] tawjihnet: ' + (error instanceof Error ? error.message : error)); return []; }
+}
+async function fetchAlwadifa() {
+  try { return extractAlwadifaPublic(await fetchText('https://alwadifa-maroc.com/offre/public')); }
+  catch (error) { console.warn('[news] alwadifa: ' + (error instanceof Error ? error.message : error)); return []; }
+}
+
 export { fetchEmploiPublic, fetchMen, fetchFinances, fetchHcpRss };
 export async function refreshNews() {
-  const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss()]);
+  const batches = await Promise.all([fetchEmploiPublic(), fetchMen(), fetchFinances(), fetchHcpRss(), fetchTawjihnet(), fetchAlwadifa()]);
   let articles = preferArabicStories(batches.flat()).slice(0, 180);
   await enrichNewsDocuments(articles, fetchText);
   await enrichArticleImages(articles, fetchText);

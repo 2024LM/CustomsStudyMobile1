@@ -1,6 +1,6 @@
 import { NewsArticle } from '../types';
 
-const OFFICIAL_SOURCES = new Set(['men', 'finances', 'emploi-public', 'hcp']);
+const BUNDLED_SOURCES = new Set(['men', 'finances', 'emploi-public', 'hcp', 'tawjihnet', 'alwadifa']);
 export interface NewsBundle {
   articles: NewsArticle[];
   refreshedSourceIds: string[];
@@ -15,7 +15,7 @@ export function parseNewsBundle(payload: unknown): NewsBundle {
   }) : [];
   // An empty/failed source must never erase the user's last successful snapshot.
   const refreshedSourceIds = data.schemaVersion === 2 && Array.isArray(data.refreshedSourceIds)
-    ? data.refreshedSourceIds.filter((id): id is string => typeof id === 'string' && OFFICIAL_SOURCES.has(id) && articles.some(item => item.sourceId === id)) : [];
+    ? data.refreshedSourceIds.filter((id): id is string => typeof id === 'string' && BUNDLED_SOURCES.has(id) && articles.some(item => item.sourceId === id)) : [];
   return { articles, refreshedSourceIds };
 }
 export function mergeNewsBundle(bundle: NewsBundle, cached: NewsArticle[]): NewsArticle[] {

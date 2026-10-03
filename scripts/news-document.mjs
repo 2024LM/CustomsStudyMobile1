@@ -8,7 +8,7 @@ function decode(value = '') {
 export function plainNewsText(html = '') {
   return decode(html).replace(/<(script|style|nav|header|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
     .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6])\b[^>]*>/gi, '\n').replace(/<[^>]+>/g, ' ')
-    .replace(/[ \t]+/g, ' ').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000);
+    .replace(/\r\n?/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000);
 }
 export function publicationDate(value) {
   if (typeof value !== 'string' || !value.trim()) return {};
