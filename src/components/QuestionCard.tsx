@@ -123,9 +123,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           <button
             onClick={toggleFavorite}
             className="w-8 h-8 rounded-full hover:bg-gray-100 transition-colors active:scale-90 flex items-center justify-center"
+            aria-pressed={favorite}
             aria-label={favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
           >
-            <Heart className={`w-4.5 h-4.5 transition-colors ${favorite ? 'fill-[#E84A67] text-[#E84A67]' : 'text-gray-300'}`} />
+            <Heart className={`w-4.5 h-4.5 transition-colors ${favorite ? 'fill-[#E84A67] text-[#E84A67]' : 'text-gray-500'}`} />
           </button>
           <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180 text-[#5B3FD6]' : ''}`} />
         </div>
