@@ -53,6 +53,9 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
     setFetchError('');
     try {
       const results = await newsService.refresh(selectedSource==='ALL'?undefined:selectedSource);
+      newsService.resetOlderPages(selectedSource==='ALL'?undefined:selectedSource);
+      setExhausted(value=>selectedSource==='ALL'?[]:value.filter(id=>id!==selectedSource));
+      setOlderErrors({});
       const hasArticles = newsService.cachedArticles().length > 0;
       if (!hasArticles && results.length && results.every((result) => result.error)) {
         setFetchError('تعذر تحديث الأخبار الآن. حاول مجددًا بعد قليل.');
@@ -128,17 +131,27 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
 
   const [olderBusy,setOlderBusy]=useState(false);
   const [exhausted,setExhausted]=useState<string[]>([]);
+  const [olderErrors,setOlderErrors]=useState<Record<string,string>>({});
+  const [endReasons,setEndReasons]=useState<Record<string,string>>({});
   const olderLock=useRef(false);
   const sentinel=useRef<HTMLDivElement>(null);
   useEffect(()=>newsService.subscribe(()=>setVersion(value=>value+1)),[]);
-  const loadOlder=async()=>{
+  const loadOlder=async(retry=false)=>{
     if(olderLock.current||loading||sourceLoading)return;
-    olderLock.current=true;setOlderBusy(true);setFetchError('');
-    const targets=sources.filter(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id));
+    const targets=sources.filter(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id)&&(retry||!olderErrors[source.id]));
+    if(!targets.length)return;
+    olderLock.current=true;setOlderBusy(true);
     try{
       for(const source of targets){
-        try{const more=await newsService.loadOlder(source.id);if(!more)setExhausted(value=>[...new Set([...value,source.id])]);}
-        catch(error){setFetchError(error instanceof Error?error.message:'تعذر جلب الصفحة التالية.');}
+        try{
+          const result=await newsService.loadOlder(source.id);
+          setOlderErrors(value=>{const next={...value};delete next[source.id];return next;});
+          if(!result.hasMore){
+            setExhausted(value=>[...new Set([...value,source.id])]);
+            setEndReasons(value=>({...value,[source.id]:result.endReason==='feed-only'?'التغذية تعرض الأخبار الحديثة فقط؛ لا يوجد رابط أرشيف متاح.':'لا يعرض المصدر رابطًا لصفحة أقدم بعد الأخبار المحمّلة.'}));
+          }
+        }
+        catch(error){setOlderErrors(value=>({...value,[source.id]:error instanceof Error?error.message:'تعذر جلب الصفحة التالية.'}));}
       }
       setVersion(value=>value+1);
     }finally{olderLock.current=false;setOlderBusy(false);}
@@ -148,7 +161,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
     if(!node||opened||olderBusy||fetchError)return;
     const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))void loadOlder();},{rootMargin:'200px'});
     observer.observe(node);return()=>observer.disconnect();
-  },[selectedSource,version,opened,olderBusy,fetchError,exhausted]);
+  },[selectedSource,version,opened,olderBusy,fetchError,exhausted,olderErrors,loading,sourceLoading]);
 
   const featured = filteredArticles[0];
   const rest = filteredArticles.slice(1);
@@ -163,7 +176,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
           <p className="text-xs text-gray-500 mt-1">أحدث المحتويات من المصادر المغربية.</p>
         </div>
         <div className="flex gap-1 shrink-0">
-          <button onClick={() => void refresh()} disabled={loading} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="تحديث الأخبار">
+          <button onClick={() => void refresh()} disabled={loading||olderBusy} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="تحديث الأخبار">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
           </button>
           <button onClick={() => { resetCheck(); setShowAdd(true); }} className="w-11 h-11 rounded-md border border-gray-100 flex items-center justify-center text-[#5B3FD6]" aria-label="إضافة مصدر"><Plus className="w-5 h-5" /></button>
@@ -241,7 +254,8 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
       )}
 
       <div ref={sentinel} className="text-center py-3">
-        {olderBusy?<p role="status">جارٍ جلب أخبار أقدم…</p>:sources.some(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id))?<button onClick={()=>void loadOlder()} className="min-h-11 px-4 font-bold text-[#5B3FD6]">تحميل أخبار أقدم</button>:<p className="text-xs text-gray-500">لا توجد صفحة أقدم متاحة من هذه المصادر.</p>}
+        {sources.filter(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&olderErrors[source.id]).map(source=><p key={source.id} role="alert" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3 mb-2 text-right">{source.name}: تعذر تحميل الأخبار الأقدم. {olderErrors[source.id]}</p>)}
+        {olderBusy?<p role="status">جارٍ جلب أخبار أقدم…</p>:sources.some(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&!exhausted.includes(source.id))?<button onClick={()=>void loadOlder(true)} className="min-h-11 px-4 font-bold text-[#5B3FD6]">{sources.some(source=>(selectedSource==='ALL'?source.enabled:source.id===selectedSource)&&olderErrors[source.id])?'إعادة محاولة تحميل أخبار أقدم':'تحميل أخبار أقدم'}</button>:<p className="text-xs text-gray-500">{selectedSource==='ALL'?'تم تحميل الصفحات المتاحة من المصادر.':endReasons[selectedSource]||'لا يعرض المصدر رابطًا لصفحة أقدم.'}</p>}
       </div>
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-4">

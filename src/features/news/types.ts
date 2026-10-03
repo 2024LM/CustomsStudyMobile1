@@ -43,3 +43,10 @@ export interface NewsExtraction {
   summary?: string;
   date?: string;
 }
+
+export interface NewsPageCursor { url: string; offset?: number }
+export interface NewsPageResult {
+  articles: NewsArticle[];
+  next?: NewsPageCursor;
+  endReason?: 'end' | 'feed-only';
+}

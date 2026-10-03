@@ -40,6 +40,9 @@ jobs:
       - name: Verify news browsing and source preferences
         run: node tests/news-browsing-regressions.mjs
 
+      - name: Verify shared news pagination
+        run: node tests/news-pagination-regressions.mjs
+
       - name: Refresh bundled Moroccan news
         run: node scripts/fetch-news.mjs
         continue-on-error: true

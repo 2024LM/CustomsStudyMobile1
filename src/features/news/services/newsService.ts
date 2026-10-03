@@ -4,12 +4,24 @@ import { DEFAULT_NEWS_SOURCES } from '../config/defaultSources';
 import { newsStorage } from '../storage/newsStorage';
 import { fetchNewsPage, SourcePreview } from '../providers/customProvider';
 import { publicNewsUrl } from '../providers/sourceAccess';
-import { NewsFetchResult, NewsSource } from '../types';
+import { NewsFetchResult, NewsSource, NewsPageCursor, NewsPageResult } from '../types';
+import { bundledNewsPage, cursorIdentity } from '../providers/newsPageArchive';
+import { Capacitor } from '@capacitor/core';
 
 let refreshTask: Promise<NewsFetchResult[]> | undefined;
 let refreshedAt = 0;
-const pageState = new Map<string,{next?:string;visited:Set<string>;loaded:boolean}>();
-const pageTasks = new Map<string,Promise<boolean>>();
+const pageState = new Map<string,{next?:NewsPageCursor;visited:Set<string>;loaded:boolean;endReason?:NewsPageResult['endReason']}>();
+export interface OlderNewsResult { hasMore: boolean; endReason?:NewsPageResult['endReason'] }
+const pageTasks = new Map<string,Promise<OlderNewsResult>>();
+async function readableNewsPage(source:NewsSource,cursor?:NewsPageCursor):Promise<NewsPageResult>{
+  const preferBundle=source.builtIn&&!Capacitor.isNativePlatform();
+  if(preferBundle){const page=await bundledNewsPage(source,cursor);if(page)return page;}
+  try{return await fetchNewsPage(source,cursor);}
+  catch(error){
+    if(!preferBundle){const page=await bundledNewsPage(source,cursor);if(page)return page;}
+    throw error;
+  }
+}
 function changed(){ for(const listener of listeners){try{listener();}catch{}} }
 
 const listeners = new Set<() => void>();
@@ -53,21 +65,26 @@ export const newsService = {
     if(!this.sources().some(source=>source.id===id)) throw new Error('المصدر غير موجود.');
     newsStorage.savePreferences(id,value); refreshedAt=0; changed();
   },
-  async loadOlder(sourceId:string):Promise<boolean> {
+  resetOlderPages(sourceId?:string) {
+    if(sourceId){if(!pageTasks.has(sourceId))pageState.delete(sourceId);}
+    else for(const id of pageState.keys())if(!pageTasks.has(id))pageState.delete(id);
+  },
+  async loadOlder(sourceId:string):Promise<OlderNewsResult> {
     const current=pageTasks.get(sourceId); if(current)return current;
     const source=this.sources().find(item=>item.id===sourceId);
-    if(!source)return false;
+    if(!source)return {hasMore:false,endReason:'end'};
     const state=pageState.get(sourceId);
-    if(state?.loaded&&!state.next)return false;
+    if(state?.loaded&&!state.next)return {hasMore:false,endReason:state.endReason};
     const task=(async()=>{
-      const page=await fetchNewsPage(source,state?.next);
-      if(!this.sources().some(item=>item.id===sourceId))return false;
-      const visited=state?.visited||new Set<string>();
-      visited.add(state?.next||source.feedUrl||source.url);
-      const next=page.next&&!visited.has(page.next)?page.next:undefined;
-      pageState.set(sourceId,{next,visited,loaded:true});
-      newsStorage.saveArticles([...newsStorage.articles(),...page.articles],false);changed();
-      return !!next;
+      const page=await readableNewsPage(source,state?.next);
+      if(!this.sources().some(item=>item.id===sourceId))return {hasMore:false,endReason:'end' as const};
+      const visited=new Set(state?.visited);
+      visited.add(cursorIdentity(state?.next||{url:source.feedUrl||source.url}));
+      const next=page.next&&!visited.has(cursorIdentity(page.next))?page.next:undefined;
+      // Commit pagination only after storage succeeds, so retries do not skip a page.
+      newsStorage.saveArticles([...newsStorage.articles(),...page.articles],false);
+      pageState.set(sourceId,{next,visited,loaded:true,endReason:page.endReason});changed();
+      return {hasMore:!!next,endReason:page.endReason};
     })().finally(()=>pageTasks.delete(sourceId));
     pageTasks.set(sourceId,task);return task;
   },
@@ -94,7 +111,7 @@ export const newsService = {
     const fetched=await Promise.all(sources.map(async source=>{
       try{
         let articles;
-        try{articles=(await fetchNewsPage(source)).articles;}
+        try{articles=(await readableNewsPage(source)).articles;}
         catch(error){const fallback=bundled.filter(item=>item.sourceId===source.id);if(!fallback.length)throw error;articles=fallback;}
         return {sourceId:source.id,articles};
       }catch(error){return {sourceId:source.id,articles:[],error:error instanceof Error?error.message:'FETCH_FAILED'};}

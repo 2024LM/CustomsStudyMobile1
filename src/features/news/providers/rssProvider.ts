@@ -7,10 +7,10 @@ export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
   return parseRss(document.text, source);
 }
 
-export function parseRss(markup: string, source: NewsSource): NewsArticle[] {
+export function parseRss(markup: string, source: NewsSource, limit = 50): NewsArticle[] {
   const xml = new DOMParser().parseFromString(markup, 'application/xml');
   if (xml.querySelector('parsererror')) throw new Error('RSS_INVALID_XML');
-  return [...xml.querySelectorAll('item, entry')].slice(0, 50).map((node, index) => {
+  return [...xml.querySelectorAll('item, entry')].slice(0, limit).map((node, index) => {
     const text = (selector: string) => node.querySelector(selector)?.textContent?.trim() || '';
     const linkNode = node.querySelector('link[rel="alternate"]') || node.querySelector('link:not([rel="self"])');
     const url = samePublisher(linkNode?.getAttribute('href') || text('link'), source.url);
@@ -21,7 +21,7 @@ export function parseRss(markup: string, source: NewsSource): NewsArticle[] {
         return publicNewsUrl(value, base).href;
       } catch { return undefined; }
     };
-    const attachments = [...node.getElementsByTagName('*')].filter(element =>
+    const attachments = [...node.querySelectorAll('*')].filter(element =>
       ['enclosure', 'content', 'thumbnail'].includes(element.localName) &&
       (element.localName === 'enclosure' || element.prefix === 'media'));
     let imageUrl: string | undefined;

@@ -33,8 +33,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify shared news pagination
+        run: node tests/news-pagination-regressions.mjs && node tests/news-browsing-regressions.mjs
+
       - name: Refresh bundled Moroccan news
         run: node scripts/fetch-news.mjs
+        continue-on-error: true
+
+      - name: Prepare older news pages using the shared app parser
+        run: node scripts/fetch-news-pages.mjs
         continue-on-error: true
 
       - name: Build web preview
