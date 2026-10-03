@@ -138,8 +138,8 @@ assert.equal(identity.internalNewsId(articleBase),identity.internalNewsId({...ar
 assert.notEqual(identity.internalNewsId(articleBase),identity.internalNewsId({...articleBase,sourceId:'men'}),'Identities are scoped to a source');
 const many=Array.from({length:15},(_,index)=>({...articleBase,id:'id'+index,url:'https://www.hcp.ma/test_a'+(index+1)+'.html',publishedAt:'2026-09-'+String(index+1).padStart(2,'0')}));
 const kept=identity.retainLatestNews([...many,...many.map(article=>({...article,sourceId:'men'}))]);
-assert.equal(kept.filter(article=>article.sourceId==='hcp').length,10);
-assert.equal(kept.filter(article=>article.sourceId==='men').length,10);
+assert.equal(kept.filter(article=>article.sourceId==='hcp').length,15);
+assert.equal(kept.filter(article=>article.sourceId==='men').length,15);
 assert.equal(kept[0].id,'id14','Most recent publication first');
 assert.equal(retainNewsFeed(many).length,10,'Build feed uses the same retention bound');
 const persistent=new Map();
@@ -147,8 +147,8 @@ persistent.set('raje3_news_cache_v1',JSON.stringify(many));
 const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity,'../services/newsPresentation':presentation},{
   localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
 }).newsStorage;
-assert.equal(stateStorage.articles().length,10);
-assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,10,'Migration physically drops old article bodies');
+assert.equal(stateStorage.articles().length,15);
+assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,15,'Migration preserves browsing history beyond ten articles');
 stateStorage.saveArticles(many);
 assert.equal(stateStorage.pendingNewArticles().length,0,'Initial population is a baseline');
 const newItem={...articleBase,id:'brand-new',url:'https://www.hcp.ma/new_a99.html',content:'Detailed text'};

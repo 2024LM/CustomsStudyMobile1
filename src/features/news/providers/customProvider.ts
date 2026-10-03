@@ -45,7 +45,7 @@ export function extractHtml(markup: string, source: NewsSource, settings: NewsEx
     const publishedAt = rawDate && /^\d{4}-\d{2}-\d{2}(?:T[^\s]+)?$/.test(rawDate) && Number.isFinite(Date.parse(rawDate)) ? rawDate : undefined;
     articles.push({ id: `${source.id}-${url}`, sourceId: source.id, title, url, summary, publishedAt,
       publishedTimeKnown: !!publishedAt?.includes('T') });
-    if (articles.length === 10) break;
+    if (articles.length === 50) break;
   }
   return articles;
 }
@@ -108,4 +108,33 @@ export async function fetchCustomSource(source: NewsSource): Promise<NewsArticle
   const articles = extractHtml(page.text, source, source.extraction);
   if (!articles.length) throw new Error('تعذر استخراج أخبار من القالب المحفوظ؛ قد يكون تصميم الموقع تغيّر.');
   return articles;
+}
+
+
+// Follow publisher-supplied pagination only; never invent a page URL.
+export async function fetchNewsPage(source: NewsSource, cursor?: string): Promise<{articles:NewsArticle[];next?:string}> {
+  const requested=cursor || source.feedUrl || source.url;
+  const url=samePublisher(requested, source.url);
+  if(!url) throw new Error('رابط الصفحة خارج موقع المصدر.');
+  const page=await newsDocument(url);
+  const xml=/<(?:rss|feed|rdf:RDF)\b/i.test(page.text);
+  const document=new DOMParser().parseFromString(page.text,xml?'application/xml':'text/html');
+  let articles:NewsArticle[]=[];
+  if(xml) articles=parseRss(page.text,source);
+  else {
+    const official:Record<string,NewsExtraction>={
+      men:{item:'article',title:'h5',link:'a',date:'[datetime]'},
+      finances:{item:'.row,.item',title:'h2,h4',link:'h2 a,h4 a',summary:'p'},
+      'emploi-public':{item:'a[href*="/تفاصيل/"],a[href*="/details/"]',title:'h2,h4',link:'a',summary:'.card-text,.card-footer'},
+      alwadifa:{item:'article.content-card[data-id^="offre_"]',title:'h2',link:'h2 a',summary:'.content-description',date:'.content-meta'},
+    };
+    for(const template of source.extraction?[source.extraction]:official[source.id]?[official[source.id]]:TEMPLATES) {
+      articles=extractHtml(page.text,{...source,url},template);
+      if(articles.length) break;
+    }
+  }
+  if(!articles.length) throw new Error('لم نجد أخبارًا قابلة للاستخراج في هذه الصفحة.');
+  const nextNode=document.querySelector('link[rel="next"],a[rel~="next"],a.next,.pagination-next a')||[...document.querySelectorAll('.pagination a,.pager a,nav a')].find(node=>/^(?:التالي|التالية|suivant|next|›|»|→)$/i.test(node.textContent?.trim()||''));
+  const next=nextNode?samePublisher(nextNode.getAttribute('href')||'',url):undefined;
+  return {articles,next:next!==url?next:undefined};
 }

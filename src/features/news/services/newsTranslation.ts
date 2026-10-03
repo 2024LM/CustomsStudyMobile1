@@ -43,3 +43,17 @@ export async function translateNews(title: string, summary = ''): Promise<NewsTr
   pending.set(key, task);
   try { return await task; } finally { pending.delete(key); }
 }
+
+
+function contentChunks(content:string):string[]{
+  return content.match(/[\s\S]{1,900}/g)||[];
+}
+export function cachedArticleBody(title:string,content:string):string|undefined{
+  const chunks=contentChunks(content),saved=chunks.map(chunk=>cachedNewsTranslation(title,chunk));
+  return chunks.length&&saved.every(Boolean)?saved.map(item=>item!.summary).join(''):undefined;
+}
+export async function translateArticleBody(title:string,content:string):Promise<string>{
+  const translated:string[]=[];
+  for(const chunk of contentChunks(content.slice(0,12000)))translated.push((await translateNews(title,chunk)).summary);
+  return translated.join('');
+}

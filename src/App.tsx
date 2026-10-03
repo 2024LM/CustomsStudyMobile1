@@ -13,6 +13,7 @@ import { Onboarding } from './components/Onboarding';
 import { GuidedTour, TourStep } from './components/GuidedTour';
 import { RatingPrompt } from './components/RatingPrompt';
 
+import {startNewsMonitoring,consumePendingNews} from './features/news/services/newsNotifications';
 import { HomePage } from './views/HomePage';
 const NewsPage = lazy(() => import('./views/NewsPage').then(module => ({ default: module.NewsPage })));
 const StudyPage = lazy(() => import('./views/StudyPage').then(module => ({ default: module.StudyPage })));
@@ -49,6 +50,8 @@ export function App() {
   const darkMode = themeMode === 'dark' || (themeMode === 'system' && systemDark);
   const [startupAdHandled, setStartupAdHandled] = useState(false);
   const [page, setPage] = useState<Page>('HOME');
+  const [newsAiDraft,setNewsAiDraft]=useState<string>();
+  const [newsSourceId,setNewsSourceId]=useState<string>();
   const [newsArticleId, setNewsArticleId] = useState<string>();
   const [sessionTopic, setSessionTopic] = useState<string | string[] | null>(null);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
@@ -62,6 +65,13 @@ export function App() {
   const [storageWarning, setStorageWarning] = useState(false);
   const [showRatingPrompt, setShowRatingPrompt] = useState(false);
   const [sessionFocus, setSessionFocus] = useState(false);
+
+  useEffect(()=>{
+    const stop=startNewsMonitoring();
+    const open=()=>{void consumePendingNews().then(article=>{if(article){setNewsArticleId(article.internalId||article.id);setPage('NEWS');}}).catch(()=>{});};
+    open();window.addEventListener('focus',open);document.addEventListener('visibilitychange',open);
+    return()=>{stop();window.removeEventListener('focus',open);document.removeEventListener('visibilitychange',open);};
+  },[]);
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -398,7 +408,7 @@ export function App() {
               onStartSession={startSessionWithTopic}
               onViewQuestions={() => setPage('QUESTIONS')}
               onViewMistakes={() => setPage('MISTAKES')}
-              onOpenNews={articleId=>{setNewsArticleId(articleId);setPage('NEWS');}}
+              onOpenNews={(articleId,sourceId)=>{setNewsSourceId(sourceId);setNewsArticleId(articleId);setPage('NEWS');}}
               onOpenNotifications={() => setShowNotificationsModal(true)}
               onOpenStudyCenter={() => setPage('ADVANCED')}
               unreadNotificationsCount={unreadNotificationsCount}
@@ -409,7 +419,7 @@ export function App() {
             />
           )}
 
-          {page === 'NEWS' && <NewsPage initialArticleId={newsArticleId} onClearInitial={()=>setNewsArticleId(undefined)} />}
+          {page === 'NEWS' && <NewsPage initialSourceId={newsSourceId} onUseAi={text=>{setNewsAiDraft(text);setPage('AI_ASSISTANT');}} initialArticleId={newsArticleId} onClearInitial={()=>setNewsArticleId(undefined)} />}
 
           {(page === 'QUESTIONS' || page === 'SESSION') && (
             <StudyPage
@@ -462,7 +472,7 @@ export function App() {
           {page === 'VOICE_SETTINGS' && <VoiceSettingsPage onBack={() => setPage('MORE')} />}
 
           {page === 'AI_ASSISTANT' && (
-            <AiAssistantPage onOpenSettings={() => setPage('AI_SETTINGS')} />
+            <AiAssistantPage initialMessage={newsAiDraft} onConsumeInitial={()=>setNewsAiDraft(undefined)} onOpenSettings={() => setPage('AI_SETTINGS')} />
           )}
 
 
@@ -496,7 +506,7 @@ export function App() {
               setSessionMode('classic');
               setSessionAutoStart(false);
             }
-            setNewsArticleId(undefined);
+            setNewsArticleId(undefined);setNewsSourceId(undefined);
             setPage(next);
           }} />
         )}

@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NexusAdsPlugin.class);
+        registerPlugin(NexusNewsUpdatesPlugin.class);
         registerPlugin(NexusStoragePlugin.class);
         registerPlugin(NexusStudyAlarmPlugin.class);
         registerPlugin(NexusTtsPlugin.class);
@@ -33,6 +34,9 @@ public class MainActivity extends BridgeActivity {
 
     private void captureReminderQuestion(Intent intent) {
         if (intent == null) return;
+        String news=intent.getStringExtra("newsArticle");
+        if(news!=null){getSharedPreferences("news_updates",MODE_PRIVATE).edit().putString("pending_article",news).apply();intent.removeExtra("newsArticle");}
+
         long rowId = intent.getLongExtra("questionRowId", -1L);
         String bankId = intent.getStringExtra("questionBankId");
         if (rowId <= 0 || bankId == null || bankId.isEmpty()) return;

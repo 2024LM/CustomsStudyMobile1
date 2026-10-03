@@ -9,6 +9,7 @@ export interface NewsSource {
   kind: NewsSourceKind;
   builtIn: boolean;
   enabled: boolean;
+  notificationsEnabled?: boolean;
 }
 
 export interface NewsArticle {

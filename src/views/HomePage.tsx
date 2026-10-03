@@ -29,7 +29,7 @@ interface HomePageProps {
   onStartSession: (topic?: string | string[], count?: number, mode?: 'classic' | 'review' | 'mistakes' | 'favorites' | 'smart', autoStart?: boolean) => void;
   onViewQuestions: () => void;
   onViewMistakes: () => void;
-  onOpenNews?: (articleId?: string) => void;
+  onOpenNews?: (articleId?: string,sourceId?:string) => void;
   onOpenNotifications?: () => void;
   onOpenStudyCenter?: () => void;
   unreadNotificationsCount?: number;

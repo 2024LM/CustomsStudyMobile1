@@ -1,14 +1,17 @@
-import { mergeNewsBundle, parseNewsBundle, NewsBundle } from './newsBundle';
+import { parseNewsBundle, NewsBundle } from './newsBundle';
 import { preferArabicArticles } from './newsLanguage';
 import { DEFAULT_NEWS_SOURCES } from '../config/defaultSources';
 import { newsStorage } from '../storage/newsStorage';
-import { fetchCustomSource, SourcePreview } from '../providers/customProvider';
+import { fetchNewsPage, SourcePreview } from '../providers/customProvider';
 import { publicNewsUrl } from '../providers/sourceAccess';
-import { fetchRss } from '../providers/rssProvider';
 import { NewsFetchResult, NewsSource } from '../types';
 
 let refreshTask: Promise<NewsFetchResult[]> | undefined;
 let refreshedAt = 0;
+const pageState = new Map<string,{next?:string;visited:Set<string>;loaded:boolean}>();
+const pageTasks = new Map<string,Promise<boolean>>();
+function changed(){ for(const listener of listeners){try{listener();}catch{}} }
+
 const listeners = new Set<() => void>();
 
 async function bundledArticles(): Promise<NewsBundle> {
@@ -26,7 +29,7 @@ export const newsService = {
   sources(): NewsSource[] {
     const byId = new Map(DEFAULT_NEWS_SOURCES.map((s) => [s.id, s]));
     newsStorage.customSources().forEach((s) => byId.set(s.id, s));
-    return [...byId.values()].filter(source => source.id !== 'open-data-ma' && ['rss', 'web'].includes(source.kind));
+    return [...byId.values()].map(source=>({...source,...newsStorage.preferences()[source.id]})).filter(source => source.id !== 'open-data-ma' && ['rss', 'web'].includes(source.kind));
   },
   addSource(preview: SourcePreview): NewsSource {
     const parsed = publicNewsUrl(preview.source.url);
@@ -40,14 +43,36 @@ export const newsService = {
     const source: NewsSource = { ...preview.source, id: `user-${crypto.randomUUID()}`, builtIn: false, enabled: true };
     newsStorage.addValidatedSource(source, preview.articles.map(article => ({ ...article,
       id: `${source.id}-${article.url}`, sourceId: source.id })));
-    return source;
+    changed(); return source;
   },
   removeSource(id: string) {
     if (this.sources().find(source => source.id === id)?.builtIn) return;
-    newsStorage.removeCustomSource(id);
+    newsStorage.removeCustomSource(id); pageState.delete(id); changed();
+  },
+  setSourcePreferences(id:string,value:{enabled?:boolean;notificationsEnabled?:boolean}) {
+    if(!this.sources().some(source=>source.id===id)) throw new Error('المصدر غير موجود.');
+    newsStorage.savePreferences(id,value); refreshedAt=0; changed();
+  },
+  async loadOlder(sourceId:string):Promise<boolean> {
+    const current=pageTasks.get(sourceId); if(current)return current;
+    const source=this.sources().find(item=>item.id===sourceId);
+    if(!source)return false;
+    const state=pageState.get(sourceId);
+    if(state?.loaded&&!state.next)return false;
+    const task=(async()=>{
+      const page=await fetchNewsPage(source,state?.next);
+      if(!this.sources().some(item=>item.id===sourceId))return false;
+      const visited=state?.visited||new Set<string>();
+      visited.add(state?.next||source.feedUrl||source.url);
+      const next=page.next&&!visited.has(page.next)?page.next:undefined;
+      pageState.set(sourceId,{next,visited,loaded:true});
+      newsStorage.saveArticles([...newsStorage.articles(),...page.articles],false);changed();
+      return !!next;
+    })().finally(()=>pageTasks.delete(sourceId));
+    pageTasks.set(sourceId,task);return task;
   },
   cachedArticles: () => newsStorage.articles(),
-  pendingNewArticles: () => newsStorage.pendingNewArticles(),
+  pendingNewArticles: () => { const active=new Set(newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled!==false).map(s=>s.id)); return newsStorage.pendingNewArticles().filter(a=>active.has(a.sourceId)); },
   markNewsNotified: (ids: string[]) => newsStorage.markNewsNotified(ids),
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
@@ -57,29 +82,27 @@ export const newsService = {
     return refreshedAt && Date.now() - refreshedAt < 5 * 60 * 1000
       ? Promise.resolve([]) : this.refresh();
   },
-  refresh(): Promise<NewsFetchResult[]> {
-    if (refreshTask) return refreshTask;
-    const sources = this.sources().filter(s => s.enabled && (s.kind === 'rss' || (!s.builtIn && !!s.extraction)));
+  refresh(sourceId?:string): Promise<NewsFetchResult[]> {
+    if (refreshTask) return sourceId ? refreshTask.then(()=>this.refresh(sourceId)) : refreshTask;
+    const allowed=this.sources().filter(s=>sourceId ? s.id===sourceId : s.enabled&&s.notificationsEnabled!==false);
+    const allowedIds=new Set(allowed.map(s=>s.id));
+    const sources = allowed;
     refreshTask = (async () => {
     const results: NewsFetchResult[] = [];
     const bundle = await bundledArticles();
-    const bundled = bundle.articles;
-    if (bundled.length) {
-      const cached = newsStorage.articles();
-      newsStorage.saveArticles(preferArabicArticles(mergeNewsBundle(bundle, cached)));
-      for (const listener of listeners) { try { listener(); } catch {} }
-    }
-    for (const source of sources) {
-      try {
-        const articles = source.kind === 'rss' ? await fetchRss(source) : await fetchCustomSource(source);
-        results.push({ sourceId: source.id, articles });
-      } catch (error) {
-        results.push({ sourceId: source.id, articles: [], error: error instanceof Error ? error.message : 'FETCH_FAILED' });
-      }
-    }
+    const bundled = bundle.articles.filter(a=>allowedIds.has(a.sourceId));
+    const fetched=await Promise.all(sources.map(async source=>{
+      try{
+        let articles;
+        try{articles=(await fetchNewsPage(source)).articles;}
+        catch(error){const fallback=bundled.filter(item=>item.sourceId===source.id);if(!fallback.length)throw error;articles=fallback;}
+        return {sourceId:source.id,articles};
+      }catch(error){return {sourceId:source.id,articles:[],error:error instanceof Error?error.message:'FETCH_FAILED'};}
+    }));
+    results.push(...fetched);
     // A source removed while its request was pending must not return to the cache.
-    const activeIds = new Set(this.sources().filter(source => source.enabled).map(source => source.id));
-    const fresh = preferArabicArticles([...bundled, ...results.flatMap((r) => r.articles)].filter(article => activeIds.has(article.sourceId)));
+    const activeIds = new Set(this.sources().filter(source => sourceId ? source.id===sourceId : source.enabled&&source.notificationsEnabled!==false).map(source => source.id));
+    const fresh = preferArabicArticles([...results.flatMap((r) => r.articles), ...bundled].filter(article => activeIds.has(article.sourceId)));
 
     const previous = newsStorage.articles();
     const timestamp = (value?: string) => {
@@ -89,7 +112,7 @@ export const newsService = {
     const merged = preferArabicArticles([...fresh, ...previous.filter((old) => !fresh.some((item) => item.id === old.id))])
       .sort((a, b) => timestamp(b.publishedAt) - timestamp(a.publishedAt));
     newsStorage.saveArticles(merged);
-    refreshedAt = Date.now();
+    if(!sourceId)refreshedAt = Date.now();
     for (const listener of listeners) { try { listener(); } catch {} }
     return results;
     })().finally(() => { refreshTask = undefined; });

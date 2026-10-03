@@ -4,7 +4,7 @@ import { newsService } from '../services/newsService';
 import { latestNews } from '../services/newsPresentation';
 import { NewsArticleCard } from './NewsArticleCard';
 
-export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: string) => void }) {
+export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: string,sourceId?:string) => void }) {
   const read = () => {
     const enabled = new Set(newsService.sources().filter(source => source.enabled).map(source => source.id));
     return latestNews(newsService.cachedArticles().filter(article => enabled.has(article.sourceId)), 8);
@@ -12,6 +12,7 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: strin
   const [articles, setArticles] = useState(read);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
+  const touchStart=useRef<number>();
   const rail = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let alive = true;
@@ -47,20 +48,22 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: strin
     </div>
     {articles.length ? <>
       <div ref={rail} dir="rtl" data-home-news-rail tabIndex={0} aria-label="تصفح آخر الأخبار"
+        onTouchStart={event=>{touchStart.current=event.touches[0]?.clientX;}}
+        onTouchEnd={event=>{const start=touchStart.current;touchStart.current=undefined;if(start!==undefined&&active===articles.length-1&&event.changedTouches[0].clientX-start>60)onOpenNews();}}
         onScroll={syncActive} onKeyDown={event => {
-          if (event.key === 'ArrowLeft' && active < articles.length - 1) { event.preventDefault(); move(active + 1); }
+          if (event.key === 'ArrowLeft') { event.preventDefault(); if(active===articles.length-1)onOpenNews();else move(active+1); }
           if (event.key === 'ArrowRight' && active > 0) { event.preventDefault(); move(active - 1); }
         }}
         className="home-news-rail flex gap-3 overflow-x-auto snap-x snap-mandatory overscroll-x-contain p-3">
         {articles.map(article => <div key={article.id} className="shrink-0 w-[88%] sm:w-[360px] snap-start">
-          <NewsArticleCard preview onOpen={item=>onOpenNews(item.internalId || item.id)} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
+          <NewsArticleCard onSelectSource={id=>onOpenNews(undefined,id)} preview onOpen={item=>onOpenNews(item.internalId || item.id)} article={article} sourceName={sources.find(source => source.id === article.sourceId)?.name} />
         </div>)}
       </div>
       <div className="flex items-center justify-between px-3 pb-3">
         <span aria-live="polite" className="text-[11px] text-gray-500">{active + 1} / {articles.length}</span>
         <div className="flex gap-2">
           <button type="button" onClick={() => move(active - 1)} disabled={active === 0} aria-label="الخبر السابق" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
-          <button type="button" onClick={() => move(active + 1)} disabled={active >= articles.length - 1} aria-label="الخبر التالي" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+          <button type="button" onClick={() => active===articles.length-1?onOpenNews():move(active+1)} aria-label="الخبر التالي" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
         </div>
       </div>
     </> : <div className="px-4 py-5 text-xs text-gray-500" role="status">

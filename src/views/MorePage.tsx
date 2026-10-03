@@ -1,4 +1,5 @@
 import React from 'react';
+import {NewsSourceSettings} from '../features/news/components/NewsSourceSettings';
 import {
   AlertCircle,
   Heart,
@@ -170,6 +171,8 @@ export const MorePage: React.FC<MorePageProps> = ({
           </div>
         </div>
       </div>
+
+      <NewsSourceSettings />
 
       <div data-tour="more-menu" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {menuItems.map((item, idx) => {
