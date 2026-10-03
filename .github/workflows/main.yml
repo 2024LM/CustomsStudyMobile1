@@ -128,8 +128,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          SOURCE_APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          DIRECT_APK="Raje3.apk"
+          cp "$SOURCE_APK" "$DIRECT_APK"
           if ! gh release view current >/dev/null 2>&1; then
             gh release create current --title "Raje3 current APK" --notes "Direct APK download for the current Raje3 build." --target "$GITHUB_SHA"
           fi
-          gh release upload current "$APK#Raje3.apk" --clobber
+          gh release upload current "$DIRECT_APK" --clobber
