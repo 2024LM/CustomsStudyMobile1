@@ -1,21 +1,24 @@
 import { NewsArticle, NewsSource } from '../types';
+import { newsDocument, publicNewsUrl, samePublisher } from './sourceAccess';
 
 export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
   if (!source.feedUrl) throw new Error('RSS_URL_MISSING');
-  const response = await fetch(source.feedUrl, { headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' } });
-  if (!response.ok) throw new Error(`RSS_HTTP_${response.status}`);
-  const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
+  const document = await newsDocument(source.feedUrl);
+  return parseRss(document.text, source);
+}
+
+export function parseRss(markup: string, source: NewsSource): NewsArticle[] {
+  const xml = new DOMParser().parseFromString(markup, 'application/xml');
   if (xml.querySelector('parsererror')) throw new Error('RSS_INVALID_XML');
   return [...xml.querySelectorAll('item, entry')].slice(0, 50).map((node, index) => {
     const text = (selector: string) => node.querySelector(selector)?.textContent?.trim() || '';
-    const linkNode = node.querySelector('link');
-    const url = linkNode?.getAttribute('href') || text('link');
+    const linkNode = node.querySelector('link[rel="alternate"]') || node.querySelector('link:not([rel="self"])');
+    const url = samePublisher(linkNode?.getAttribute('href') || text('link'), source.url);
     const base = url || source.feedUrl;
     const safeImage = (value: string | null | undefined) => {
       try {
         if (!value?.trim()) return undefined;
-        const parsed = new URL(value, base);
-        return /^https?:$/.test(parsed.protocol) ? parsed.href : undefined;
+        return publicNewsUrl(value, base).href;
       } catch { return undefined; }
     };
     const attachments = [...node.getElementsByTagName('*')].filter(element =>
@@ -46,17 +49,18 @@ export async function fetchRss(source: NewsSource): Promise<NewsArticle[]> {
     contentDocument.querySelectorAll('script,style,nav,footer').forEach(element=>element.remove());
     contentDocument.querySelectorAll('br,p,li').forEach(element=>element.append('\n'));
     const content=(contentDocument.body.textContent||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim().slice(0,12000);
-    const publishedAt=text('pubDate, published')||node.getElementsByTagName('dc:date')[0]?.textContent?.trim()||undefined;
+    const rawDate=text('pubDate, published')||node.getElementsByTagName('dc:date')[0]?.textContent?.trim();
+    const publishedAt=rawDate && Number.isFinite(Date.parse(rawDate)) ? rawDate : undefined;
     return {
       id: `${source.id}-${text('guid, id') || url || index}`,
       sourceId: source.id,
-      title: text('title') || 'بدون عنوان',
-      summary: text('description, summary, content').replace(/<[^>]+>/g, '').slice(0, 500),
+      title: text('title').slice(0, 500) || 'بدون عنوان',
+      summary: content.slice(0, 500),
       content: content || undefined,
       url: url || source.url,
       imageUrl,
       publishedAt,
       publishedTimeKnown: !!publishedAt && /(?:T|\s)\d{1,2}:\d{2}/.test(publishedAt),
     };
-  });
+  }).filter(article => article.url !== source.url && article.title !== 'بدون عنوان');
 }

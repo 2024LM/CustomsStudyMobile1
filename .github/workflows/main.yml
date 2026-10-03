@@ -63,6 +63,9 @@ jobs:
       - name: Verify reading frame
         run: node tests/tts-layout.mjs
 
+      - name: Verify source discovery, rejection and approval
+        run: node tests/news-source-validation.mjs
+
       - name: Verify inline news translation
         run: node tests/news-layout.mjs
 
