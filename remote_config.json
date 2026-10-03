@@ -1,6 +1,6 @@
 {
   "config_version": 3,
-  "latest_version_code": 1,
+  "latest_version_code": 10001,
   "min_supported_version_code": 1,
   "update": {
     "url": "https://github.com/2024LM/-Lm/releases/latest",
