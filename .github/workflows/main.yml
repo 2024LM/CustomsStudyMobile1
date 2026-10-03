@@ -82,7 +82,9 @@ jobs:
         run: bash scripts/install-native-ads.sh
 
       - name: Generate Android launcher icon
-        run: python3 scripts/generate-android-icons.py
+        run: |
+          python3 -m pip install Pillow==11.3.0
+          python3 scripts/generate-android-icons.py
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
