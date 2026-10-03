@@ -140,11 +140,14 @@ jobs:
 
           "$ANDROID_HOME/emulator/emulator"             -avd raje3_api34             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             -no-snapshot             > "$RUNNER_TEMP/raje3-emulator.log" 2>&1 &
 
-          adb wait-for-device
+          ADB="$ANDROID_HOME/platform-tools/adb"
+          test -x "$ADB"
+
+          "$ADB" wait-for-device
 
           booted=""
           for i in $(seq 1 120); do
-            booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            booted="$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
             if [ "$booted" = "1" ]; then
               break
             fi
@@ -157,12 +160,12 @@ jobs:
             exit 1
           fi
 
-          adb shell input keyevent 82 || true
-          adb install -r "$APK"
-          adb shell pm path com.nexus.customsstudy
-          adb shell monkey -p com.nexus.customsstudy -c android.intent.category.LAUNCHER 1
-          adb shell dumpsys package com.nexus.customsstudy | grep -E "versionCode|versionName" | head -n 5
-          adb uninstall com.nexus.customsstudy
+          "$ADB" shell input keyevent 82 || true
+          "$ADB" install -r "$APK"
+          "$ADB" shell pm path com.nexus.customsstudy
+          "$ADB" shell monkey -p com.nexus.customsstudy -c android.intent.category.LAUNCHER 1
+          "$ADB" shell dumpsys package com.nexus.customsstudy | grep -E "versionCode|versionName" | head -n 5
+          "$ADB" uninstall com.nexus.customsstudy
 
       - name: Prepare distributable APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Raje3.apk
