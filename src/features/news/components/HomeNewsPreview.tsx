@@ -37,6 +37,10 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: strin
     const target = rail.current?.children[index] as HTMLElement | undefined;
     target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
   };
+  const atEnd = () => {
+    const node=rail.current;
+    return active===articles.length-1 || !!node && Math.abs(node.scrollLeft)>=node.scrollWidth-node.clientWidth-2;
+  };
   const sources = newsService.sources();
   return <section aria-label="آخر الأخبار" className="sm:col-span-2 min-w-0 bg-white border border-gray-100 rounded-lg overflow-hidden">
     <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
@@ -49,9 +53,9 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: strin
     {articles.length ? <>
       <div ref={rail} dir="rtl" data-home-news-rail tabIndex={0} aria-label="تصفح آخر الأخبار"
         onTouchStart={event=>{touchStart.current=event.touches[0]?.clientX;}}
-        onTouchEnd={event=>{const start=touchStart.current;touchStart.current=undefined;if(start!==undefined&&active===articles.length-1&&event.changedTouches[0].clientX-start>60)onOpenNews();}}
+        onTouchEnd={event=>{const start=touchStart.current;touchStart.current=undefined;if(start!==undefined&&atEnd()&&event.changedTouches[0].clientX-start>60)onOpenNews();}}
         onScroll={syncActive} onKeyDown={event => {
-          if (event.key === 'ArrowLeft') { event.preventDefault(); if(active===articles.length-1)onOpenNews();else move(active+1); }
+          if (event.key === 'ArrowLeft') { event.preventDefault(); if(atEnd())onOpenNews();else move(active+1); }
           if (event.key === 'ArrowRight' && active > 0) { event.preventDefault(); move(active - 1); }
         }}
         className="home-news-rail flex gap-3 overflow-x-auto snap-x snap-mandatory overscroll-x-contain p-3">
@@ -63,7 +67,7 @@ export function HomeNewsPreview({ onOpenNews }: { onOpenNews: (articleId?: strin
         <span aria-live="polite" className="text-[11px] text-gray-500">{active + 1} / {articles.length}</span>
         <div className="flex gap-2">
           <button type="button" onClick={() => move(active - 1)} disabled={active === 0} aria-label="الخبر السابق" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
-          <button type="button" onClick={() => active===articles.length-1?onOpenNews():move(active+1)} aria-label="الخبر التالي" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+          <button type="button" onClick={() => atEnd()?onOpenNews():move(active+1)} aria-label="الخبر التالي" className="w-11 h-11 flex items-center justify-center rounded-md border border-gray-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
         </div>
       </div>
     </> : <div className="px-4 py-5 text-xs text-gray-500" role="status">
