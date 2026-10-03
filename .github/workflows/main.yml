@@ -81,6 +81,20 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Set Android version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("android/app/build.gradle")
+          content = path.read_text()
+          content, codes = re.subn(r"versionCode\s+\d+", "versionCode 10001", content)
+          content, names = re.subn(r'versionName\s+"[^" ]+"', 'versionName "1.0.01"', content)
+          if codes != 1 or names != 1:
+              raise SystemExit("Android version fields were not found uniquely")
+          path.write_text(content)
+          PY
+
       - name: Sync web assets
         run: npx cap sync android
 

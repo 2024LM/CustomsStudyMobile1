@@ -216,7 +216,7 @@ export const MorePage: React.FC<MorePageProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div className="text-right min-w-0">
               <div className="font-black text-sm text-[#5B3FD6] leading-tight">{appConfig.appName}</div>
-              <div className="text-[11px] text-gray-400 font-medium mt-1">طريقك نحو النجاح • الإصدار 1.0</div>
+              <div className="text-[11px] text-gray-400 font-medium mt-1">طريقك نحو النجاح • الإصدار 1.0.01</div>
             </div>
 
             {Object.values(socialLinks).some(Boolean) && (
