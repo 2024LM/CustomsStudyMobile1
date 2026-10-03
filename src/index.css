@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/* Shared presentation tokens; the purple brand remains unchanged. */
+:root {
+  --raje3-canvas: #f8f9fd;
+  --raje3-surface: #ffffff;
+  --raje3-subtle: #f5f3ff;
+  --raje3-text: #2c2145;
+  --raje3-muted: #62606f;
+  --raje3-border: #e5e1ee;
+  --raje3-accent-text: #5b3fd6;
+  --raje3-success-bg: #eaf8f0;
+  --raje3-success-text: #126b3e;
+  --raje3-error-bg: #ffe8e8;
+  --raje3-error-text: #b42332;
+  --raje3-warning-bg: #fffbeb;
+  --raje3-warning-text: #92400e;
+}
+html.dark {
+  color-scheme: dark;
+  --raje3-canvas: #17141f;
+  --raje3-surface: #201c2b;
+  --raje3-subtle: #292238;
+  --raje3-text: #f0ecf8;
+  --raje3-muted: #b9b2c8;
+  --raje3-border: #3a3348;
+  --raje3-accent-text: #c4b5fd;
+  --raje3-success-bg: #173229;
+  --raje3-success-text: #76ddb0;
+  --raje3-error-bg: #382126;
+  --raje3-error-text: #ffb4b4;
+  --raje3-warning-bg: #352d1e;
+  --raje3-warning-text: #f2c96d;
+}
+
 @layer base {
   body {
     font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -35,33 +68,25 @@ html.dark .app-shell {
 }
 
 html.dark .app-shell > div {
-  background: #17141f;
+  background: var(--raje3-canvas);
   border-color: #2b2637;
 }
 
 html.dark .app-shell .bg-white,
 html.dark .app-shell nav {
-  background-color: #201c2b !important;
-}
-
-html.dark .app-shell main .bg-\[\#F8F9FD\],
-html.dark .app-shell main .bg-\[\#F8F9FD\] {
-  background-color: #17141f !important;
+  background-color: var(--raje3-surface) !important;
 }
 
 html.dark .app-shell .text-\[\#2C2145\] {
-  color: #f0ecf8 !important;
+  color: var(--raje3-text) !important;
 }
 
 html.dark .app-shell .text-gray-700,
 html.dark .app-shell .text-gray-600,
 html.dark .app-shell .text-gray-500 {
-  color: #b9b2c8 !important;
+  color: var(--raje3-muted) !important;
 }
 
-html.dark .app-shell .text-gray-400 {
-  color: #928aa3 !important;
-}
 
 html.dark .app-shell .border-gray-100,
 html.dark .app-shell .border-gray-100\/80,
@@ -70,27 +95,41 @@ html.dark .app-shell .border-gray-200 {
 }
 
 html.dark .app-shell .bg-\[\#F5F3FF\],
-html.dark .app-shell .bg-\[\#F0EDFF\],
-html.dark .app-shell .bg-\[\#F8F9FD\] {
-  background-color: #292238 !important;
+html.dark .app-shell .bg-\[\#F0EDFF\] {
+  background-color: var(--raje3-subtle) !important;
 }
 
 html.dark .app-shell input,
 html.dark .app-shell textarea,
 html.dark .app-shell select {
   background-color: #24202f !important;
-  color: #f0ecf8 !important;
-  border-color: #3a3348 !important;
+  color: var(--raje3-text) !important;
+  border-color: var(--raje3-border) !important;
 }
 
 html.dark .app-shell nav {
   border-color: #302a3c !important;
 }
 
+/* Preserve the purple hierarchy on dark surfaces without dimming white text
+   on solid purple buttons and gradient headers. */
+html.dark .app-shell .text-\[\#5B3FD6\],
+html.dark .app-shell .text-\[\#6B51E0\] {
+  color: var(--raje3-accent-text) !important;
+}
+
+html.dark .app-shell .bg-\[\#FFE8E8\] {
+  background-color: var(--raje3-error-bg) !important;
+}
+
+html.dark .app-shell .text-red-800 {
+  color: var(--raje3-error-text) !important;
+}
+
 /* Reference reader needs explicit dark colors because document prose uses
    fixed light-theme text/background utility classes. */
 html.dark .app-shell .reference-reader {
-  background-color: #201c2b !important;
+  background-color: var(--raje3-surface) !important;
   border-color: #332d40 !important;
 }
 
@@ -104,7 +143,7 @@ html.dark .app-shell .reference-document strong {
 }
 
 html.dark .app-shell .reference-document blockquote {
-  background-color: #292238 !important;
+  background-color: var(--raje3-subtle) !important;
   border-color: #6f55d9 !important;
   color: #c9c2d6 !important;
 }
@@ -115,7 +154,7 @@ html.dark .app-shell .reference-document code {
 }
 
 html.dark .app-shell .reference-document hr {
-  border-color: #3a3348 !important;
+  border-color: var(--raje3-border) !important;
 }
 
 html.dark .app-shell .reference-document a {
@@ -138,7 +177,7 @@ html.dark .app-shell .word-document h2,
 html.dark .app-shell .word-document h3,
 html.dark .app-shell .word-document h4 { color: #f2eef9 !important; }
 html.dark .app-shell .word-document td,
-html.dark .app-shell .word-document th { border-color: #3a3348; }
+html.dark .app-shell .word-document th { border-color: var(--raje3-border); }
 
 
 /* Dark-mode semantic surfaces: keep status colors readable without bright cards. */
@@ -150,32 +189,32 @@ html.dark .app-shell .bg-gray-100 {
 html.dark .app-shell .bg-red-50,
 html.dark .app-shell .bg-red-50\/50,
 html.dark .app-shell .bg-\[\#FFEEED\] {
-  background-color: #382126 !important;
+  background-color: var(--raje3-error-bg) !important;
 }
 
 html.dark .app-shell .bg-emerald-50 {
-  background-color: #173229 !important;
+  background-color: var(--raje3-success-bg) !important;
 }
 
 html.dark .app-shell .bg-amber-50,
 html.dark .app-shell .bg-yellow-50 {
-  background-color: #352d1e !important;
+  background-color: var(--raje3-warning-bg) !important;
 }
 
 html.dark .app-shell .text-red-600,
 html.dark .app-shell .text-red-500,
 html.dark .app-shell .text-\[\#C62828\] {
-  color: #ff8e8e !important;
+  color: var(--raje3-error-text) !important;
 }
 
 html.dark .app-shell .text-emerald-700,
 html.dark .app-shell .text-emerald-600 {
-  color: #76ddb0 !important;
+  color: var(--raje3-success-text) !important;
 }
 
 html.dark .app-shell .text-amber-700,
 html.dark .app-shell .text-amber-600 {
-  color: #f2c96d !important;
+  color: var(--raje3-warning-text) !important;
 }
 
 html.dark .app-shell .border-gray-50 {
@@ -192,9 +231,8 @@ html.dark .app-shell ::selection {
 html.dark .app-shell .bg-\[\#FAF9FE\],
 html.dark .app-shell .bg-\[\#FBFAFF\],
 html.dark .app-shell .bg-\[\#F8F7FF\],
-html.dark .app-shell .bg-\[\#F8F6FF\],
-html.dark .app-shell .bg-\[\#F8F9FD\]\/95 {
-  background-color: #201c2b !important;
+html.dark .app-shell .bg-\[\#F8F6FF\] {
+  background-color: var(--raje3-surface) !important;
 }
 
 html.dark .app-shell .bg-\[\#F0EBFF\],
@@ -203,22 +241,22 @@ html.dark .app-shell .bg-\[\#EDE8FF\] {
 }
 
 html.dark .app-shell .bg-\[\#EEF9F2\] {
-  background-color: #173229 !important;
+  background-color: var(--raje3-success-bg) !important;
 }
 
 html.dark .app-shell .border-\[\#DDD5FF\],
 html.dark .app-shell .border-\[\#EEEAF8\] {
-  border-color: #3a3348 !important;
+  border-color: var(--raje3-border) !important;
 }
 
 html.dark .app-shell .text-\[\#16864B\] {
-  color: #76ddb0 !important;
+  color: var(--raje3-success-text) !important;
 }
 
 /* Tailwind gradient utilities keep light stops unless explicitly neutralized. */
 html.dark .app-shell .from-\[\#FBFAFF\].to-white {
   background-image: none !important;
-  background-color: #201c2b !important;
+  background-color: var(--raje3-surface) !important;
 }
 
 /* Backdrop sticky bars should remain dark while preserving blur. */
@@ -241,9 +279,6 @@ body::-webkit-scrollbar,
 }
 
 /* Readable secondary copy and keyboard focus in both themes. */
-.app-shell .text-gray-400 { color: #6b7280; }
-html.dark .app-shell .text-gray-400 { color: #b9b2c8; }
-html.dark .app-shell .text-\\[\\#77717F\\] { color: #b9b2c8; }
 .app-shell :focus-visible {
   outline: 3px solid #5b3fd6;
   outline-offset: 3px;
@@ -263,3 +298,21 @@ html.dark .tts-reading-frame { outline-color: #b9a8ff; }
 .news-preview-photo { width: 80px; height: 88px; object-fit: contain; border-radius: 4px; }
 .news-preview-card footer { flex-shrink: 0; }
 html.dark .news-source-name { color: var(--news-light) !important; }
+
+/* Existing utility classes consume the same semantic palette in both themes. */
+.app-shell .bg-\[\#F8F9FD\] { background-color: var(--raje3-canvas); }
+.app-shell .text-\[\#77717F\],
+.app-shell .text-gray-400 { color: var(--raje3-muted); }
+.app-shell .text-\[\#16864B\],
+.app-shell .text-emerald-600,
+.app-shell .text-emerald-700 { color: var(--raje3-success-text) !important; }
+.app-shell .bg-\[\#EAF8F0\],
+.app-shell .bg-\[\#EEF9F2\],
+.app-shell .bg-emerald-50 { background-color: var(--raje3-success-bg) !important; }
+.app-shell .text-red-500,
+.app-shell .text-red-600,
+.app-shell .text-red-800 { color: var(--raje3-error-text) !important; }
+.app-shell .text-amber-600,
+.app-shell .text-amber-700 { color: var(--raje3-warning-text) !important; }
+html.dark .app-shell .border-\[\#CFC4F6\],
+html.dark .app-shell .border-\[\#EEEAF6\] { border-color: var(--raje3-border) !important; }

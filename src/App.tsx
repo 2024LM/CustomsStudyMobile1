@@ -317,6 +317,9 @@ export function App() {
   const currentTourKey = `guided_tour_${page.toLowerCase()}_v1`;
   const shouldShowCurrentTour = Boolean(
     onboardingComplete &&
+    !showAnnouncement &&
+    !showNotificationsModal &&
+    !directQuestion &&
     currentTourSteps?.length &&
     localStorage.getItem(currentTourKey) !== '1'
   );
@@ -325,7 +328,7 @@ export function App() {
   return (
     <div className="app-shell h-[100dvh] min-h-0 overflow-hidden bg-[#F8F9FD] flex justify-center text-[#2C2145]">
       {/* Container - Styled as native mobile/tablet shell */}
-      <div className="w-full h-[100dvh] min-h-0 bg-[#F8F9FD] flex flex-col relative">
+      <div className="w-full max-w-5xl h-[100dvh] min-h-0 bg-[#F8F9FD] flex flex-col relative shadow-sm">
         {shouldShowCurrentTour && currentTourSteps && (
           <GuidedTour
             key={`${page}-${tourRefresh}`}

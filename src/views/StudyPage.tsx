@@ -53,6 +53,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
           <div data-tour="study-mode-switch" className="grid grid-cols-2 gap-1.5 bg-white border border-[#E6E2F0] rounded-[16px] p-1.5 shadow-xs">
             <button
               type="button"
+              aria-pressed={view === 'browse'}
               onClick={() => setView('browse')}
               className={`h-11 rounded-[12px] flex items-center justify-center gap-2 text-xs font-black transition-all ${
                 view === 'browse'
@@ -65,6 +66,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             </button>
             <button
               type="button"
+              aria-pressed={view === 'session'}
               onClick={() => setView('session')}
               className={`h-11 rounded-[12px] flex items-center justify-center gap-2 text-xs font-black transition-all ${
                 view === 'session'
