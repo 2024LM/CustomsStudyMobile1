@@ -58,7 +58,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
         setFetchError('تعذر تحديث الأخبار الآن. حاول مجددًا بعد قليل.');
       }
       setVersion((value) => value + 1);
-    } finally {
+    } catch(error) {setFetchError(error instanceof Error?error.message:'تعذر حفظ تحديث الأخبار.');} finally {
       setLoading(false);
     }
   };
@@ -86,7 +86,7 @@ export const NewsPage: React.FC<{ initialArticleId?: string; initialSourceId?:st
         setFetchError('هذا المصدر أُضيف بالطريقة القديمة دون فحص. احذفه وأعد إضافته لاختبار قالب الأخبار.');
       }
       setVersion((value) => value + 1);
-    } finally {
+    } catch(error) {setFetchError(error instanceof Error?error.message:'تعذر حفظ تحديث الأخبار.');} finally {
       const elapsed = Date.now() - startedAt;
       if (elapsed < 650) await new Promise((resolve) => setTimeout(resolve, 650 - elapsed));
       setSourceLoading(null);

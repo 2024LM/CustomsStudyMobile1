@@ -69,8 +69,8 @@ export function App() {
   useEffect(()=>{
     const stop=startNewsMonitoring();
     const open=()=>{void consumePendingNews().then(article=>{if(article){setNewsArticleId(article.internalId||article.id);setPage('NEWS');}}).catch(()=>{});};
-    open();window.addEventListener('focus',open);document.addEventListener('visibilitychange',open);
-    return()=>{stop();window.removeEventListener('focus',open);document.removeEventListener('visibilitychange',open);};
+    open();window.addEventListener('raje3-news-open',open);window.addEventListener('focus',open);document.addEventListener('visibilitychange',open);
+    return()=>{stop();window.removeEventListener('raje3-news-open',open);window.removeEventListener('focus',open);document.removeEventListener('visibilitychange',open);};
   },[]);
 
   useEffect(() => {

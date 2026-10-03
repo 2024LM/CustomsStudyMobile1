@@ -30,6 +30,8 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         captureReminderQuestion(intent);
+        if(getBridge()!=null&&getBridge().getWebView()!=null)getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('raje3-news-open'));",null);
+
     }
 
     private void captureReminderQuestion(Intent intent) {

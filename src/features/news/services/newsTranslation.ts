@@ -12,7 +12,7 @@ type Entry = { key: string; result: NewsTranslation };
 function entries(): Entry[] {
   try {
     const value = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
-    return Array.isArray(value) ? value.filter(item => typeof item?.key === 'string' && typeof item?.result?.title === 'string' && typeof item?.result?.summary === 'string').slice(-100) : [];
+    return Array.isArray(value) ? value.filter(item => typeof item?.key === 'string' && typeof item?.result?.title === 'string' && typeof item?.result?.summary === 'string') : [];
   } catch { return []; }
 }
 export function cachedNewsTranslation(title: string, summary = ''): NewsTranslation | undefined {
@@ -37,7 +37,7 @@ export async function translateNews(title: string, summary = ''): Promise<NewsTr
     if (!result || typeof result.title !== 'string' || !result.title.trim() || typeof result.summary !== 'string'
         || (summary.trim() && !result.summary.trim())) throw new Error('تعذر إكمال الترجمة. أعد المحاولة.');
     const clean = { title: result.title.trim(), summary: result.summary.trim() };
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...entries().filter(entry => entry.key !== key), { key, result: clean }].slice(-100))); } catch {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...entries().filter(entry => entry.key !== key), { key, result: clean }])); } catch {throw new Error('تعذر حفظ الترجمة على الجهاز. حرر مساحة وأعد المحاولة.');}
     return clean;
   })();
   pending.set(key, task);

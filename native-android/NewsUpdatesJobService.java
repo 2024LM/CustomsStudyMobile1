@@ -21,10 +21,11 @@ public class NewsUpdatesJobService extends JobService {
     private volatile boolean cancelled;
     private static final String BUNDLE="https://2024lm.github.io/CustomsStudyMobile1/news-feed.json";
     @Override public boolean onStartJob(JobParameters parameters){
+        if(task!=null)task.interrupt();
         cancelled=false;
         task=new Thread(()->{
             try{poll();}catch(Exception ignored){}
-            if(!cancelled)jobFinished(parameters,false);
+            if(!cancelled&&Thread.currentThread()==task)jobFinished(parameters,false);
         },"raje3-news");task.start();return true;
     }
     @Override public boolean onStopJob(JobParameters parameters){cancelled=true;if(task!=null)task.interrupt();return true;}
@@ -96,11 +97,13 @@ public class NewsUpdatesJobService extends JobService {
         for(int i=0;i<sources.length()&&!cancelled;i++){
             JSONObject source=sources.getJSONObject(i);String id=source.getString("id");JSONArray batch=new JSONArray();
             try{
+                if(!active(prefs,id))continue;
                 try{batch=extract(source);}catch(Exception ignored){}
                 if(batch.length()==0&&source.optBoolean("builtIn")){
                     for(int j=0;j<bundle.length()&&batch.length()<10;j++)if(bundle.getJSONObject(j).optString("sourceId").equals(id))batch.put(bundle.getJSONObject(j));
                 }
                 if(batch.length()==0)continue;
+                List<JSONObject> alerts=new ArrayList<>();
                 synchronized(LOCK){
                     if(cancelled||!active(prefs,id))continue;
                     String key="seen_"+id;JSONArray old=new JSONArray(prefs.getString(key,"[]"));Set<String> seen=new HashSet<>();
@@ -108,13 +111,14 @@ public class NewsUpdatesJobService extends JobService {
                     JSONArray next=new JSONArray();boolean reachedKnown=false;
 
                     for(int j=0;j<batch.length();j++){
-                        JSONObject article=batch.getJSONObject(j);String url=article.getString("url");safeUrl(url);next.put(url);
+                        JSONObject article=batch.getJSONObject(j);String url=article.getString("url");next.put(url);
                         // The first successful fetch establishes a baseline, without flooding notifications.
                         if(seen.contains(url))reachedKnown=true;
-                        if(old.length()>0&&!reachedKnown&&!seen.contains(url))show(article,prefs);
+                        if(old.length()>0&&!reachedKnown&&!seen.contains(url))alerts.add(article);
                     }
                     prefs.edit().putString(key,next.toString()).apply();
                 }
+                for(JSONObject article:alerts){if(cancelled||Thread.currentThread().isInterrupted())break;safeUrl(article.getString("url"));show(article,prefs);}
             }catch(Exception ignored){/* Preserve the last baseline after a failed source. */}
         }
     }
@@ -146,6 +150,8 @@ public class NewsUpdatesJobService extends JobService {
         int notificationId=(article.getString("sourceId")+url).hashCode();
         PendingIntent pending=PendingIntent.getActivity(this,notificationId,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
         Notification notification=new Notification.Builder(this,"news_updates").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(bounded(summary,180)).setContentIntent(pending).setAutoCancel(true).build();
-        manager.notify(notificationId,notification);
+        synchronized(LOCK){
+            if(!cancelled&&Thread.currentThread()==task&&active(prefs,article.getString("sourceId")))manager.notify(notificationId,notification);
+        }
     }
 }
