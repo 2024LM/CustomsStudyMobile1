@@ -105,11 +105,13 @@ public class NewsUpdatesJobService extends JobService {
                     if(cancelled||!active(prefs,id))continue;
                     String key="seen_"+id;JSONArray old=new JSONArray(prefs.getString(key,"[]"));Set<String> seen=new HashSet<>();
                     for(int j=0;j<old.length();j++)seen.add(old.getString(j));
-                    JSONArray next=new JSONArray();
+                    JSONArray next=new JSONArray();boolean reachedKnown=false;
+
                     for(int j=0;j<batch.length();j++){
                         JSONObject article=batch.getJSONObject(j);String url=article.getString("url");safeUrl(url);next.put(url);
                         // The first successful fetch establishes a baseline, without flooding notifications.
-                        if(old.length()>0&&!seen.contains(url))show(article,prefs);
+                        if(seen.contains(url))reachedKnown=true;
+                        if(old.length()>0&&!reachedKnown&&!seen.contains(url))show(article,prefs);
                     }
                     prefs.edit().putString(key,next.toString()).apply();
                 }
@@ -121,6 +123,23 @@ public class NewsUpdatesJobService extends JobService {
         String url=article.getString("url"),title=article.getString("title"),summary=article.optString("summary");
         JSONArray translations=new JSONArray(prefs.getString("translations","[]"));
         for(int i=0;i<translations.length();i++){JSONObject row=translations.getJSONObject(i);if(row.optString("url").equals(url)){title=row.optString("title",title);summary=row.optString("summary",summary);break;}}
+        if(!title.matches("(?s).*[\\u0600-\\u06ff].*")){
+            try{
+                com.google.mlkit.nl.languageid.LanguageIdentifier detector=com.google.mlkit.nl.languageid.LanguageIdentification.getClient();
+                String language;
+                try{language=com.google.android.gms.tasks.Tasks.await(detector.identifyLanguage(title+" "+summary),10,java.util.concurrent.TimeUnit.SECONDS);}finally{detector.close();}
+                String code=com.google.mlkit.nl.translate.TranslateLanguage.fromLanguageTag(language);
+                if(code!=null&&!"ar".equals(code)){
+                    com.google.mlkit.nl.translate.Translator translator=com.google.mlkit.nl.translate.Translation.getClient(new com.google.mlkit.nl.translate.TranslatorOptions.Builder().setSourceLanguage(code).setTargetLanguage("ar").build());
+                    try{
+                        // Translate using an already available local model; never download a model in a background job.
+                        title=com.google.android.gms.tasks.Tasks.await(translator.translate(title),10,java.util.concurrent.TimeUnit.SECONDS);
+                        summary=com.google.android.gms.tasks.Tasks.await(translator.translate(summary),10,java.util.concurrent.TimeUnit.SECONDS);
+                    }finally{translator.close();}
+                }
+            }catch(Exception ignored){/* Missing offline model: retain truthful original text. */}
+        }
+        if(cancelled)return;
         NotificationManager manager=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
         manager.createNotificationChannel(new NotificationChannel("news_updates","أخبار راجع",NotificationManager.IMPORTANCE_DEFAULT));
         Intent intent=new Intent(this,MainActivity.class).putExtra("newsArticle",article.toString()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
