@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   Brain,
   Layers3,
   ChartNoAxesCombined,
@@ -51,6 +50,7 @@ import { QuizQuestion } from '../types';
 import { arabicTtsStatus, stopArabicTts } from '../services/arabicTts';
 import { SpeakButton } from '../components/SpeakButton';
 import { ActivityBarChart } from '../components/ActivityBarChart';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 type Section =
   | 'tools'
