@@ -150,7 +150,8 @@ const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../se
   localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
 }).newsStorage;
 assert.equal(stateStorage.articles().length,20,'Browsing cache keeps all fetched pages during the session');
-assert.equal(stateStorage.articles()[0].id,'id0','Browsing order is not truncated by the notification limit');
+assert.equal(stateStorage.articles()[0].id,'id19','Browsing cache remains sorted by publication date');
+assert.ok(stateStorage.articles().some(article=>article.id==='id0'),'Older pages remain available for browsing during the session');
 stateStorage.compact();
 assert.equal(stateStorage.articles().length,15,'Cleanup keeps only the newest 15 articles per source');
 assert.equal(stateStorage.articles()[0].id,'id19','Cleanup keeps the newest cached article');
