@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   Brain,
   Layers3,
   ChartNoAxesCombined,
@@ -317,9 +318,7 @@ export const AdvancedStudyPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
         </div>
       )}
 
-      {status && (
-        <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       {section === 'tools' && (
         <div className="flex flex-col gap-3">
