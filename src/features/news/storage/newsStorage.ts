@@ -1,5 +1,5 @@
 import { NewsArticle, NewsSource } from '../types';
-import { internalNewsId, retainLatestNews } from '../services/newsIdentity';
+import { internalNewsId, retainLatestNews, NEWS_LIMIT_PER_SOURCE } from '../services/newsIdentity';
 
 
 const SOURCES_KEY='raje3_news_sources_v1';
@@ -71,7 +71,7 @@ export const newsStorage={
     const kept=retainLatestNews(articles,previous);
     const state=tracker();
     for(const sourceId of new Set(kept.map(article=>article.sourceId))){
-      const batch=kept.filter(article=>article.sourceId===sourceId).slice(0,10);
+      const batch=kept.filter(article=>article.sourceId===sourceId).slice(0,NEWS_LIMIT_PER_SOURCE);
       const old=state[sourceId];
       const previousIds=new Set(previous.filter(article=>article.sourceId===sourceId).map(article=>article.internalId||internalNewsId(article)));
       const seen=new Set(old?.seenIds||[...previousIds]);
