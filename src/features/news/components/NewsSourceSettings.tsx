@@ -4,6 +4,7 @@ import {Capacitor} from '@capacitor/core';
 import {enableNewsNotifications} from '../services/newsNotifications';
 import {newsService} from '../services/newsService';
 import {sourceTheme} from '../config/sourceTheme';
+import { FloatingNotice } from '../../../components/FloatingNotice';
 
 function Switch({checked,label,onChange}:{checked:boolean;label:string;onChange:()=>void}){
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={onChange} className="min-w-11 min-h-11 flex items-center justify-center shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5B3FD6]">
@@ -20,6 +21,7 @@ export function NewsSourceSettings(){
   const sources=newsService.sources();
   const change=(action:()=>void)=>{try{action();setError('');setStatus('');}catch(error){setError(error instanceof Error?error.message:'تعذر حفظ الإعداد.');}};
   return <section className="space-y-4" aria-label="إعدادات مصادر الأخبار">
+    <FloatingNotice message={status} onDismiss={() => setStatus('')} />
     <div className="flex items-center justify-between px-1"><h2 className="font-bold text-sm text-[#2C2145]">مصادر الأخبار</h2><span className="text-xs text-gray-500">{sources.length} مصادر</span></div>
     {error&&<p role="alert" className="text-red-600 text-sm bg-white rounded-xl border border-gray-100 p-3">{error}</p>}
     {status&&<p role="status" className="text-gray-600 text-sm bg-white rounded-xl border border-gray-100 p-3">{status}</p>}
