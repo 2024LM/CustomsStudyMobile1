@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Headphones, LoaderCircle, Play, RefreshCw, Volume2, Wifi } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   listTtsVoices,
   readingFrameEnabled,
   saveReadingFrameEnabled,
@@ -17,6 +16,7 @@ import { FloatingNotice } from '../components/FloatingNotice';
   softenFinalTaaMarbuta,
   TtsVoiceOption,
 } from '../services/arabicTts';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
