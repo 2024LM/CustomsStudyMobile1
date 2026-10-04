@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   UploadCloud,
   CheckCircle2,
   AlertCircle,
@@ -19,6 +18,7 @@ import { parseExcelFile } from '../services/excelImporter';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { fetchRemoteBankFile, fetchRemoteBanks, RemoteBankItem } from '../services/remoteBanks';
 import { showInterstitial } from '../services/ads';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 interface BanksPageProps {
   onBankSelected: () => void;
