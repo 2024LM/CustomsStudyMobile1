@@ -16,6 +16,7 @@ import { RatingPrompt } from './components/RatingPrompt';
 
 import {startNewsMonitoring,consumePendingNews} from './features/news/services/newsNotifications';
 import { FirstRunPermissions } from './components/FirstRunPermissions';
+import { newsStorage } from './features/news/storage/newsStorage';
 import { HomePage } from './views/HomePage';
 const NewsPage = lazy(() => import('./views/NewsPage').then(module => ({ default: module.NewsPage })));
 const StudyPage = lazy(() => import('./views/StudyPage').then(module => ({ default: module.StudyPage })));
@@ -71,10 +72,15 @@ export function App() {
   const [sessionFocus, setSessionFocus] = useState(false);
 
   useEffect(()=>{
+    // Browsing may accumulate pages during a session; compact only when the app is leaving,
+    // while the next launch also performs the same safe cleanup if the process was killed.
+    newsStorage.compact();
+    const compactOnLeave=()=>{try{newsStorage.compact();}catch{}};
+    window.addEventListener('pagehide',compactOnLeave);
     const stop=startNewsMonitoring();
     const open=()=>{void consumePendingNews().then(article=>{if(article){setNewsArticleId(article.internalId||article.id);setPage('NEWS');}}).catch(()=>{});};
     open();window.addEventListener('raje3-news-open',open);window.addEventListener('focus',open);document.addEventListener('visibilitychange',open);
-    return()=>{stop();window.removeEventListener('raje3-news-open',open);window.removeEventListener('focus',open);document.removeEventListener('visibilitychange',open);};
+    return()=>{stop();window.removeEventListener('pagehide',compactOnLeave);window.removeEventListener('raje3-news-open',open);window.removeEventListener('focus',open);document.removeEventListener('visibilitychange',open);};
   },[]);
 
   useEffect(() => {
