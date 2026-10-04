@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   Bot,
   Check,
   CheckCircle2,
@@ -1335,9 +1336,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
         </div>
       )}
 
-      {status && !busy && !sourceBusy && (
-        <div className="rounded-[12px] bg-[#F5F3FF] dark:bg-[#302844] text-[#5B3FD6] dark:text-[#C8BAFF] px-3 py-2.5 text-[11px] leading-5">{status}</div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       <div className="fixed bottom-[72px] left-0 right-0 z-30 px-3 pointer-events-none">
         <div className="max-w-md sm:max-w-2xl mx-auto pointer-events-auto">
