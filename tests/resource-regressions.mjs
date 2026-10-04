@@ -125,3 +125,21 @@ for (const file of ['src/services/geminiAi.ts', 'src/views/AiSettingsPage.tsx', 
   assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /NexusNanoAi|nanoStatus|generateWithNano|genai-prompt/);
 }
 console.log('Resource regression checks passed.');
+
+
+{
+  const gemini = fs.readFileSync('src/services/geminiAi.ts', 'utf8');
+  const assistant = fs.readFileSync('src/views/AiAssistantPage.tsx', 'utf8');
+  const markdown = fs.readFileSync('src/components/MarkdownMessage.tsx', 'utf8');
+  const orchestrator = fs.readFileSync('src/services/aiOrchestrator.ts', 'utf8');
+
+  assert.ok(gemini.includes("'gemini-3.1-pro-preview'"), 'Gemini Pro uses the supported preview model id');
+  assert.ok(!gemini.includes("'gemini-3.1-pro';"), 'obsolete Gemini Pro model id is absent');
+  assert.match(gemini, /if \(!aiEnabled\(\) \|\| !aiVerified\(\)\) return false;/, 'AI readiness requires current verification');
+  assert.ok(assistant.includes('<MarkdownMessage text={item.text}'), 'Gemini chat messages render through MarkdownMessage');
+  assert.ok(markdown.includes('safeHref'), 'Markdown links are protocol validated');
+  assert.ok(!markdown.includes('dangerouslySetInnerHTML'), 'Gemini Markdown is rendered without raw HTML injection');
+  assert.ok(orchestrator.includes('generatedQuestions?: AiGeneratedBankQuestion[]'), 'generated bank previews persist with AI sessions');
+  assert.ok(assistant.includes("workspace.task.sourceUrls.length + taskLocalSources.length + current.length"), 'AI source limit counts web and local sources together');
+  console.log('AI assistant regression checks passed.');
+}
