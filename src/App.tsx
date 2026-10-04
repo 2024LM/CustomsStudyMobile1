@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Page, QuizQuestion, RemoteState } from './types';
 import { db } from './services/db';
@@ -14,6 +15,7 @@ import { GuidedTour, TourStep } from './components/GuidedTour';
 import { RatingPrompt } from './components/RatingPrompt';
 
 import {startNewsMonitoring,consumePendingNews} from './features/news/services/newsNotifications';
+import { FirstRunPermissions } from './components/FirstRunPermissions';
 import { HomePage } from './views/HomePage';
 const NewsPage = lazy(() => import('./views/NewsPage').then(module => ({ default: module.NewsPage })));
 const StudyPage = lazy(() => import('./views/StudyPage').then(module => ({ default: module.StudyPage })));
@@ -42,6 +44,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [username, setUsername] = useState(() => localStorage.getItem('profile_username')?.trim() || '');
   const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('onboarding_version') === '1' && Boolean(localStorage.getItem('profile_username')?.trim()));
+  const [permissionsSetupPending, setPermissionsSetupPending] = useState(() => localStorage.getItem('first_run_permissions_pending') === '1');
   const [tourRefresh, setTourRefresh] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem('app_theme');
@@ -252,6 +255,7 @@ export function App() {
           if (clean.length < 2) return;
           localStorage.setItem('profile_username', clean);
           localStorage.setItem('onboarding_version', '1');
+          if (Capacitor.isNativePlatform()) { localStorage.setItem('first_run_permissions_pending', '1'); setPermissionsSetupPending(true); }
           setUsername(clean);
           setOnboardingComplete(true);
           setStartupAdHandled(true);
@@ -259,6 +263,15 @@ export function App() {
         }}
       />
     );
+  }
+
+  if (permissionsSetupPending && Capacitor.isNativePlatform()) {
+    return <FirstRunPermissions onComplete={() => {
+      localStorage.removeItem('first_run_permissions_pending');
+      localStorage.setItem('first_run_permissions_done', '1');
+      setPermissionsSetupPending(false);
+      setStartupAdHandled(true);
+    }} />;
   }
 
   if (!startupAdHandled) {
