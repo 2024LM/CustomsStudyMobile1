@@ -1111,7 +1111,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                 <div key={`${item.id}_block_${blockIndex}`} className="mt-2 mb-2">
                   {block.beforeText && (
                     <div className={`text-[10px] leading-5 mb-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B5367] dark:text-[#C9C1D3]'}`}>
-                      {block.beforeText}
+                      <MarkdownMessage text={block.beforeText} userMessage={item.role === 'user'} />
                     </div>
                   )}
                   <div className={`text-[10px] font-black mb-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B3FD6] dark:text-[#C8BAFF]'}`}>
@@ -1221,7 +1221,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                   </div>
                   {block.afterText && (
                     <div className={`text-[10px] leading-5 mt-2 ${item.role === 'user' ? 'text-white/85' : 'text-[#5B5367] dark:text-[#C9C1D3]'}`}>
-                      {block.afterText}
+                      <MarkdownMessage text={block.afterText} userMessage={item.role === 'user'} />
                     </div>
                   )}
                 </div>
