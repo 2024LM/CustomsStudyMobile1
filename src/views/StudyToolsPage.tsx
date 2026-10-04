@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { PlusCircle, Save, Search, StickyNote, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { db } from '../services/db';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 type ToolTab = 'search' | 'notes' | 'manual';
 
@@ -77,7 +78,7 @@ export const StudyToolsPage: React.FC = () => {
         ))}
       </div>
 
-      {status && <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       {tab === 'search' && (
         <div className="flex flex-col gap-3">
