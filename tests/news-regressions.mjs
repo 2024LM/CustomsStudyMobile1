@@ -149,9 +149,12 @@ persistent.set('raje3_news_cache_v1',JSON.stringify(many));
 const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../services/newsIdentity':identity,'../services/newsPresentation':presentation},{
   localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
 }).newsStorage;
-assert.equal(stateStorage.articles().length,15);
-assert.equal(stateStorage.articles()[0].id,'id19','Migration keeps the newest cached article');
-assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,15,'Migration preserves browsing history beyond ten articles');
+assert.equal(stateStorage.articles().length,20,'Browsing cache keeps all fetched pages during the session');
+assert.equal(stateStorage.articles()[0].id,'id0','Browsing order is not truncated by the notification limit');
+stateStorage.compact();
+assert.equal(stateStorage.articles().length,15,'Cleanup keeps only the newest 15 articles per source');
+assert.equal(stateStorage.articles()[0].id,'id19','Cleanup keeps the newest cached article');
+assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,15,'Cleanup preserves only the 15-item persistent snapshot');
 stateStorage.saveArticles(many);
 assert.equal(stateStorage.pendingNewArticles().length,0,'Initial population is a baseline');
 const newItem={...articleBase,id:'brand-new',url:'https://www.hcp.ma/new_a99.html',content:'Detailed text'};
