@@ -3,6 +3,7 @@ import { Database, FileText, HardDrive, Trash2 } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   deleteLocalReference,
   listLocalReferences,
   LocalReference,
@@ -77,7 +78,7 @@ export const DownloadsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <span className="font-bold text-[#5B3FD6]">{formatBytes(summary.totalBytes)}</span>
       </div>
 
-      {status && <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">{status}</div>}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       <section className="flex flex-col gap-2">
         <h3 className="font-bold text-sm">المراجع المنزلة للعمل بدون إنترنت</h3>
