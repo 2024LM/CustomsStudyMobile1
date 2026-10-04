@@ -6,6 +6,7 @@ export type GeminiModel = 'gemini-3.6-flash' | 'gemini-3.5-flash-lite' | 'gemini
 
 const ENABLED_KEY = 'ai_gemini_enabled';
 const VERIFIED_KEY = 'ai_gemini_verified';
+const VERIFIED_MODEL_KEY = 'ai_gemini_verified_model';
 const MODEL_KEY = 'ai_gemini_model';
 const WEB_KEY = 'ai_gemini_web_key';
 const KEY_POOL_VERSION = 1;
@@ -73,15 +74,23 @@ export function setAiEnabled(enabled: boolean): void {
 }
 
 export function aiVerified(): boolean {
-  return localStorage.getItem(VERIFIED_KEY) === '1';
+  return localStorage.getItem(VERIFIED_KEY) === '1'
+    && localStorage.getItem(VERIFIED_MODEL_KEY) === geminiModel();
 }
 
 export function setAiVerified(verified: boolean): void {
   localStorage.setItem(VERIFIED_KEY, verified ? '1' : '0');
+  if (verified) localStorage.setItem(VERIFIED_MODEL_KEY, geminiModel());
+  else localStorage.removeItem(VERIFIED_MODEL_KEY);
 }
 
 export function geminiModel(): GeminiModel {
-  const value = localStorage.getItem(MODEL_KEY) as GeminiModel | null;
+  const stored = localStorage.getItem(MODEL_KEY);
+  if (stored === 'gemini-3.1-pro') {
+    localStorage.setItem(MODEL_KEY, 'gemini-3.1-pro-preview');
+    return 'gemini-3.1-pro-preview';
+  }
+  const value = stored as GeminiModel | null;
   return GEMINI_MODELS.some((item) => item.id === value) ? value! : 'gemini-3.6-flash';
 }
 
@@ -195,7 +204,6 @@ async function writeKeyPool(pool: GeminiKeyPool): Promise<void> {
     return;
   }
   await writeSecretPayload(JSON.stringify(pool));
-  setAiVerified(pool.keys.some((key) => key.verifiedAt > 0));
 }
 
 function orderedPoolKeys(pool: GeminiKeyPool): GeminiStoredKey[] {
@@ -302,6 +310,7 @@ export async function addVerifiedGeminiKey(value: string): Promise<GeminiKeyMeta
   await writeKeyPool(pool);
   clearWebSearchCapability();
   setAiEnabled(true);
+  setAiVerified(true);
 
   return {
     id: key.id,
@@ -325,9 +334,11 @@ export async function getGeminiKey(): Promise<string> {
 export async function selectGeminiKey(id: string): Promise<void> {
   const pool = await readKeyPool();
   if (!pool.keys.some((key) => key.id === id)) throw new Error('المفتاح غير موجود.');
+  if (pool.activeId === id) return;
   pool.activeId = id;
   await writeKeyPool(pool);
   clearWebSearchCapability();
+  setAiVerified(false);
 }
 
 export async function deleteGeminiKeyById(id: string): Promise<void> {
@@ -335,10 +346,12 @@ export async function deleteGeminiKeyById(id: string): Promise<void> {
   const removed = pool.keys.find((key) => key.id === id);
   if (!removed) return;
   pool.keys = pool.keys.filter((key) => key.id !== id);
-  if (pool.activeId === id) {
+  const activeChanged = pool.activeId === id;
+  if (activeChanged) {
     pool.activeId = pool.keys.find((key) => key.verifiedAt > 0)?.id || pool.keys[0]?.id || '';
   }
   await writeKeyPool(pool);
+  if (activeChanged) setAiVerified(false);
   clearWebSearchCapability();
   if (!pool.keys.length) setAiEnabled(false);
 }
