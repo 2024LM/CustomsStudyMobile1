@@ -2,7 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { QuizQuestion } from '../types';
 import { logAiProviderEvent } from './aiProviderDiagnostics';
 
-export type GeminiModel = 'gemini-3.6-flash' | 'gemini-3.5-flash-lite' | 'gemini-3.1-pro';
+export type GeminiModel = 'gemini-3.6-flash' | 'gemini-3.5-flash-lite' | 'gemini-3.1-pro-preview';
 
 const ENABLED_KEY = 'ai_gemini_enabled';
 const VERIFIED_KEY = 'ai_gemini_verified';
@@ -61,7 +61,7 @@ function saveWebSearchCapability(value: WebSearchCapability): WebSearchCapabilit
 export const GEMINI_MODELS: Array<{ id: GeminiModel; label: string; description: string }> = [
   { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', description: 'متوازن وسريع للاستخدام اليومي' },
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', description: 'أخف وأقل استهلاكًا للمهام البسيطة' },
-  { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro', description: 'للمهام الأكثر تعقيدًا' },
+  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview', description: 'للمهام الأكثر تعقيدًا' },
 ];
 
 export function aiEnabled(): boolean {
@@ -522,7 +522,7 @@ async function generate(prompt: string, maxOutputTokens = 700, operation = 'نص
 }
 
 export async function aiReady(): Promise<boolean> {
-  if (!aiEnabled()) return false;
+  if (!aiEnabled() || !aiVerified()) return false;
   return (await listGeminiKeys()).some((key) => key.verifiedAt > 0);
 }
 
