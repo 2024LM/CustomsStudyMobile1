@@ -22,7 +22,7 @@ export async function syncNewsNotifications(){
   const permissionGranted=await checkStudyAlarmPermission();
   const allowed=permissionGranted&&localStorage.getItem('raje3_news_notifications_allowed')==='1';
   if(!permissionGranted) localStorage.removeItem('raje3_news_notifications_allowed');
-  const sources=allowed?newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled!==false):[];
+  const sources=allowed?newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled===true):[];
   const articles=newsService.cachedArticles();
   await NativeNews.configure({sources,baseline:sources.map(source=>({sourceId:source.id,urls:articles.filter(a=>a.sourceId===source.id).slice(0,10).map(a=>a.url)})),translations:articles.map(article=>({url:article.url,...cachedNewsTranslation(article.title,newsSummary(article.summary))})).filter(item=>item.title)});
 }
