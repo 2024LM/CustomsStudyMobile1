@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   BookOpenCheck,
   CalendarDays,
   CheckCircle2,
@@ -30,6 +29,7 @@ import {
   DeviceAlarmSound,
   StudyAlarmSound,
 } from '../services/studyAlarm';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 type PlanScope = 'ALL' | string;
 
