@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, FolderPlus, Layers3, Trash2 } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 interface DomainsPageProps {
   onDomainSelected?: () => void;
@@ -97,11 +98,7 @@ export const DomainsPage: React.FC<DomainsPageProps> = ({ onDomainSelected, onBa
         </button>
       </div>
 
-      {status && (
-        <div className="rounded-[14px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2.5 text-xs font-semibold">
-          {status}
-        </div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       <div className="flex flex-col gap-2.5">
         {domains.map((domain) => {
