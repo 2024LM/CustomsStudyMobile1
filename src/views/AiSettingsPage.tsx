@@ -136,8 +136,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
       await deleteGeminiKeyById(id);
       const next = await listGeminiKeys();
       setKeys(next);
-      const hasVerified = next.some((key) => key.verifiedAt > 0);
-      setVerified(hasVerified);
+      setVerified(aiVerified());
       if (!next.length) {
         setEnabled(false);
         setAiEnabled(false);
