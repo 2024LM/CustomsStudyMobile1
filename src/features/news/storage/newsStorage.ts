@@ -1,12 +1,12 @@
 import { NewsArticle, NewsSource } from '../types';
-import { internalNewsId, retainLatestNews, NEWS_LIMIT_PER_SOURCE } from '../services/newsIdentity';
-
+import { internalNewsId, mergeNewsForBrowsing, retainLatestNews, NEWS_LIMIT_PER_SOURCE } from '../services/newsIdentity';
 
 const SOURCES_KEY='raje3_news_sources_v1';
 const CACHE_KEY='raje3_news_cache_v1';
 const PREFS_KEY='raje3_news_preferences_v1';
 const TRACK_KEY='raje3_news_tracker_v1';
 type SourceTracker={seenIds:string[];pendingIds:string[];latestPublished:number};
+
 function parse<T>(value:string|null,fallback:T):T{
   if(!value)return fallback;
   try{return JSON.parse(value) as T}catch{return fallback}
@@ -19,12 +19,30 @@ function tracker():Record<string,SourceTracker>{
   const value=parse<unknown>(localStorage.getItem(TRACK_KEY),{});
   return value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,SourceTracker>:{};
 }
-function migrate():NewsArticle[]{
+function compactTracker(state:Record<string,SourceTracker>, articles:NewsArticle[]){
+  const bySource=new Map<string,NewsArticle[]>();
+  for(const article of articles){
+    const list=bySource.get(article.sourceId)||[];
+    list.push(article);
+    bySource.set(article.sourceId,list);
+  }
+  for(const sourceId of Object.keys(state)){
+    const ids=new Set((bySource.get(sourceId)||[]).slice(0,NEWS_LIMIT_PER_SOURCE).map(article=>article.internalId||internalNewsId(article)));
+    state[sourceId]={
+      ...state[sourceId],
+      seenIds:(state[sourceId].seenIds||[]).filter(id=>ids.has(id)),
+      pendingIds:(state[sourceId].pendingIds||[]).filter(id=>ids.has(id)),
+    };
+    if(!ids.size)delete state[sourceId];
+  }
+  return state;
+}
+function compactCache():NewsArticle[]{
   const old=rawArticles();
   const kept=retainLatestNews(old,old);
-  const encoded=JSON.stringify(kept);
-  if(encoded!==JSON.stringify(old))localStorage.setItem(CACHE_KEY,encoded);
-  // Preserve translations when an article leaves the browsing snapshot.
+  if(JSON.stringify(kept)!==JSON.stringify(old))localStorage.setItem(CACHE_KEY,JSON.stringify(kept));
+  const state=compactTracker(tracker(),kept);
+  localStorage.setItem(TRACK_KEY,JSON.stringify(state));
   return kept;
 }
 function sourceTransaction<T>(write: () => T):T {
@@ -41,6 +59,7 @@ function sourceTransaction<T>(write: () => T):T {
     throw new Error(recovered ? 'تعذر الحفظ على الجهاز. لم تُعتمد الإضافة.' : 'تعذر الحفظ واستعادة بعض بيانات الأخبار؛ تحقق من مساحة الجهاز قبل إعادة المحاولة.');
   }
 }
+
 export const newsStorage={
   addValidatedSource:(source:NewsSource,articles:NewsArticle[])=>sourceTransaction(()=>{
     newsStorage.saveCustomSources([...newsStorage.customSources(),source]);
@@ -65,18 +84,18 @@ export const newsStorage={
   }),
   customSources:():NewsSource[]=>parse(localStorage.getItem(SOURCES_KEY),[]),
   saveCustomSources:(sources:NewsSource[])=>localStorage.setItem(SOURCES_KEY,JSON.stringify(sources)),
-  articles:():NewsArticle[]=>migrate(),
+  articles:():NewsArticle[]=>rawArticles(),
   saveArticles:(articles:NewsArticle[],trackChanges=true):NewsArticle[]=>sourceTransaction(()=>{
-    const previous=migrate();
-    const kept=retainLatestNews(articles,previous);
+    const previous=rawArticles();
+    const merged=mergeNewsForBrowsing(articles,previous);
     const state=tracker();
-    for(const sourceId of new Set(kept.map(article=>article.sourceId))){
-      const batch=kept.filter(article=>article.sourceId===sourceId).slice(0,NEWS_LIMIT_PER_SOURCE);
+    for(const sourceId of new Set(merged.map(article=>article.sourceId))){
+      const batch=merged.filter(article=>article.sourceId===sourceId).slice(0,NEWS_LIMIT_PER_SOURCE);
       const old=state[sourceId];
       const previousIds=new Set(previous.filter(article=>article.sourceId===sourceId).map(article=>article.internalId||internalNewsId(article)));
-      const seen=new Set(old?.seenIds||[...previousIds]);
+      const seen=new Set(old?.seenIds||[...previousIds].slice(0,NEWS_LIMIT_PER_SOURCE));
       const watermark=old?.latestPublished||Math.max(0,...previous.filter(article=>article.sourceId===sourceId).map(article=>Date.parse(article.publishedAt||'')||0));
-      const maxPublished= Math.max(watermark,...batch.map(article=>Date.parse(article.publishedAt||'')||0));
+      const maxPublished=Math.max(watermark,...batch.map(article=>Date.parse(article.publishedAt||'')||0));
       const baseline=!!old||previousIds.size>0;
       const discovered=trackChanges&&baseline?batch.filter(article=>{
         const id=article.internalId!;
@@ -84,20 +103,16 @@ export const newsStorage={
         return !seen.has(id)&&(!published||(article.publishedTimeKnown===false?published>=watermark:published>watermark));
       }).map(article=>article.internalId!):[];
       const ids=batch.map(article=>article.internalId!);
-      state[sourceId]={
-        seenIds:ids,pendingIds:[...new Set([...(old?.pendingIds||[]),...discovered])].filter(id=>ids.includes(id)),
-        latestPublished:maxPublished,
-      };
+      state[sourceId]={seenIds:ids,pendingIds:[...new Set([...(old?.pendingIds||[]),...discovered])].filter(id=>ids.includes(id)),latestPublished:maxPublished};
     }
-    for(const sourceId of Object.keys(state))if(!kept.some(article=>article.sourceId===sourceId))delete state[sourceId];
-    localStorage.setItem(CACHE_KEY,JSON.stringify(kept));
+    localStorage.setItem(CACHE_KEY,JSON.stringify(merged));
     localStorage.setItem(TRACK_KEY,JSON.stringify(state));
-    // Saved translations remain independent from the browsing snapshot.
-    return kept;
+    return merged;
   }),
+  compact:()=>sourceTransaction(()=>compactCache()),
   pendingNewArticles:():NewsArticle[]=>{
     const state=tracker(),pending=new Set(Object.values(state).flatMap(source=>source.pendingIds||[]));
-    return migrate().filter(article=>pending.has(article.internalId!));
+    return rawArticles().filter(article=>pending.has(article.internalId||internalNewsId(article)));
   },
   markNewsNotified:(ids:string[])=>{
     const state=tracker(),handled=new Set(ids);
