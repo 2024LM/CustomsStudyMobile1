@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   BookOpenCheck,
   CalendarDays,
   CheckCircle2,
@@ -302,11 +303,7 @@ export const StudyPlanPage: React.FC<{
     <div className="flex flex-col gap-4 pb-8 text-right">
       <PurpleSubpageHeader title="خطة المراجعة" subtitle="خطة يومية تتكيف مع تقدمك حتى موعد الامتحان" onBack={onBack} />
 
-      {status && (
-        <div className="rounded-[13px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-xs font-semibold">
-          {status}
-        </div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       <section className="bg-white rounded-[22px] p-4 border border-gray-100 shadow-xs">
         <div className="flex items-center gap-2 mb-3">
