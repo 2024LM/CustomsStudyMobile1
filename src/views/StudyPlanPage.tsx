@@ -23,7 +23,7 @@ import {
   stopDeviceAlarmPreview,
   saveAlarmAudio,
   requestStudyAlarmPermission,
-  requestDeviceAudioPermission,
+  checkStudyAlarmPermission,
   scheduleStudyAlarm,
   scheduleQuestionReminder,
   DeviceAlarmSound,
@@ -71,7 +71,6 @@ export const StudyPlanPage: React.FC<{
   useEffect(() => {
     let active = true;
     const loadSounds = async () => {
-      await requestDeviceAudioPermission();
       const items = await listDeviceAlarmSounds();
       if (!active) return;
       setDeviceSounds(items);
@@ -87,6 +86,20 @@ export const StudyPlanPage: React.FC<{
       active = false;
       void stopDeviceAlarmPreview();
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void checkStudyAlarmPermission().then(granted => {
+      if (!active || granted) return;
+      setAlarmEnabled(false);
+      setQuestionReminderEnabled(false);
+      db.setSetting('study_alarm_enabled','0');
+      db.setSetting('question_reminder_enabled','0');
+      void cancelStudyAlarm().catch(()=>{});
+      void cancelQuestionReminder().catch(()=>{});
+    });
+    return () => { active = false; };
   }, []);
 
   const bankId = scope === 'ALL' ? null : scope;
@@ -206,7 +219,9 @@ export const StudyPlanPage: React.FC<{
     try {
       const permissionGranted = await requestStudyAlarmPermission();
       if (!permissionGranted) {
-        setStatus('تم حفظ موعد الامتحان والخطة، لكن يجب السماح بالإشعارات لتصلك خطة اليوم يوميًا.');
+        setAlarmEnabled(false);
+        db.setSetting('study_alarm_enabled','0');
+        setStatus('تم حفظ موعد الامتحان والخطة، لكن إذن الإشعارات غير ممنوح؛ لذلك بقي المنبّه غير مفعّل.');
         return;
       }
 
@@ -239,7 +254,13 @@ export const StudyPlanPage: React.FC<{
       if (needsPermission) {
         const permissionGranted = await requestStudyAlarmPermission();
         if (!permissionGranted) {
-          setStatus('تم حفظ الإعدادات، لكن يجب السماح بإشعارات Android لتفعيل التذكيرات.');
+          setAlarmEnabled(false);
+          setQuestionReminderEnabled(false);
+          db.setSetting('study_alarm_enabled','0');
+          db.setSetting('question_reminder_enabled','0');
+          try { await cancelStudyAlarm(); } catch {}
+          try { await cancelQuestionReminder(); } catch {}
+          setStatus('تم حفظ الإعدادات، لكن إذن الإشعارات غير ممنوح؛ لذلك بقيت التذكيرات غير مفعّلة.');
           return;
         }
       }
