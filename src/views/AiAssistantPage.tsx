@@ -51,6 +51,7 @@ import { ExcelPreview } from '../types';
 import { AiSourcePicker } from '../components/AiSourcePicker';
 import { SpeakButton } from '../components/SpeakButton';
 import { FloatingNotice } from '../components/FloatingNotice';
+import { MarkdownMessage } from '../components/MarkdownMessage';
 
 interface AiAssistantPageProps {
   initialMessage?:string;
@@ -142,8 +143,8 @@ function localCommandRoute(
   task: AiWorkspaceState['task']
 ): LocalCommandRoute {
   const normalized = normalizeCommandText(text);
-  const bankSignal = /(بنك|بنوك|qcm|اسئل|سؤال.*اختيار|اختيار متعدد)/i.test(normalized);
-  const referenceBuildSignal = /(انش.*مرجع|مرجع دراسي|مراجع.*بناء|مصادر.*بناء)/i.test(normalized);
+  const bankSignal = /(بنك\s+اسئل|بنك\s+أسئل|انش.*بنك|ابن.*بنك|ولد.*اسئل|ولد.*أسئل|qcm.*عن|اختيار متعدد.*عن)/i.test(normalized);
+  const referenceBuildSignal = /(انش.*مرجع|ابن.*مرجع|مرجع دراسي.*عن|مراجع.*بناء|مصادر.*بناء)/i.test(normalized);
   const activeWorkflow = ['bank', 'references'].includes(task.kind)
     && !['idle', 'done', 'error'].includes(task.status);
 
@@ -154,7 +155,7 @@ function localCommandRoute(
 
   // طلب الوسائط المستقل لا يحتاج Planner. إذا كان الطلب صريحًا لبناء بنك/مرجع
   // نتركه للمخطط حتى يحافظ على دورة اختيار المصادر.
-  if (webKinds.length && !bankSignal && !referenceBuildSignal) {
+  if (webKinds.length && !bankSignal && !referenceBuildSignal && !activeWorkflow) {
     return { kind: 'rich', webKinds: Array.from(new Set(webKinds)) };
   }
 
@@ -254,7 +255,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       note: 'مصدر محفوظ في المهمة',
     }));
   });
-  const [generated, setGenerated] = useState<GeneratedBankQuestion[]>([]);
+  const [generated, setGenerated] = useState<GeneratedBankQuestion[]>(() => loadAiWorkspace().task.generatedQuestions || []);
   const [localSources, setLocalSources] = useState<MixedAiSource[]>([]);
   const [taskLocalSources, setTaskLocalSources] = useState<MixedAiSource[]>([]);
   const [sentAttachmentPayloads, setSentAttachmentPayloads] = useState<Record<string, MixedAiSource[]>>({});
@@ -460,7 +461,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     const reviewState = addAiMessage(
       {
         ...generatingState,
-        task: { ...generatingState.task, status: 'review', updatedAt: Date.now() },
+        task: { ...generatingState.task, status: 'review', generatedQuestions: questions, updatedAt: Date.now() },
       },
       'assistant',
       `أنشأت ${questions.length} سؤالًا من ${state.task.sourceUrls.length + localTaskSources.length} مصدر محدد. راجع المعاينة قبل الحفظ.`
@@ -599,6 +600,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       if (route.kind === 'progress') {
         const next = addAiMessage(state, 'assistant', localProgressReply(analytics));
         setWorkspace(next);
+        setTaskLocalSources([]);
         setStatus('');
         return;
       }
@@ -612,6 +614,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
           reply || 'لم يُرجع Gemini نصًا قابلًا للعرض.'
         );
         setWorkspace(next);
+        setTaskLocalSources([]);
         setStatus('');
         return;
       }
@@ -620,19 +623,22 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       const decision = await runStudyAssistant(assistantContext, activeSources);
 
       if (decision.action === 'web_content') {
-        const freshState: AiWorkspaceState = {
-          ...state,
-          task: freshChatTask(state.task),
-        };
-        setWorkspace(freshState);
-        setCandidates([]);
-        setShowSources(false);
-        setGenerated([]);
-        setTaskLocalSources([]);
+        const workflowActive = ['bank', 'references'].includes(state.task.kind)
+          && !['idle', 'done', 'error'].includes(state.task.status);
+        const richState: AiWorkspaceState = workflowActive
+          ? state
+          : { ...state, task: freshChatTask(state.task) };
+        setWorkspace(richState);
+        if (!workflowActive) {
+          setCandidates([]);
+          setShowSources(false);
+          setGenerated([]);
+          setTaskLocalSources([]);
+        }
         await runRichSearch(
           decision.webKinds?.length ? decision.webKinds : ['links'],
           userText,
-          freshState
+          richState
         );
         return;
       }
@@ -733,13 +739,14 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       const done = addAiMessage(
         {
           ...workspace,
-          task: { ...workspace.task, status: 'done', generatedBankId: bankId, updatedAt: Date.now() },
+          task: { ...workspace.task, status: 'done', generatedQuestions: [], generatedBankId: bankId, updatedAt: Date.now() },
         },
         'assistant',
         `تم حفظ البنك «${workspace.task.bankName}» وتفعيله داخل التطبيق.`
       );
       setWorkspace(done);
       setGenerated([]);
+      setTaskLocalSources([]);
       setStatus('تم إنشاء البنك وتفعيله.');
     } catch (error: any) {
       setStatus(error?.message || 'تعذر حفظ البنك.');
@@ -779,6 +786,14 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setSessions(aiSessionSummaries());
     setActiveSessionId(id);
     clearTransientSessionState();
+    setCandidates(next.task.sourceUrls.map((url, index) => ({
+      url,
+      title: next.task.sourceTitles[index] || sourceDomain(url),
+      domain: sourceDomain(url),
+      note: 'مصدر محفوظ في المهمة',
+    })));
+    setGenerated(next.task.generatedQuestions || []);
+    setShowSources(next.task.status === 'collecting' && next.task.sourceUrls.length > 0);
     setSessionsOpen(false);
   };
 
@@ -789,6 +804,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setSessions(aiSessionSummaries());
     setActiveSessionId(activeAiSessionId());
     clearTransientSessionState();
+    setCandidates(next.task.sourceUrls.map((url, index) => ({
+      url,
+      title: next.task.sourceTitles[index] || sourceDomain(url),
+      domain: sourceDomain(url),
+      note: 'مصدر محفوظ في المهمة',
+    })));
+    setGenerated(next.task.generatedQuestions || []);
   };
 
   const copyMessage = async (item: AiChatMessage) => {
@@ -1051,6 +1073,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                           <div className="text-[10px] font-bold truncate">{attachment.title}</div>
                           <div className={`text-[9px] mt-0.5 ${item.role === 'user' ? 'text-white/70' : 'text-gray-400'}`}>
                             {attachment.kind === 'pdf' ? 'PDF' : attachment.kind === 'image' ? 'صورة' : attachment.kind === 'bank' ? 'بنك أسئلة' : attachment.kind === 'reference' ? 'مرجع' : attachment.kind === 'url' ? 'رابط' : 'ملف'}
+                            {!payload && ['image','pdf','file'].includes(attachment.kind) ? ' • أعد إرفاقه لإعادة التحليل' : ''}
                           </div>
                         </div>
                       </div>
@@ -1179,7 +1202,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                 </div>
               ))}
 
-              <div className="whitespace-pre-wrap">{item.text}</div>
+              <MarkdownMessage text={item.text} userMessage={item.role === 'user'} />
             </div>
           );
         })}
@@ -1395,8 +1418,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
                 maxAttachments={8}
                 onAdd={addLocalSource}
                 onSearchWeb={() => {
-                  if (workspace.task.topic) void searchSources();
-                  else setStatus('حدد الموضوع أولًا حتى يقترح Gemini مصادر ويب مناسبة.');
+                  const topic = workspace.task.topic.trim() || message.trim();
+                  if (topic) void searchSources(topic);
+                  else setStatus('اكتب موضوعًا أولًا حتى يقترح Gemini مصادر ويب مناسبة.');
                 }}
                 onStatus={setStatus}
               />
@@ -1417,7 +1441,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
               <button
                 type="submit"
-                disabled={busy || sourceBusy || (!message.trim() && localSources.length === 0)}
+                disabled={busy || sourceBusy || (!message.trim() && localSources.length === 0 && workspace.task.sourceUrls.length === 0)}
                 className="w-11 h-11 rounded-[14px] bg-[#5B3FD6] text-white flex items-center justify-center disabled:opacity-40 shrink-0 active:scale-95 transition-transform"
                 aria-label="إرسال الرسالة"
                 title="إرسال"
