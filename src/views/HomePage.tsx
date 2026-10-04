@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { HomeNewsPreview } from '../features/news/components/HomeNewsPreview';
 import { db } from '../services/db';
-import { ActivityBarChart } from '../components/ActivityBarChart';
 import { ReferenceBannerAd } from '../components/ReferenceBannerAd';
 import { focusMinutesToday } from '../services/advancedStudyTools';
 
@@ -60,7 +59,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   username = '',
   dataVersion,
 }) => {
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [statsBankId, setStatsBankId] = useState<string>('ALL');
   const bank = db.activeBank();
   const banks = db.banks();
@@ -71,7 +69,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     [selectedBankId, dataVersion]
   );
 
-  const activityBuckets = db.getActivityStats(period, selectedBankId);
   const streak = db.studyStreak();
   const focusToday = focusMinutesToday();
   const topics = db.topics().slice(0, 8);
@@ -241,17 +238,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         >
           ابدأ الجلسة الذكية الآن
         </button>
-      </div>
-
-      <div data-tour="home-activity" className="sm:col-span-2">
-        <ActivityBarChart
-          buckets={activityBuckets}
-          period={period}
-          onPeriodChange={setPeriod}
-          banks={banks}
-          selectedBankId={statsBankId}
-          onBankChange={setStatsBankId}
-        />
       </div>
 
       <div className="bg-white rounded-[20px] p-4 border border-gray-100">
