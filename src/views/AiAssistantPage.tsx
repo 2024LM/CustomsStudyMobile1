@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   Bot,
   Check,
   CheckCircle2,
@@ -51,6 +50,7 @@ import {
 import { ExcelPreview } from '../types';
 import { AiSourcePicker } from '../components/AiSourcePicker';
 import { SpeakButton } from '../components/SpeakButton';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 interface AiAssistantPageProps {
   initialMessage?:string;
