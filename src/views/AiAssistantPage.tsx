@@ -1439,7 +1439,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
             >
               <AiSourcePicker
                 disabled={busy || sourceBusy}
-                attachmentCount={localSources.length}
+                attachmentCount={workspace.task.sourceUrls.length + taskLocalSources.length + localSources.length}
                 maxAttachments={8}
                 onAdd={addLocalSource}
                 onSearchWeb={() => {
