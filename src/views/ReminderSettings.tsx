@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   BellRing,
   Clock,
   Info,
@@ -9,6 +8,7 @@ import { FloatingNotice } from '../components/FloatingNotice';
 } from 'lucide-react';
 import { db } from '../services/db';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 interface ReminderSettingsProps {
   onTriggerDirectQuestion?: () => void;
