@@ -24,7 +24,7 @@ export async function syncNewsNotifications(){
   if(!permissionGranted) localStorage.removeItem('raje3_news_notifications_allowed');
   const sources=allowed?newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled===true):[];
   const articles=newsService.cachedArticles();
-  await NativeNews.configure({sources,baseline:sources.map(source=>({sourceId:source.id,urls:articles.filter(a=>a.sourceId===source.id).slice(0,10).map(a=>a.url)})),translations:articles.map(article=>({url:article.url,...cachedNewsTranslation(article.title,newsSummary(article.summary))})).filter(item=>item.title)});
+  await NativeNews.configure({sources,baseline:sources.map(source=>({sourceId:source.id,urls:articles.filter(a=>a.sourceId===source.id).slice(0,15).map(a=>a.url)})),translations:articles.map(article=>({url:article.url,...cachedNewsTranslation(article.title,newsSummary(article.summary))})).filter(item=>item.title)});
 }
 export async function consumePendingNews():Promise<NewsArticle|undefined>{
   if(!Capacitor.isNativePlatform())return;
