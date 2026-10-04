@@ -4,7 +4,7 @@ import {newsStorage} from '../storage/newsStorage';
 import {NewsArticle} from '../types';
 import {cachedNewsTranslation} from './newsTranslation';
 import {newsSummary} from './newsPresentation';
-import {requestStudyAlarmPermission} from '../../../services/studyAlarm';
+import {checkStudyAlarmPermission,requestStudyAlarmPermission} from '../../../services/studyAlarm';
 import {samePublisher} from '../providers/sourceAccess';
 
 const NativeNews=registerPlugin<{
@@ -19,7 +19,10 @@ export async function enableNewsNotifications():Promise<boolean>{
 }
 export async function syncNewsNotifications(){
   if(!Capacitor.isNativePlatform())return;
-  const sources=localStorage.getItem('raje3_news_notifications_allowed')==='1'?newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled!==false):[];
+  const permissionGranted=await checkStudyAlarmPermission();
+  const allowed=permissionGranted&&localStorage.getItem('raje3_news_notifications_allowed')==='1';
+  if(!permissionGranted) localStorage.removeItem('raje3_news_notifications_allowed');
+  const sources=allowed?newsService.sources().filter(s=>s.enabled&&s.notificationsEnabled!==false):[];
   const articles=newsService.cachedArticles();
   await NativeNews.configure({sources,baseline:sources.map(source=>({sourceId:source.id,urls:articles.filter(a=>a.sourceId===source.id).slice(0,10).map(a=>a.url)})),translations:articles.map(article=>({url:article.url,...cachedNewsTranslation(article.title,newsSummary(article.summary))})).filter(item=>item.title)});
 }
