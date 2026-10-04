@@ -136,11 +136,12 @@ assert.equal(plainNewsText('&lt;p&gt;Safe text&lt;/p&gt;').includes('<p>'),false
 const articleBase={id:'external-id',sourceId:'hcp',title:'Original title',url:'https://www.hcp.ma/test_a1.html',publishedAt:'2026-10-01T10:00:00Z',publishedTimeKnown:true};
 assert.equal(identity.internalNewsId(articleBase),identity.internalNewsId({...articleBase,title:'Changed title',id:'different-provider-id'}),'Editing the title does not change a concrete story identity');
 assert.notEqual(identity.internalNewsId(articleBase),identity.internalNewsId({...articleBase,sourceId:'men'}),'Identities are scoped to a source');
-const many=Array.from({length:15},(_,index)=>({...articleBase,id:'id'+index,url:'https://www.hcp.ma/test_a'+(index+1)+'.html',publishedAt:'2026-09-'+String(index+1).padStart(2,'0')}));
+const many=Array.from({length:20},(_,index)=>({...articleBase,id:'id'+index,url:'https://www.hcp.ma/test_a'+(index+1)+'.html',publishedAt:'2026-09-'+String(index+1).padStart(2,'0')}));
 const kept=identity.retainLatestNews([...many,...many.map(article=>({...article,sourceId:'men'}))]);
 assert.equal(kept.filter(article=>article.sourceId==='hcp').length,15);
 assert.equal(kept.filter(article=>article.sourceId==='men').length,15);
-assert.equal(kept[0].id,'id14','Most recent publication first');
+assert.equal(kept[0].id,'id19','Most recent publication first');
+assert.equal(kept.some(article=>article.id==='id5'),false,'Articles older than the 15-item source window are removed');
 assert.equal(retainNewsFeed(many).length,10,'Build feed uses the same retention bound');
 const persistent=new Map();
 persistent.set('raje3_news_cache_v1',JSON.stringify(many));
@@ -148,6 +149,7 @@ const stateStorage=loadModule('src/features/news/storage/newsStorage.ts',{'../se
   localStorage:{getItem:key=>persistent.get(key)||null,setItem:(key,value)=>persistent.set(key,value)}
 }).newsStorage;
 assert.equal(stateStorage.articles().length,15);
+assert.equal(stateStorage.articles()[0].id,'id19','Migration keeps the newest cached article');
 assert.equal(JSON.parse(persistent.get('raje3_news_cache_v1')).length,15,'Migration preserves browsing history beyond ten articles');
 stateStorage.saveArticles(many);
 assert.equal(stateStorage.pendingNewArticles().length,0,'Initial population is a baseline');
@@ -159,7 +161,7 @@ stateStorage.saveArticles([{...newItem,title:'Updated title'},...many]);
 assert.equal(stateStorage.pendingNewArticles().length,1,'Re-fetching or editing a story does not queue it twice');
 stateStorage.markNewsNotified([newId]);
 assert.equal(stateStorage.pendingNewArticles().length,0);
-assert.ok(Object.values(JSON.parse(persistent.get('raje3_news_tracker_v1'))).every(source=>source.seenIds.length<=10&&source.pendingIds.length<=10),'Notification metadata is bounded');
+assert.ok(Object.values(JSON.parse(persistent.get('raje3_news_tracker_v1'))).every(source=>source.seenIds.length<=15&&source.pendingIds.length<=15),'Notification metadata follows the 15-item source window');
 
 assert.notEqual(presentation.newsDate('2026-10-01T10:30:00Z',true),presentation.newsDate('2026-10-01',false),'Known hours are displayed while date-only publications do not acquire a fake time');
 console.log('News publication, identity, retention, detail extraction and future-notification baseline checks passed');
