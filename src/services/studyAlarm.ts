@@ -8,7 +8,9 @@ interface DeviceAlarmSound {
 
 interface NexusStudyAlarmPlugin {
   requestNotificationPermission(): Promise<{ granted: boolean }>;
+  checkNotificationPermission(): Promise<{ granted: boolean }>;
   requestAudioPermission(): Promise<{ granted: boolean }>;
+  checkAudioPermission(): Promise<{ granted: boolean }>;
   listDeviceSounds(): Promise<{ sounds: DeviceAlarmSound[]; audioPermissionGranted?: boolean }>;
   previewSound(options: { uri: string }): Promise<void>;
   previewCustomSound(options: { path: string }): Promise<void>;
@@ -71,6 +73,14 @@ export async function saveAlarmAudio(file: File): Promise<string> {
   });
   if (!result.path) throw new Error('تعذر حفظ الصوت داخل التطبيق');
   return result.path;
+}
+
+export async function checkStudyAlarmPermission(): Promise<boolean> {
+  try { return (await NexusStudyAlarm.checkNotificationPermission()).granted === true; } catch { return false; }
+}
+
+export async function checkDeviceAudioPermission(): Promise<boolean> {
+  try { return (await NexusStudyAlarm.checkAudioPermission()).granted === true; } catch { return false; }
 }
 
 export async function requestStudyAlarmPermission(): Promise<boolean> {
