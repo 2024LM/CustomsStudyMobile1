@@ -95,6 +95,7 @@ function freshChatTask(task: AiWorkspaceState['task']): AiWorkspaceState['task']
     sourceIds: [],
     sourceUrls: [],
     sourceTitles: [],
+    localSourceTitles: [],
     generatedBankId: undefined,
     lastError: undefined,
     updatedAt: Date.now(),
@@ -284,6 +285,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   useEffect(()=>{if(initialMessage){setMessage(initialMessage.slice(0,3000));onConsumeInitial?.();}},[initialMessage]);
 
   useEffect(() => {
+    const savedLocal = workspace.task.localSourceTitles || [];
+    if (savedLocal.length && taskLocalSources.length === 0 && ['collecting', 'ready', 'generating'].includes(workspace.task.status)) {
+      setStatus('هذه الجلسة تحتاج إعادة إرفاق ملفاتها المحلية قبل المتابعة: ' + savedLocal.slice(0, 3).join('، ') + (savedLocal.length > 3 ? '…' : ''));
+    }
+  }, []);
+
+  useEffect(() => {
     sessionTaskSourcesRef.current[activeSessionId] = taskLocalSources;
   }, [activeSessionId, taskLocalSources]);
 
@@ -449,6 +457,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setWorkspace(generatingState);
     setStatus('Gemini يقرأ الروابط المختارة وينشئ الأسئلة منها…');
 
+    const requiredLocalTitles = state.task.localSourceTitles || [];
+    if (requiredLocalTitles.length > localTaskSources.length) {
+      throw new Error('هذه المهمة تعتمد على ملفات أو صور من جلسة سابقة. أعد إرفاق المصادر المحلية قبل إنشاء البنك.');
+    }
+
     const totalSources = state.task.sourceUrls.length + localTaskSources.length;
     if (totalSources > 8) {
       throw new Error('يمكن إنشاء البنك من 8 مصادر كحد أقصى. أزل بعض المصادر ثم أعد المحاولة.');
@@ -544,7 +557,12 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     setStatus('');
 
     const userText = text || 'حلّل المصادر المرفقة.';
-    let state = addAiMessage(workspace, 'user', userText, attachments);
+    const taskWithLocalMetadata = {
+      ...workspace.task,
+      localSourceTitles: nextTaskLocalSources.map((source) => source.title),
+      updatedAt: Date.now(),
+    };
+    let state = addAiMessage({ ...workspace, task: taskWithLocalMetadata }, 'user', userText, attachments);
     const sentMessage = state.messages[state.messages.length - 1];
     if (sentMessage && pendingSources.length) {
       setSentAttachmentPayloads((current) => ({ ...current, [sentMessage.id]: pendingSources }));
@@ -711,7 +729,12 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     const next = addAiMessage(
       {
         ...workspace,
-        task: { ...workspace.task, status: 'ready', updatedAt: Date.now() },
+        task: {
+          ...workspace.task,
+          status: 'ready',
+          localSourceTitles: availableLocalSources.map((source) => source.title),
+          updatedAt: Date.now(),
+        },
       },
       'assistant',
       `تم اعتماد ${workspace.task.sourceUrls.length + availableLocalSources.length} مصادر للمهمة. سأستخدم هذه المصادر فقط في إنشاء البنك.`
@@ -758,7 +781,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       const done = addAiMessage(
         {
           ...workspace,
-          task: { ...workspace.task, status: 'done', generatedQuestions: [], generatedBankId: bankId, updatedAt: Date.now() },
+          task: { ...workspace.task, status: 'done', generatedQuestions: [], localSourceTitles: [], generatedBankId: bankId, updatedAt: Date.now() },
         },
         'assistant',
         `تم حفظ البنك «${workspace.task.bankName}» وتفعيله داخل التطبيق.`
@@ -814,7 +837,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       note: 'مصدر محفوظ في المهمة',
     })));
     setGenerated(next.task.generatedQuestions || []);
-    setTaskLocalSources(sessionTaskSourcesRef.current[id] || []);
+    const restoredLocalSources = sessionTaskSourcesRef.current[id] || [];
+    setTaskLocalSources(restoredLocalSources);
+    if ((next.task.localSourceTitles || []).length > restoredLocalSources.length) {
+      setStatus('هذه الجلسة تحتوي مرفقات محلية غير محفوظة. أعد إرفاقها قبل متابعة المهمة.');
+    }
     setShowSources(next.task.status === 'collecting' && next.task.sourceUrls.length > 0);
     setSessionsOpen(false);
   };
