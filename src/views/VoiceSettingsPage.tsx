@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Headphones, LoaderCircle, Play, RefreshCw, Volume2, Wifi } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   listTtsVoices,
   readingFrameEnabled,
   saveReadingFrameEnabled,
@@ -174,7 +175,7 @@ export const VoiceSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) 
         </label>
       </div>
 
-      {status && <div className="rounded-[12px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2 text-[11px] font-semibold">{status}</div>}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       {loading ? (
         <div className="py-12 flex justify-center"><LoaderCircle className="w-6 h-6 animate-spin text-[#5B3FD6]" /></div>
