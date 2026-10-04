@@ -9,6 +9,7 @@ import { db } from '../services/db';
 import { AiReferenceTools } from '../components/AiReferenceTools';
 import { PdfReader } from '../components/PdfReader';
 import { SpeakButton } from '../components/SpeakButton';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 
 function htmlToPlainText(html: string): string {
@@ -438,11 +439,7 @@ export const ReferencesPage: React.FC = () => {
         ))}
       </div>
 
-      {localStatus && (
-        <div className="text-[11px] rounded-[11px] bg-[#F5F3FF] text-[#5B3FD6] px-3 py-2">
-          {localStatus}
-        </div>
-      )}
+      <FloatingNotice message={localStatus} onDismiss={() => setLocalStatus('')} />
 
       {sourceTab === 'uploaded' && (
         <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-xs flex flex-col gap-3">
