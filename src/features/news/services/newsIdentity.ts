@@ -1,8 +1,9 @@
 import { NewsArticle } from '../types';
 
 export const NEWS_LIMIT_PER_SOURCE = 15;
+
 export function internalNewsId(article: Pick<NewsArticle,'sourceId'|'url'|'title'>): string {
-  let identity = article.url;
+  let identity=article.url;
   try {
     const url=new URL(article.url);
     const uuid=url.pathname.match(/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}/i)?.[0];
@@ -18,10 +19,11 @@ export function internalNewsId(article: Pick<NewsArticle,'sourceId'|'url'|'title
   }
   return article.sourceId+':'+(a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0');
 }
-export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[] = [], now = new Date().toISOString()): NewsArticle[] {
+
+function mergeNews(articles: NewsArticle[], previous: NewsArticle[] = [], now = new Date().toISOString()): NewsArticle[] {
   const old=new Map(previous.map(article=>[article.internalId||internalNewsId(article),article]));
   const byId=new Map<string,NewsArticle>();
-  for(let article of articles){
+  for(let article of [...previous,...articles]){
     if(!article||typeof article.title!=='string'||!article.sourceId||article.sourceId==='open-data-ma')continue;
     if(article.sourceId==='finances'&&article.category==='امتحانات الكفاءة المهنية'&&article.publishedAt&&!article.eventDate){
       article={...article,eventDate:article.publishedAt,publishedAt:undefined,publishedTimeKnown:false};
@@ -39,20 +41,32 @@ export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[
     const value=Date.parse(article.publishedAt||'');
     return Number.isFinite(value)?value:0;
   };
-  // Keep a bounded browsing snapshot: at most 15 newest articles per source.
-  // Grouping by sourceId is deliberate so one busy source cannot consume another source's cache.
-  const grouped = new Map<string, NewsArticle[]>();
-  for (const article of byId.values()) {
-    const list = grouped.get(article.sourceId) || [];
+  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a));
+}
+
+/**
+ * Browsing cache merge. No per-source limit is applied here.
+ * The 15-item limit is only for compaction/notification baseline metadata.
+ */
+export function mergeNewsForBrowsing(articles: NewsArticle[], previous: NewsArticle[] = [], now = new Date().toISOString()): NewsArticle[] {
+  return mergeNews(articles,previous,now);
+}
+
+/**
+ * Persistent cleanup snapshot: keep only the newest 15 articles per source.
+ */
+export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[] = [], now = new Date().toISOString()): NewsArticle[] {
+  const merged=mergeNews(articles,previous,now);
+  const grouped=new Map<string,NewsArticle[]>();
+  for(const article of merged){
+    const list=grouped.get(article.sourceId)||[];
     list.push(article);
-    grouped.set(article.sourceId, list);
+    grouped.set(article.sourceId,list);
   }
-
-  const kept: NewsArticle[] = [];
-  for (const list of grouped.values()) {
-    list.sort((a,b) => stamp(b) - stamp(a));
-    kept.push(...list.slice(0, NEWS_LIMIT_PER_SOURCE));
-  }
-
-  return kept.sort((a,b) => stamp(b) - stamp(a));
+  const kept:NewsArticle[]=[];
+  for(const list of grouped.values())kept.push(...list.slice(0,NEWS_LIMIT_PER_SOURCE));
+  return kept.sort((a,b)=>{
+    const av=Date.parse(a.publishedAt||''),bv=Date.parse(b.publishedAt||'');
+    return (Number.isFinite(bv)?bv:0)-(Number.isFinite(av)?av:0);
+  });
 }
