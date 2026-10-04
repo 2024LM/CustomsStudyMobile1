@@ -315,8 +315,9 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const addLocalSource = (source: MixedAiSource) => {
     setLocalSources((current) => {
       if (current.some((item) => item.id === source.id)) return current;
-      if (current.length >= 8) {
-        setStatus('يمكن إضافة 8 مصادر محلية كحد أقصى للمهمة الواحدة.');
+      const used = workspace.task.sourceUrls.length + taskLocalSources.length + current.length;
+      if (used >= 8) {
+        setStatus('يمكن استخدام 8 مصادر كحد أقصى في المهمة الواحدة، بما فيها روابط الويب والمرفقات.');
         return current;
       }
       return [...current, source];
@@ -339,8 +340,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       return;
     }
 
-    if (workspace.task.sourceUrls.length >= 5 && !workspace.task.sourceUrls.includes(normalizedUrl)) {
-      setStatus('يمكن اعتماد 5 روابط ويب كحد أقصى.');
+    if (
+      !workspace.task.sourceUrls.includes(normalizedUrl) &&
+      (workspace.task.sourceUrls.length >= 5 || workspace.task.sourceUrls.length + taskLocalSources.length + localSources.length >= 8)
+    ) {
+      setStatus('يمكن اعتماد 5 روابط ويب كحد أقصى، و8 مصادر إجمالًا مع الملفات والمراجع.');
       return;
     }
 
@@ -439,6 +443,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     });
     setWorkspace(generatingState);
     setStatus('Gemini يقرأ الروابط المختارة وينشئ الأسئلة منها…');
+
+    const totalSources = state.task.sourceUrls.length + localTaskSources.length;
+    if (totalSources > 8) {
+      throw new Error('يمكن إنشاء البنك من 8 مصادر كحد أقصى. أزل بعض المصادر ثم أعد المحاولة.');
+    }
 
     const questions = await generateBankFromMixedSources({
       bankName: state.task.bankName,
@@ -685,8 +694,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
   const acceptSources = async () => {
     const availableLocalSources = dedupeSources([...taskLocalSources, ...localSources]);
+    const totalSources = workspace.task.sourceUrls.length + availableLocalSources.length;
     if (!workspace.task.sourceUrls.length && !availableLocalSources.length) {
       setStatus('اختر أو أضف مصدرًا واحدًا على الأقل.');
+      return;
+    }
+    if (totalSources > 8) {
+      setStatus('اختر 8 مصادر كحد أقصى قبل المتابعة.');
       return;
     }
     const next = addAiMessage(
