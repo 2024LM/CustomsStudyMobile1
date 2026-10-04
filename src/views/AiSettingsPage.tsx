@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   CheckCircle2,
   Eye,
   EyeOff,
@@ -420,11 +421,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
           اختبار الاتصال
         </button>
 
-        {status && (
-          <div className="rounded-[12px] bg-[#F8F9FD] px-3 py-2.5 text-[11px] leading-5 text-gray-600">
-            {status}
-          </div>
-        )}
+        <FloatingNotice message={status} onDismiss={() => setStatus('')} />
       </div>
 
       <AiProviderMonitor />
