@@ -155,7 +155,8 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     try {
       await selectGeminiKey(id);
       setKeys(await listGeminiKeys());
-      setStatus(`أصبح «مفتاح ${number}» هو المفتاح النشط.`);
+      setVerified(false);
+      setStatus(`أصبح «مفتاح ${number}» هو المفتاح النشط. اختبر الاتصال قبل استخدامه.`);
     } catch (error: any) {
       setStatus(error?.message || 'تعذر تغيير المفتاح النشط.');
     } finally {
