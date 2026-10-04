@@ -12,6 +12,10 @@ on:
   push:
     branches: [ "main" ]
 
+concurrency:
+  group: raje3-android-main
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -227,7 +231,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          LATEST_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$LATEST_SHA" != "$GITHUB_SHA" ]; then
+            echo "Skipping release publish for stale build $GITHUB_SHA; latest main is $LATEST_SHA."
+            exit 0
+          fi
+
           if ! gh release view current >/dev/null 2>&1; then
             gh release create current --title "Raje3 current APK" --notes "Direct APK download for the current Raje3 build." --target "$GITHUB_SHA"
           fi
-          gh release upload current Raje3.apk --clobber
+
+          for attempt in 1 2 3; do
+            if gh release upload current Raje3.apk --clobber; then
+              exit 0
+            fi
+            echo "Release upload attempt $attempt failed; retrying..."
+            sleep $((attempt * 3))
+          done
+
+          echo "::error::Failed to publish Raje3.apk after 3 attempts."
+          exit 1
