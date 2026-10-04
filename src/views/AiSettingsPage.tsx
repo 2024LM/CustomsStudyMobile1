@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   CheckCircle2,
   Eye,
   EyeOff,
@@ -33,6 +32,7 @@ import {
   setGeminiModel,
   verifyGeminiConnection,
 } from '../services/geminiAi';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [enabled, setEnabled] = useState(aiEnabled());
