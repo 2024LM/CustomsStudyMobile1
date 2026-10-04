@@ -35,9 +35,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   const handleItemClick = (item: AppNotification) => {
     db.markNotificationAsRead(item.id);
     setRerender({});
-    if (item.url) {
-      openUpdate(item.url);
-    }
+  };
+
+  const handleOpenLink = (item: AppNotification) => {
+    db.markNotificationAsRead(item.id);
+    setRerender({});
+    if (item.url) openUpdate(item.url);
   };
 
   const handleMarkAllRead = () => {
@@ -49,11 +52,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-[26px] max-w-md w-full p-5 shadow-2xl border border-gray-100 flex flex-col gap-4 text-right max-h-[85vh] overflow-hidden">
+      <div className="bg-white dark:bg-[#201C2B] text-[#2C2145] dark:text-[#F0ECF8] rounded-[26px] max-w-md w-full p-5 shadow-2xl border border-gray-100 dark:border-[#3A3348] flex flex-col gap-4 text-right max-h-[85vh] overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3A3348] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="relative w-10 h-10 rounded-[14px] bg-[#F5F3FF] flex items-center justify-center text-[#5B3FD6] shrink-0">
+            <div className="relative w-10 h-10 rounded-[14px] bg-[#F5F3FF] dark:bg-[#302844] flex items-center justify-center text-[#5B3FD6] dark:text-[#C4B5FD] shrink-0">
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#E11D48] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
@@ -62,7 +65,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               )}
             </div>
             <div className="flex flex-col">
-              <h2 className="text-base font-bold text-[#2C2145]">مركز الإشعارات</h2>
+              <h2 className="text-base font-bold text-[#2C2145] dark:text-[#F0ECF8]">مركز الإشعارات</h2>
               <span className="text-xs text-gray-500">
                 {items.length === 0
                   ? 'لا توجد إشعارات جديدة'
@@ -77,12 +80,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 onClick={handleMarkAllRead}
                 className="text-[11px] font-bold text-[#5B3FD6] hover:text-[#4C33B8] px-2 py-1 rounded-[8px] hover:bg-[#F5F3FF] transition-colors cursor-pointer"
               >
-                تحديد كقروء
+                تحديد كمقروء
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#2A2535] hover:bg-gray-200 dark:hover:bg-[#342E41] flex items-center justify-center text-gray-600 dark:text-[#B9B2C8] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -113,12 +116,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   onClick={() => handleItemClick(item)}
                   className={`p-3.5 rounded-[18px] border transition-all text-right flex flex-col gap-2 cursor-pointer ${
                     isRead
-                      ? 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60 opacity-80'
+                      ? 'bg-gray-50/70 dark:bg-[#292531] border-gray-100 dark:border-[#3A3348] hover:bg-gray-100/60 dark:hover:bg-[#302A3C] opacity-80'
                       : isAlert
-                      ? 'bg-[#FFF5F5] border-[#FFCDD2] shadow-xs'
+                      ? 'bg-[#FFF5F5] dark:bg-[#382126] border-[#FFCDD2] dark:border-[#6B343A] shadow-xs'
                       : isUpdate
-                      ? 'bg-[#FAF8FF] border-[#E8E1FA] shadow-xs'
-                      : 'bg-white border-gray-200/80 shadow-xs hover:border-[#5B3FD6]/40'
+                      ? 'bg-[#FAF8FF] dark:bg-[#292238] border-[#E8E1FA] dark:border-[#493B66] shadow-xs'
+                      : 'bg-white dark:bg-[#211D2C] border-gray-200/80 dark:border-[#3A3348] shadow-xs hover:border-[#5B3FD6]/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -144,7 +147,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       <div className="flex flex-col">
                         <span
                           className={`text-xs font-bold ${
-                            isRead ? 'text-gray-700' : 'text-[#2C2145]'
+                            isRead ? 'text-gray-700 dark:text-[#C9C1D3]' : 'text-[#2C2145] dark:text-[#F0ECF8]'
                           }`}
                         >
                           {item.title}
@@ -162,7 +165,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     )}
                   </div>
 
-                  <p className="text-xs text-gray-600 leading-relaxed pr-9 whitespace-pre-line">
+                  <p className="text-xs text-gray-600 dark:text-[#C9C1D3] leading-relaxed pr-9 whitespace-pre-line">
                     {item.message}
                   </p>
 
@@ -171,7 +174,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleItemClick(item);
+                          handleOpenLink(item);
                         }}
                         className={`inline-flex items-center gap-1.5 py-1.5 px-3 rounded-[10px] text-[11px] font-bold transition-all shadow-xs ${
                           isAlert
@@ -191,7 +194,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {/* Footer info & Refresh button */}
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+        <div className="pt-2 border-t border-gray-100 dark:border-[#3A3348] flex items-center justify-between text-[11px] text-gray-500 dark:text-[#B9B2C8]">
           <span>المصدر: {remote.source === 'github' ? 'مباشر' : 'محلي'}</span>
           <button
             onClick={() => {
