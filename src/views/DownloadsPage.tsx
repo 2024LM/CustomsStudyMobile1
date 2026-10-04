@@ -3,12 +3,12 @@ import { Database, FileText, HardDrive, Trash2 } from 'lucide-react';
 import { PurpleSubpageHeader } from '../components/PurpleSubpageHeader';
 import { db } from '../services/db';
 import {
-import { FloatingNotice } from '../components/FloatingNotice';
   deleteLocalReference,
   listLocalReferences,
   LocalReference,
   localReferenceStorageSummary,
 } from '../services/localReferences';
+import { FloatingNotice } from '../components/FloatingNotice';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
