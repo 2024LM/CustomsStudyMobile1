@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   UploadCloud,
   CheckCircle2,
   AlertCircle,
@@ -248,11 +249,7 @@ export const BanksPage: React.FC<BanksPageProps> = ({ onBankSelected, onBack }) 
       )}
 
       {/* Status message */}
-      {status && (
-        <div className="bg-[#F5F3FF] text-[#5B3FD6] rounded-[14px] p-3 text-xs font-semibold">
-          {status}
-        </div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
 
       {/* Downloadable Banks Catalog */}
       <div data-tour="banks-download" className="flex items-center justify-between mt-1">
