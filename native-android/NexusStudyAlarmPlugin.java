@@ -52,6 +52,22 @@ public class NexusStudyAlarmPlugin extends Plugin {
     private MediaPlayer previewPlayer;
 
     @PluginMethod
+    public void checkNotificationPermission(PluginCall call) {
+        JSObject result = new JSObject();
+        boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            || getPermissionState("notifications") == PermissionState.GRANTED;
+        result.put("granted", granted);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void checkAudioPermission(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", hasAudioPermission());
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                 || getPermissionState("notifications") == PermissionState.GRANTED) {
