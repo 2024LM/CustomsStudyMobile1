@@ -1,6 +1,6 @@
 import { NewsArticle } from '../types';
 
-export const NEWS_LIMIT_PER_SOURCE = 10;
+export const NEWS_LIMIT_PER_SOURCE = 15;
 export function internalNewsId(article: Pick<NewsArticle,'sourceId'|'url'|'title'>): string {
   let identity = article.url;
   try {
@@ -39,6 +39,20 @@ export function retainLatestNews(articles: NewsArticle[], previous: NewsArticle[
     const value=Date.parse(article.publishedAt||'');
     return Number.isFinite(value)?value:0;
   };
-  // Browsing history is independent from the ten-ID notification watermark.
-  return [...byId.values()].sort((a,b)=>stamp(b)-stamp(a));
+  // Keep a bounded browsing snapshot: at most 15 newest articles per source.
+  // Grouping by sourceId is deliberate so one busy source cannot consume another source's cache.
+  const grouped = new Map<string, NewsArticle[]>();
+  for (const article of byId.values()) {
+    const list = grouped.get(article.sourceId) || [];
+    list.push(article);
+    grouped.set(article.sourceId, list);
+  }
+
+  const kept: NewsArticle[] = [];
+  for (const list of grouped.values()) {
+    list.sort((a,b) => stamp(b) - stamp(a));
+    kept.push(...list.slice(0, NEWS_LIMIT_PER_SOURCE));
+  }
+
+  return kept.sort((a,b) => stamp(b) - stamp(a));
 }
