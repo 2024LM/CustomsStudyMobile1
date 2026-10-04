@@ -16,7 +16,7 @@ function safeHref(value: string): string | null {
 
 function inlineNodes(text: string, keyPrefix: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
-  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\`[^\`]+\`|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|~~[^~]+~~|(?<!\*)\*[^*\n]+\*(?!\*)|(?<!_)_[^_\n]+_(?!_))/g;
+  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\`[^\`]+\`|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|~~[^~]+~~|\*[^*\n]+\*|_[^_\n]+_)/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
