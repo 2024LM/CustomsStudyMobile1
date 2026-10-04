@@ -96,6 +96,7 @@ function freshChatTask(task: AiWorkspaceState['task']): AiWorkspaceState['task']
     sourceUrls: [],
     sourceTitles: [],
     localSourceTitles: [],
+    generatedQuestions: [],
     generatedBankId: undefined,
     lastError: undefined,
     updatedAt: Date.now(),
@@ -450,13 +451,6 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       throw new Error('أضف مصدرًا واحدًا على الأقل قبل إنشاء البنك.');
     }
 
-    const generatingState = saveAiWorkspace({
-      ...state,
-      task: { ...state.task, status: 'generating', updatedAt: Date.now() },
-    });
-    setWorkspace(generatingState);
-    setStatus('Gemini يقرأ الروابط المختارة وينشئ الأسئلة منها…');
-
     const requiredLocalTitles = state.task.localSourceTitles || [];
     if (requiredLocalTitles.length > localTaskSources.length) {
       throw new Error('هذه المهمة تعتمد على ملفات أو صور من جلسة سابقة. أعد إرفاق المصادر المحلية قبل إنشاء البنك.');
@@ -466,6 +460,13 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     if (totalSources > 8) {
       throw new Error('يمكن إنشاء البنك من 8 مصادر كحد أقصى. أزل بعض المصادر ثم أعد المحاولة.');
     }
+
+    const generatingState = saveAiWorkspace({
+      ...state,
+      task: { ...state.task, status: 'generating', generatedQuestions: [], updatedAt: Date.now() },
+    });
+    setWorkspace(generatingState);
+    setStatus('Gemini يقرأ المصادر المختارة وينشئ الأسئلة منها…');
 
     const questions = await generateBankFromMixedSources({
       bankName: state.task.bankName,
