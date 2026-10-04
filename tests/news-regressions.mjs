@@ -141,7 +141,8 @@ const kept=identity.retainLatestNews([...many,...many.map(article=>({...article,
 assert.equal(kept.filter(article=>article.sourceId==='hcp').length,15);
 assert.equal(kept.filter(article=>article.sourceId==='men').length,15);
 assert.equal(kept[0].id,'id19','Most recent publication first');
-assert.equal(kept.some(article=>article.id==='id5'),false,'Articles older than the 15-item source window are removed');
+assert.equal(kept.some(article=>article.id==='id4'),false,'Articles older than the 15-item source window are removed');
+assert.equal(kept.some(article=>article.id==='id5'),true,'The fifteenth newest article remains in the source window');
 assert.equal(retainNewsFeed(many).length,10,'Build feed uses the same retention bound');
 const persistent=new Map();
 persistent.set('raje3_news_cache_v1',JSON.stringify(many));
