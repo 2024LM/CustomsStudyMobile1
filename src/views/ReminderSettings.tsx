@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+import { FloatingNotice } from '../components/FloatingNotice';
   BellRing,
   Clock,
   Info,
@@ -152,17 +153,7 @@ export const ReminderSettings: React.FC<ReminderSettingsProps> = ({
       </button>
 
       {/* Status banner */}
-      {status && (
-        <div
-          className={`rounded-[14px] p-3.5 text-xs font-bold text-center border animate-in fade-in duration-200 ${
-            enabled
-              ? 'bg-[#EAF8F0] text-[#16864B] border-[#C2EED4]'
-              : 'bg-[#FFEEED] text-[#C62828] border-[#FFCDD2]'
-          }`}
-        >
-          {status}
-        </div>
-      )}
+      <FloatingNotice message={status} onDismiss={() => setStatus('')} />
     </div>
   );
 };
