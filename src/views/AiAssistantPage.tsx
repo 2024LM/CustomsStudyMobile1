@@ -262,6 +262,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   const [playingYoutubeId, setPlayingYoutubeId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+  const sessionTaskSourcesRef = useRef<Record<string, MixedAiSource[]>>({});
 
   useEffect(() => {
     let active = true;
@@ -281,6 +282,10 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
   }, [workspace.messages.length, workspace.task.updatedAt, busy]);
 
   useEffect(()=>{if(initialMessage){setMessage(initialMessage.slice(0,3000));onConsumeInitial?.();}},[initialMessage]);
+
+  useEffect(() => {
+    sessionTaskSourcesRef.current[activeSessionId] = taskLocalSources;
+  }, [activeSessionId, taskLocalSources]);
 
   const analytics = db.dashboardAnalytics(null);
   const banks = db.banks();
@@ -783,10 +788,12 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
 
   const startNewSession = () => {
     const next = createAiSession();
+    const nextSessionId = activeAiSessionId();
     setWorkspace(next);
     setSessions(aiSessionSummaries());
-    setActiveSessionId(activeAiSessionId());
+    setActiveSessionId(nextSessionId);
     clearTransientSessionState();
+    setTaskLocalSources(sessionTaskSourcesRef.current[nextSessionId] || []);
     setSessionsOpen(false);
   };
 
@@ -807,6 +814,7 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
       note: 'مصدر محفوظ في المهمة',
     })));
     setGenerated(next.task.generatedQuestions || []);
+    setTaskLocalSources(sessionTaskSourcesRef.current[id] || []);
     setShowSources(next.task.status === 'collecting' && next.task.sourceUrls.length > 0);
     setSessionsOpen(false);
   };
@@ -816,8 +824,11 @@ export const AiAssistantPage: React.FC<AiAssistantPageProps> = ({ onOpenSettings
     const next = deleteAiSession(id);
     setWorkspace(next);
     setSessions(aiSessionSummaries());
-    setActiveSessionId(activeAiSessionId());
+    const nextSessionId = activeAiSessionId();
+    setActiveSessionId(nextSessionId);
+    delete sessionTaskSourcesRef.current[id];
     clearTransientSessionState();
+    setTaskLocalSources(sessionTaskSourcesRef.current[nextSessionId] || []);
     setCandidates(next.task.sourceUrls.map((url, index) => ({
       url,
       title: next.task.sourceTitles[index] || sourceDomain(url),
