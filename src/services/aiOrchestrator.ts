@@ -55,6 +55,7 @@ export interface AiTaskState {
   sourceIds: string[];
   sourceUrls: string[];
   sourceTitles: string[];
+  localSourceTitles: string[];
   expectedQuestions: number;
   generatedQuestions?: AiGeneratedBankQuestion[];
   generatedBankId?: string;
@@ -104,6 +105,7 @@ function emptyTask(): AiTaskState {
     sourceIds: [],
     sourceUrls: [],
     sourceTitles: [],
+    localSourceTitles: [],
     expectedQuestions: 20,
     generatedQuestions: [],
     updatedAt: Date.now(),
