@@ -1,13 +1,14 @@
-import React,{useState} from 'react';
+import React,{useEffect,useState} from 'react';
 import {Bell,CheckCircle2,Headphones,ArrowLeft} from 'lucide-react';
 import {Capacitor} from '@capacitor/core';
-import {requestStudyAlarmPermission,requestDeviceAudioPermission} from '../services/studyAlarm';
+import {checkStudyAlarmPermission,checkDeviceAudioPermission,requestDeviceAudioPermission} from '../services/studyAlarm';
 import {enableNewsNotifications} from '../features/news/services/newsNotifications';
 
 export function FirstRunPermissions({onComplete}:{onComplete:()=>void}){
   const [notifications,setNotifications]=useState<'idle'|'granted'|'denied'>('idle');
   const [audio,setAudio]=useState<'idle'|'granted'|'denied'>('idle');
   const [busy,setBusy]=useState(false);
+  useEffect(()=>{let active=true;void Promise.all([checkStudyAlarmPermission(),checkDeviceAudioPermission()]).then(async([notificationGranted,audioGranted])=>{if(!active)return;setNotifications(notificationGranted?'granted':'denied');setAudio(audioGranted?'granted':'denied');if(notificationGranted){try{await enableNewsNotifications();}catch{}}});return()=>{active=false;};},[]);
   const requestNotifications=async()=>{
     setBusy(true);
     try{
@@ -22,7 +23,7 @@ export function FirstRunPermissions({onComplete}:{onComplete:()=>void}){
     catch{setAudio('denied');}
     finally{setBusy(false);}
   };
-  const status=(value:string)=>value==='granted'?'ممنوح':value==='denied'?'لم يُمنح بعد':'لم يُطلب';
+  const status=(value:string)=>value==='granted'?'ممنوح':value==='denied'?'غير ممنوح':'لم يُطلب';
   return <div dir="rtl" className="min-h-[100dvh] bg-[#F8F9FD] text-[#2C2145] flex items-center justify-center p-5">
     <div className="w-full max-w-md bg-white border border-gray-100 rounded-[28px] p-6 shadow-sm">
       <div className="w-14 h-14 rounded-2xl bg-[#F5F3FF] text-[#5B3FD6] flex items-center justify-center mb-4"><Bell className="w-7 h-7"/></div>
