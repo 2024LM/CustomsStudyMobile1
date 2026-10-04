@@ -36,6 +36,16 @@ export interface AiChatMessage {
   blocks?: AiRichContentBlock[];
 }
 
+export interface AiGeneratedBankQuestion {
+  question: string;
+  correctAnswer: string;
+  wrong1: string;
+  wrong2: string;
+  wrong3: string;
+  explanation: string;
+  topic: string;
+}
+
 export interface AiTaskState {
   kind: AiTaskKind;
   status: AiTaskStatus;
@@ -46,6 +56,7 @@ export interface AiTaskState {
   sourceUrls: string[];
   sourceTitles: string[];
   expectedQuestions: number;
+  generatedQuestions?: AiGeneratedBankQuestion[];
   generatedBankId?: string;
   lastError?: string;
   updatedAt: number;
@@ -94,6 +105,7 @@ function emptyTask(): AiTaskState {
     sourceUrls: [],
     sourceTitles: [],
     expectedQuestions: 20,
+    generatedQuestions: [],
     updatedAt: Date.now(),
   };
 }
@@ -102,12 +114,26 @@ export function emptyAiWorkspace(): AiWorkspaceState {
   return { messages: [], task: emptyTask() };
 }
 
+function cleanGeneratedQuestions(value: unknown): AiGeneratedBankQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 100).map((item: any) => ({
+    question: String(item?.question || '').trim().slice(0, 2000),
+    correctAnswer: String(item?.correctAnswer || '').trim().slice(0, 2000),
+    wrong1: String(item?.wrong1 || '').trim().slice(0, 2000),
+    wrong2: String(item?.wrong2 || '').trim().slice(0, 2000),
+    wrong3: String(item?.wrong3 || '').trim().slice(0, 2000),
+    explanation: String(item?.explanation || '').trim().slice(0, 2000),
+    topic: String(item?.topic || '').trim().slice(0, 200),
+  })).filter((item) => item.question && item.correctAnswer && item.wrong1 && item.wrong2 && item.wrong3);
+}
+
 function cleanWorkspace(input?: Partial<AiWorkspaceState> | null): AiWorkspaceState {
   return {
     messages: Array.isArray(input?.messages) ? input!.messages!.slice(-60) : [],
     task: {
       ...emptyTask(),
       ...(input?.task || {}),
+      generatedQuestions: cleanGeneratedQuestions(input?.task?.generatedQuestions),
       updatedAt: Number(input?.task?.updatedAt) || Date.now(),
     },
   };
