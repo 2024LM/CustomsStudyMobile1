@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Eye,
@@ -46,6 +46,7 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   const [status, setStatus] = useState('');
   const [webCapability, setWebCapability] = useState<WebSearchCapability>(() => cachedWebSearchCapability());
   const [webChecking, setWebChecking] = useState(false);
+  const draftLookupRef = useRef(0);
 
   useEffect(() => {
     void listGeminiKeys().then(setKeys);
@@ -97,14 +98,16 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   const handleDraftKeyChange = (value: string) => {
     setDraftKey(value);
     const clean = value.trim();
+    const requestId = ++draftLookupRef.current;
     if (!clean) {
       setDuplicateNumber(null);
       return;
     }
     void findGeminiKeyNumber(clean).then((number) => {
+      if (requestId !== draftLookupRef.current) return;
       setDuplicateNumber(number);
       if (number) setStatus(`هذا المفتاح محفوظ مسبقًا باسم «مفتاح ${number}».`);
-      else if (status.includes('محفوظ مسبقًا')) setStatus('');
+      else setStatus((current) => current.includes('محفوظ مسبقًا') ? '' : current);
     });
   };
 
@@ -148,9 +151,16 @@ export const AiSettingsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   };
 
   const makeActive = async (id: string, number: number) => {
-    await selectGeminiKey(id);
-    setKeys(await listGeminiKeys());
-    setStatus(`أصبح «مفتاح ${number}» هو المفتاح النشط.`);
+    setBusy(true);
+    try {
+      await selectGeminiKey(id);
+      setKeys(await listGeminiKeys());
+      setStatus(`أصبح «مفتاح ${number}» هو المفتاح النشط.`);
+    } catch (error: any) {
+      setStatus(error?.message || 'تعذر تغيير المفتاح النشط.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const changeModel = (value: GeminiModel) => {
