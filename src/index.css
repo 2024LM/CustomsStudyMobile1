@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tailwind v4: dark utilities must follow the app theme, not the OS media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Shared presentation tokens; the purple brand remains unchanged. */
 :root {
   --raje3-canvas: #f8f9fd;
