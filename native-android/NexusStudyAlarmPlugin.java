@@ -3,6 +3,7 @@ package com.nexus.customsstudy;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.provider.MediaStore;
+import androidx.core.app.NotificationManagerCompat;
 import android.content.ContentUris;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -54,8 +55,9 @@ public class NexusStudyAlarmPlugin extends Plugin {
     @PluginMethod
     public void checkNotificationPermission(PluginCall call) {
         JSObject result = new JSObject();
-        boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-            || getPermissionState("notifications") == PermissionState.GRANTED;
+        boolean granted = NotificationManagerCompat.from(getContext()).areNotificationsEnabled()
+            && (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            || getPermissionState("notifications") == PermissionState.GRANTED);
         result.put("granted", granted);
         call.resolve(result);
     }
@@ -69,6 +71,12 @@ public class NexusStudyAlarmPlugin extends Plugin {
 
     @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
+        if (!NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
+            JSObject result = new JSObject();
+            result.put("granted", false);
+            call.resolve(result);
+            return;
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                 || getPermissionState("notifications") == PermissionState.GRANTED) {
             JSObject result = new JSObject();
