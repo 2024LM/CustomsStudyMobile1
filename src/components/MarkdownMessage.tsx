@@ -16,7 +16,7 @@ function safeHref(value: string): string | null {
 
 function inlineNodes(text: string, keyPrefix: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
-  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\`[^\`]+\`|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|~~[^~]+~~)/g;
+  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\`[^\`]+\`|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|~~[^~]+~~|(?<!\*)\*[^*\n]+\*(?!\*)|(?<!_)_[^_\n]+_(?!_))/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
@@ -35,6 +35,8 @@ function inlineNodes(text: string, keyPrefix: string): React.ReactNode[] {
       );
     } else if (token.startsWith('~~')) {
       out.push(<del key={key}>{token.slice(2, -2)}</del>);
+    } else if ((token.startsWith('*') && token.endsWith('*')) || (token.startsWith('_') && token.endsWith('_'))) {
+      out.push(<em key={key}>{token.slice(1, -1)}</em>);
     } else {
       const link = token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
       const href = link ? safeHref(link[2]) : null;
@@ -55,6 +57,20 @@ function inlineNodes(text: string, keyPrefix: string): React.ReactNode[] {
 
   if (last < text.length) out.push(text.slice(last));
   return out;
+}
+
+function tableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+function isTableSeparator(line: string): boolean {
+  const cells = tableCells(line);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
 export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ text, userMessage = false }) => {
@@ -90,6 +106,37 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ text, userMess
     if (!line.trim()) {
       blocks.push(<div key={'gap_' + i} className="h-2" />);
       i += 1;
+      continue;
+    }
+
+    if (line.includes('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      const headers = tableCells(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim()) {
+        rows.push(tableCells(lines[i]));
+        i += 1;
+      }
+      blocks.push(
+        <div key={'table_' + i} className="my-2 overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+          <table className="w-full min-w-[360px] border-collapse text-[10px]">
+            <thead className="bg-[#7B5BE7]/10">
+              <tr>{headers.map((cell, index) => <th key={index} dir="auto" className="px-2.5 py-2 text-right font-black border-b border-black/10 dark:border-white/10">{inlineNodes(cell, 'th' + i + '_' + index)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-b last:border-b-0 border-black/5 dark:border-white/5">
+                  {headers.map((_, cellIndex) => (
+                    <td key={cellIndex} dir="auto" className="px-2.5 py-2 align-top">
+                      {inlineNodes(row[cellIndex] || '', 'td' + i + '_' + rowIndex + '_' + cellIndex)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
       continue;
     }
 
