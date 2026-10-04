@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {Bell,ChevronDown,Languages,Trash2} from 'lucide-react';
 import {Capacitor} from '@capacitor/core';
 import {enableNewsNotifications} from '../services/newsNotifications';
+import {checkStudyAlarmPermission} from '../../../services/studyAlarm';
 import {newsService} from '../services/newsService';
 import {sourceTheme} from '../config/sourceTheme';
 import { FloatingNotice } from '../../../components/FloatingNotice';
@@ -17,6 +18,9 @@ export function NewsSourceSettings(){
   const [expanded,setExpanded]=useState<string|null>(()=>newsService.sources()[0]?.id||null);
   const [error,setError]=useState(''),[status,setStatus]=useState('');
   const [permissionBusy,setPermissionBusy]=useState(false);
+  const [notificationsGranted,setNotificationsGranted]=useState(false);
+  const refreshPermission=()=>{void checkStudyAlarmPermission().then(granted=>{setNotificationsGranted(granted);if(!granted)localStorage.removeItem('raje3_news_notifications_allowed');});};
+  useEffect(()=>{refreshPermission();const onFocus=()=>refreshPermission();window.addEventListener('focus',onFocus);return()=>window.removeEventListener('focus',onFocus);},[]);
   useEffect(()=>newsService.subscribe(()=>setVersion(value=>value+1)),[]);
   const sources=newsService.sources();
   const change=(action:()=>void)=>{try{action();setError('');setStatus('');}catch(error){setError(error instanceof Error?error.message:'تعذر حفظ الإعداد.');}};
@@ -38,8 +42,8 @@ export function NewsSourceSettings(){
         </div>
         <div id={`source-options-${source.id}`} hidden={!open} className="border-t border-gray-100 px-4">
           <div className="flex items-center justify-between gap-4 py-3 border-b border-gray-100">
-            <div className="min-w-0"><p className="flex items-center gap-2 text-sm font-semibold text-[#2C2145]"><Bell className="w-4 h-4 text-gray-400"/>إشعارات الأخبار</p><p className="text-xs text-gray-500 leading-5 mt-1">متابعة الجديد وإرسال إشعار. إيقافها يُبقي الأخبار ظاهرة.</p></div>
-            <Switch checked={source.notificationsEnabled!==false} label={`إشعارات مصدر ${source.name}`} onChange={()=>change(()=>newsService.setSourcePreferences(source.id,{notificationsEnabled:source.notificationsEnabled===false}))}/>
+            <div className="min-w-0"><p className="flex items-center gap-2 text-sm font-semibold text-[#2C2145]"><Bell className="w-4 h-4 text-gray-400"/>إشعارات الأخبار</p><p className="text-xs text-gray-500 leading-5 mt-1">{notificationsGranted?'متابعة الجديد وإرسال إشعار. إيقافها يُبقي الأخبار ظاهرة.':'إذن إشعارات الهاتف غير ممنوح؛ لن تُرسل إشعارات حتى تمنحه.'}</p></div>
+            <Switch checked={notificationsGranted&&localStorage.getItem('raje3_news_notifications_allowed')==='1'&&source.notificationsEnabled!==false} label={`إشعارات مصدر ${source.name}`} onChange={()=>{if(!notificationsGranted||localStorage.getItem('raje3_news_notifications_allowed')!=='1'){setPermissionBusy(true);void enableNewsNotifications().then(ok=>{setNotificationsGranted(ok);if(ok){change(()=>newsService.setSourcePreferences(source.id,{notificationsEnabled:true}));setStatus('تم منح الإذن وتفعيل إشعارات الأخبار.');}else setStatus('إذن الإشعارات غير ممنوح؛ بقي الخيار غير مفعّل.');}).catch(()=>setStatus('تعذر التحقق من إذن الإشعارات.')).finally(()=>setPermissionBusy(false));return;}change(()=>newsService.setSourcePreferences(source.id,{notificationsEnabled:source.notificationsEnabled===false}));}}/>
           </div>
           <div className="flex items-center justify-between gap-4 py-3">
             <div className="min-w-0"><p className="flex items-center gap-2 text-sm font-semibold text-[#2C2145]"><Languages className="w-4 h-4 text-gray-400"/>الترجمة التلقائية</p><p className="text-xs text-gray-500 leading-5 mt-1">ترجمة الخبر غير العربي عند ظهوره، وحفظ الترجمة.</p></div>
@@ -52,7 +56,7 @@ export function NewsSourceSettings(){
     })}</div>
     <p className="px-1 text-xs text-gray-500 leading-6">الترجمة اختيارية لكل مصدر. {Capacitor.isNativePlatform()?'تستخدم الترجمة المحلية على الهاتف، وقد يحتاج أول استخدام تنزيل حزمة اللغة.':'على الويب، يُرسل نص الخبر إلى Gemini باستخدام إعداداتك، وقد يستهلك من حصتك. يلزم إعداد مفتاح صالح.'}</p>
     {Capacitor.isNativePlatform()&&<button disabled={permissionBusy} className="w-full min-h-12 rounded-xl border border-gray-100 bg-white text-sm font-semibold text-[#5B3FD6]" onClick={()=>{
-      setPermissionBusy(true);setError('');setStatus('');void enableNewsNotifications().then(ok=>setStatus(ok?'تم تفعيل إشعارات أخبار الهاتف.':'لم يُمنح إذن الإشعارات. يمكنك تغييره من إعدادات الهاتف.')).catch(()=>setError('تعذر تفعيل إشعارات الهاتف.')).finally(()=>setPermissionBusy(false));
+      setPermissionBusy(true);setError('');setStatus('');void enableNewsNotifications().then(ok=>{setNotificationsGranted(ok);setStatus(ok?'تم منح إذن إشعارات الهاتف.':'لم يُمنح إذن الإشعارات؛ بقيت الإشعارات غير مفعّلة.');}).catch(()=>setError('تعذر تفعيل إشعارات الهاتف.')).finally(()=>setPermissionBusy(false));
     }}>{permissionBusy?'جارٍ طلب الإذن…':'السماح بإشعارات الأخبار على الهاتف'}</button>}
   </section>;
 }
